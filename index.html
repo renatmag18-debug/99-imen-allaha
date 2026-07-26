@@ -300,6 +300,52 @@ body{
 .vs-side b{ font-family:var(--font-num); font-size:24px; display:block; color:var(--gold-soft);}
 .vs-side span{ font-size:10.5px; color:var(--ivory-dim); text-transform:uppercase; letter-spacing:.05em;}
 .vs-sep{ font-family:var(--font-display); color:var(--ivory-dim); font-size:14px;}
+
+.duel-divider{ display:flex; align-items:center; gap:10px; margin:16px 0; color:var(--ivory-dim); font-size:11.5px; text-transform:uppercase; letter-spacing:.1em; max-width:260px; margin-left:auto; margin-right:auto;}
+.duel-divider::before,.duel-divider::after{ content:""; flex:1; height:1px; background:var(--line);}
+
+.waiting-spinner{
+  width:56px; height:56px; margin:10px auto 0; border-radius:50%;
+  border:3px solid rgba(228,200,120,0.15); border-top-color:var(--gold-soft);
+  animation: spin-wait 1s linear infinite;
+}
+@keyframes spin-wait{ to{ transform:rotate(360deg); } }
+
+.duel-opp-panel{
+  border:1px solid var(--line); border-radius:16px; padding:12px 14px; margin-bottom:20px;
+  background:rgba(255,255,255,0.03); text-align:left;
+}
+.duel-opp-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:11.5px; font-weight:700; color:var(--jade); text-transform:uppercase; letter-spacing:.05em;}
+.duel-lb-row{ display:flex; align-items:center; gap:10px; padding:7px 0; }
+.duel-lb-row + .duel-lb-row{ border-top:1px solid rgba(255,255,255,0.05); }
+.duel-lb-name{ flex-shrink:0; font-size:13px; font-weight:700; color:var(--ivory); max-width:38%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.duel-lb-bar{ flex:1; height:6px; border-radius:4px; background:rgba(255,255,255,0.08); overflow:hidden;}
+.duel-lb-fill{ height:100%; background:linear-gradient(90deg, var(--jade), var(--gold-soft)); border-radius:4px; transition:width .4s var(--ease);}
+.duel-lb-score{ flex-shrink:0; font-family:var(--font-num); font-size:14px; color:var(--gold-soft); min-width:34px; text-align:right;}
+.duel-lb-done{ font-size:10px; color:var(--jade); }
+
+.duel-participants{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; max-width:340px; margin:0 auto; }
+.duel-participant-chip{ padding:7px 13px; border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,0.04); font-size:12.5px; color:var(--ivory); }
+.duel-participant-chip.me{ border-color:var(--gold-soft); color:var(--gold-soft); }
+.duel-participant-chip.host::after{ content:" · хост"; color:var(--jade); font-size:10.5px; }
+
+.duel-timer{
+  width:46px; height:46px; border-radius:50%; margin:0 auto 14px; display:flex; align-items:center; justify-content:center;
+  border:3px solid var(--jade); font-family:var(--font-num); font-size:19px; font-weight:700; color:var(--ivory);
+  transition: border-color .3s var(--ease), color .3s var(--ease);
+}
+.duel-timer.low{ border-color:var(--rose); color:var(--rose); animation: timer-pulse .6s ease-in-out infinite; }
+@keyframes timer-pulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.08); } }
+
+.duel-result-board{ border:1px solid var(--line); border-radius:16px; padding:14px 16px; margin-bottom:18px; text-align:left; background:rgba(255,255,255,0.02);}
+.duel-result-title{ font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--jade); font-weight:700; margin-bottom:10px; text-align:center;}
+.duel-result-row{ display:flex; align-items:center; gap:10px; padding:8px 0; }
+.duel-result-row + .duel-result-row{ border-top:1px solid rgba(255,255,255,0.05); }
+.duel-result-rank{ font-family:var(--font-num); font-size:15px; color:var(--gold-soft); width:20px; flex-shrink:0; }
+.duel-result-name{ flex:1; font-size:13.5px; font-weight:700; color:var(--ivory); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.duel-result-name.is-me{ color:var(--gold-soft); }
+.duel-result-score{ font-family:var(--font-num); font-size:15px; color:var(--ivory); flex-shrink:0;}
+.duel-result-pending{ font-size:10.5px; color:var(--ivory-dim); flex-shrink:0;}
 .name-field{ margin-bottom:16px;}
 .name-field input{ width:100%; text-align:center; background:rgba(255,255,255,0.03); border:1px solid var(--line); border-radius:12px; padding:11px; color:var(--ivory); font-family:var(--font-body); font-size:14px; outline:none;}
 .name-field input:focus{ border-color:var(--gold);}
@@ -473,6 +519,18 @@ body{
           </div>
         </div>
 
+        <div id="duelJoinScreen" style="display:none">
+          <div class="challenge-card">
+            <svg class="cc-icon" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            <p><b id="duelHostName">Друг</b> приглашает вас на live-дуэль по именам Аллаха.<br>Ответы будут видны всем участникам в реальном времени!</p>
+            <p id="duelJoinCount" style="margin-top:8px;color:var(--gold-soft);font-size:12.5px;"></p>
+          </div>
+          <div class="name-field">
+            <input type="text" id="duelJoinNameInput" placeholder="Ваше имя" maxlength="24">
+          </div>
+          <button class="btn btn-primary" id="duelJoinBtn" style="width:100%;max-width:300px;margin:0 auto;display:block;">Присоединиться к дуэли</button>
+        </div>
+
         <div class="quiz-intro" id="quizIntro">
           <svg class="big-star" viewBox="0 0 24 24" fill="none">
             <path d="M21 12.9A9 9 0 1111.1 3 7 7 0 0021 12.9z" stroke="#e4c878" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
@@ -487,9 +545,47 @@ body{
             <div class="len-chip" data-len="99">Все 99</div>
           </div>
           <button class="btn btn-primary" id="startQuizBtn" style="max-width:260px;margin:0 auto;">Начать викторину</button>
+          <div class="duel-divider"><span>или</span></div>
+          <button class="btn btn-ghost" id="openDuelSetupBtn" style="max-width:260px;margin:0 auto;">⚡ Live-дуэль с друзьями</button>
+        </div>
+
+        <div id="duelSetupScreen" style="display:none">
+          <svg class="big-star" viewBox="0 0 24 24" fill="none">
+            <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" stroke="#e4c878" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+          </svg>
+          <h2 style="font-family:var(--font-display);font-size:24px;text-align:center;margin:0 0 8px;">Live-дуэль</h2>
+          <p style="text-align:center;color:var(--ivory-dim);font-size:13.5px;max-width:320px;margin:0 auto 20px;">Создайте комнату и отправьте ссылку одному или нескольким друзьям — увидите ответы всех в реальном времени.</p>
+          <div class="len-choice" id="duelLenChoice">
+            <div class="len-chip" data-len="5">5 вопросов</div>
+            <div class="len-chip active" data-len="10">10 вопросов</div>
+            <div class="len-chip" data-len="20">20 вопросов</div>
+          </div>
+          <div class="len-choice" id="duelTimerChoice" style="margin-top:8px;">
+            <div class="len-chip active" data-timer="0">Без таймера</div>
+            <div class="len-chip" data-timer="1">10 сек на ответ</div>
+          </div>
+          <div class="name-field">
+            <input type="text" id="duelNameInput" placeholder="Ваше имя" maxlength="24">
+          </div>
+          <button class="btn btn-primary" id="createDuelBtn" style="width:100%;max-width:300px;margin:0 auto;display:block;">Создать комнату</button>
+        </div>
+
+        <div id="duelWaitingScreen" style="display:none; text-align:center;">
+          <div class="waiting-spinner"></div>
+          <h2 style="font-family:var(--font-display);font-size:22px;margin:18px 0 8px;" id="duelWaitTitle">Ждём друзей…</h2>
+          <p style="color:var(--ivory-dim);font-size:13.5px;margin-bottom:16px;" id="duelWaitSub">Отправьте эту ссылку — как только друзья присоединятся, хост сможет начать игру для всех одновременно.</p>
+          <div class="duel-participants" id="duelParticipants"></div>
+          <button class="btn btn-primary" id="duelShareBtn" style="max-width:280px;margin:14px auto 10px;">Отправить ссылку другу</button>
+          <button class="btn btn-primary" id="duelStartBtn" style="max-width:280px;margin:0 auto;display:none;background:linear-gradient(145deg, var(--jade), #1f6653);color:#fff;">Начать игру для всех</button>
+          <p id="duelGuestWaitNote" style="display:none;color:var(--ivory-dim);font-size:12.5px;margin-top:10px;">Хост начнёт игру, когда все будут готовы.</p>
         </div>
 
         <div class="q-card" id="qCard" style="display:none">
+          <div class="duel-timer" id="duelTimer" style="display:none"><span id="duelTimerNum">10</span></div>
+          <div class="duel-opp-panel" id="duelOppPanel" style="display:none">
+            <div class="duel-opp-top"><span>Соперники — live</span></div>
+            <div id="duelLeaderboard"></div>
+          </div>
           <div class="q-eyebrow" id="qEyebrow">Что означает это имя?</div>
           <div class="q-ar" id="qAr">الله</div>
           <div class="q-tr" id="qTr">Аллах</div>
@@ -514,6 +610,12 @@ body{
             <div class="vs-sep">vs</div>
             <div class="vs-side"><b id="vsMyScore">0</b><span>Вы</span></div>
           </div>
+
+          <div class="duel-result-board" id="duelResultBoard" style="display:none">
+            <div class="duel-result-title">Таблица результатов</div>
+            <div id="duelResultRows"></div>
+          </div>
+          <p id="duelWaitNote" style="display:none;text-align:center;color:var(--jade);font-size:13px;margin:-10px 0 18px;">Ждём, пока остальные завершат дуэль…</p>
 
           <div class="name-field">
             <input type="text" id="yourNameInput" placeholder="Ваше имя (для ссылки другу)" maxlength="24">
@@ -578,6 +680,26 @@ body{
   <div class="toast" id="toast">Ссылка скопирована</div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBa5nCFI0YM6PzfiMJn4wlIUJeqVhwyy1g",
+  authDomain: "ism-1f9ad.firebaseapp.com",
+  databaseURL: "https://ism-1f9ad-default-rtdb.firebaseio.com",
+  projectId: "ism-1f9ad",
+  storageBucket: "ism-1f9ad.firebasestorage.app",
+  messagingSenderId: "579378380332",
+  appId: "1:579378380332:web:41cd9150ae02afa19b5b89"
+};
+let fbDb = null;
+try{
+  if(window.firebase){
+    firebase.initializeApp(FIREBASE_CONFIG);
+    fbDb = firebase.database();
+  }
+}catch(e){ console.warn('Firebase init failed:', e); }
+</script>
 <script>
 /* =====================================================
    ДАННЫЕ: 99 прекрасных имён Аллаха
@@ -700,7 +822,8 @@ const state = {
   sheetIndex: 0,
   filtered: NAMES.map((n,i)=>i),
   quiz: null, // {order, qIndex, score, len, answered}
-  challenge: null // decoded challenge from URL
+  challenge: null, // decoded challenge from URL
+  pendingRoomId: null // room id awaiting join, from ?room= URL param
 };
 
 /* seeded RNG (mulberry32) */
@@ -939,20 +1062,31 @@ const quizHead = document.getElementById('quizHead');
 const challengeIntro = document.getElementById('challengeIntro');
 let selectedLen = 10;
 
-document.querySelectorAll('.len-chip').forEach(chip=>{
+document.querySelectorAll('#lenChoice .len-chip').forEach(chip=>{
   chip.addEventListener('click', ()=>{
-    document.querySelectorAll('.len-chip').forEach(c=>c.classList.remove('active'));
+    document.querySelectorAll('#lenChoice .len-chip').forEach(c=>c.classList.remove('active'));
     chip.classList.add('active');
     selectedLen = parseInt(chip.dataset.len);
   });
 });
+let duelSelectedLen = 10;
+document.querySelectorAll('#duelLenChoice .len-chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    document.querySelectorAll('#duelLenChoice .len-chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    duelSelectedLen = parseInt(chip.dataset.len);
+  });
+});
 
 function resetQuizView(){
-  quizIntro.style.display='block';
+  quizIntro.style.display = state.pendingRoomId ? 'none' : 'block';
+  document.getElementById('duelJoinScreen').style.display = state.pendingRoomId ? 'block' : 'none';
+  document.getElementById('duelSetupScreen').style.display='none';
+  document.getElementById('duelWaitingScreen').style.display='none';
   qCard.style.display='none';
   resultWrap.style.display='none';
   quizHead.style.display='none';
-  challengeIntro.style.display = state.challenge ? 'block' : 'none';
+  challengeIntro.style.display = (state.challenge && !state.pendingRoomId) ? 'block' : 'none';
   document.getElementById('quizScroll').scrollTop = 0;
 }
 resetQuizView();
@@ -973,12 +1107,18 @@ document.getElementById('startQuizBtn').addEventListener('click', ()=>{
   startQuiz(selectedLen, state.challenge ? state.challenge.seed : null);
 });
 document.getElementById('quizExit').addEventListener('click', ()=>{
-  state.quiz = null; resetQuizView();
+  state.quiz = null; resetDuel(); resetQuizView();
 });
 document.getElementById('skipBtn').addEventListener('click', skipQuestion);
+document.getElementById('openDuelSetupBtn').addEventListener('click', ()=>{
+  if(!fbDb){ showToast('Live-дуэль недоступна: нет соединения с сервером'); return; }
+  quizIntro.style.display='none';
+  document.getElementById('duelSetupScreen').style.display='block';
+});
 
 function renderQuestion(){
   const q = state.quiz;
+  if(duel.active) updateOppPanel();
   const i = q.order[q.qIndex];
   const n = NAMES[i];
   document.getElementById('qAr').textContent = n.ar;
@@ -1005,6 +1145,7 @@ function renderQuestion(){
     qCard.style.transition='opacity .4s var(--ease), transform .4s var(--ease)';
     qCard.style.opacity=1; qCard.style.transform='none';
   });
+  if(duel.active) startDuelTimer();
 }
 
 function answerQuestion(btn, isCorrect){
@@ -1020,6 +1161,7 @@ function skipQuestion(){
 function finalizeAnswer(btn, isCorrect){
   const q = state.quiz;
   q.answered = true;
+  clearDuelTimer();
   const wrap = document.getElementById('optionsWrap');
   const n = NAMES[q.order[q.qIndex]];
   wrap.querySelectorAll('.opt').forEach(o=>{
@@ -1030,6 +1172,10 @@ function finalizeAnswer(btn, isCorrect){
   });
   document.getElementById('skipBtn').classList.add('disabled');
   if(isCorrect) q.score++;
+  if(duel.active && fbDb){
+    fbDb.ref(`duels/${duel.roomId}/players/${duel.myId}`).update({ score:q.score, qIndex:q.qIndex+1 });
+    fbDb.ref(`duels/${duel.roomId}/players/${duel.myId}/answers/${q.qIndex}`).set(isCorrect);
+  }
   setTimeout(()=>{
     if(q.qIndex < q.len-1){
       q.qIndex++;
@@ -1069,7 +1215,10 @@ function finishQuiz(){
   document.getElementById('resultSub').textContent = sub;
 
   const vsBox = document.getElementById('vsBox');
-  if(state.challenge){
+  if(duel.active){
+    if(fbDb) fbDb.ref(`duels/${duel.roomId}/players/${duel.myId}`).update({ finished:true, score:q.score, qIndex:q.len });
+    updateDuelResultUI();
+  } else if(state.challenge){
     vsBox.style.display='flex';
     document.getElementById('vsChallengerScore').textContent = state.challenge.score+'/'+state.challenge.total;
     document.getElementById('vsChallengerLabel').textContent = state.challenge.name || 'Друг';
@@ -1080,6 +1229,7 @@ function finishQuiz(){
 }
 
 document.getElementById('retryBtn').addEventListener('click', ()=>{
+  resetDuel();
   resultWrap.style.display='none';
   quizIntro.style.display='block';
   challengeIntro.style.display = state.challenge ? 'block' : 'none';
@@ -1124,6 +1274,274 @@ function showToast(msg){
   clearTimeout(showToast._tm);
   showToast._tm = setTimeout(()=>t.classList.remove('show'), 2400);
 }
+
+/* =====================================================
+   LIVE-ДУЭЛЬ (Firebase Realtime Database) — мультиплеер
+===================================================== */
+const duel = {
+  active:false, started:false, isHost:false,
+  roomId:null, myId:null, myName:'',
+  len:10, timerEnabled:false, seedStr:null,
+  roomRef:null, players:{},
+  timerInterval:null, timeLeft:10
+};
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function makeRoomId(){
+  return Math.random().toString(36).slice(2,8).toUpperCase();
+}
+
+let duelSelectedTimer = false;
+document.querySelectorAll('#duelTimerChoice .len-chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    document.querySelectorAll('#duelTimerChoice .len-chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    duelSelectedTimer = chip.dataset.timer === '1';
+  });
+});
+
+function clearDuelTimer(){
+  if(duel.timerInterval){ clearInterval(duel.timerInterval); duel.timerInterval=null; }
+  const el = document.getElementById('duelTimer');
+  el.style.display='none';
+  el.classList.remove('low');
+}
+
+function startDuelTimer(){
+  clearDuelTimer();
+  if(!duel.active || !duel.timerEnabled) return;
+  duel.timeLeft = 10;
+  const el = document.getElementById('duelTimer');
+  const num = document.getElementById('duelTimerNum');
+  el.style.display='flex'; el.classList.remove('low');
+  num.textContent = duel.timeLeft;
+  duel.timerInterval = setInterval(()=>{
+    duel.timeLeft--;
+    num.textContent = Math.max(duel.timeLeft,0);
+    if(duel.timeLeft<=3) el.classList.add('low');
+    if(duel.timeLeft<=0){
+      clearDuelTimer();
+      if(state.quiz && !state.quiz.answered){ finalizeAnswer(null, false); }
+    }
+  }, 1000);
+}
+
+function resetDuel(){
+  clearDuelTimer();
+  if(duel.roomRef){ try{ duel.roomRef.off('value', onRoomSnapshot); }catch(e){} }
+  Object.assign(duel, {
+    active:false, started:false, isHost:false, roomId:null, myId:null, myName:'',
+    timerEnabled:false, seedStr:null, roomRef:null, players:{}
+  });
+  document.getElementById('duelOppPanel').style.display='none';
+  document.getElementById('duelWaitNote').style.display='none';
+  document.getElementById('duelResultBoard').style.display='none';
+}
+
+function attachRoomListener(){
+  if(!fbDb || !duel.roomId) return;
+  duel.roomRef = fbDb.ref('duels/'+duel.roomId);
+  duel.roomRef.on('value', onRoomSnapshot);
+}
+
+function onRoomSnapshot(snap){
+  const val = snap.val();
+  if(!val) return;
+  duel.players = val.players || {};
+  duel.len = val.len || duel.len;
+  duel.timerEnabled = !!val.timer;
+  if(!duel.started) renderParticipants(val.hostId);
+  if(val.status==='active' && !duel.started){
+    duel.started = true;
+    startDuelQuiz();
+  }
+  if(duel.active){
+    updateOppPanel();
+    maybeUpdateDuelResult();
+  }
+}
+
+function renderParticipants(hostId){
+  const wrap = document.getElementById('duelParticipants');
+  const ids = Object.keys(duel.players);
+  wrap.innerHTML = ids.map(id=>{
+    const p = duel.players[id];
+    let cls='duel-participant-chip';
+    if(id===duel.myId) cls+=' me';
+    if(id===hostId) cls+=' host';
+    return `<div class="${cls}">${escapeHtml(p.name||'Игрок')}</div>`;
+  }).join('');
+  document.getElementById('duelStartBtn').style.display = duel.isHost ? 'inline-flex' : 'none';
+  document.getElementById('duelGuestWaitNote').style.display = duel.isHost ? 'none' : 'block';
+  document.getElementById('duelWaitTitle').textContent = duel.isHost ? 'Ждём друзей…' : 'Ждём начала игры…';
+}
+
+function startDuelQuiz(){
+  duel.active = true;
+  document.getElementById('duelSetupScreen').style.display='none';
+  document.getElementById('duelWaitingScreen').style.display='none';
+  document.getElementById('duelJoinScreen').style.display='none';
+  document.getElementById('duelOppPanel').style.display='block';
+  state.pendingRoomId = null;
+  startQuiz(duel.len, duel.seedStr);
+  updateOppPanel();
+}
+
+function updateOppPanel(){
+  const panel = document.getElementById('duelOppPanel');
+  if(!duel.active){ panel.style.display='none'; return; }
+  panel.style.display='block';
+  const rows = Object.keys(duel.players)
+    .filter(id=>id!==duel.myId)
+    .map(id=>duel.players[id])
+    .sort((a,b)=> (b.score||0)-(a.score||0));
+  const lb = document.getElementById('duelLeaderboard');
+  if(rows.length===0){
+    lb.innerHTML = '<p style="font-size:12.5px;color:var(--ivory-dim);margin:0;">Пока играете только вы — остальные ещё присоединяются</p>';
+    return;
+  }
+  lb.innerHTML = rows.map(p=>{
+    const pct = duel.len ? Math.round((p.score||0)/duel.len*100) : 0;
+    return `<div class="duel-lb-row">
+      <div class="duel-lb-name">${escapeHtml(p.name||'Игрок')}</div>
+      <div class="duel-lb-bar"><div class="duel-lb-fill" style="width:${pct}%"></div></div>
+      <div class="duel-lb-score">${p.score||0}</div>
+      ${p.finished ? '<div class="duel-lb-done">✓</div>' : ''}
+    </div>`;
+  }).join('');
+}
+
+function maybeUpdateDuelResult(){
+  if(!duel.active || !state.quiz) return;
+  if(resultWrap.style.display !== 'block') return;
+  updateDuelResultUI();
+}
+
+function updateDuelResultUI(){
+  const q = state.quiz;
+  document.getElementById('vsBox').style.display='none';
+  const board = document.getElementById('duelResultBoard');
+  const waitNote = document.getElementById('duelWaitNote');
+  board.style.display='block';
+
+  const all = Object.keys(duel.players).map(id=>{
+    const p = duel.players[id];
+    if(id===duel.myId){
+      return { id, name: duel.myName, score: q.score, finished:true, isMe:true };
+    }
+    return { id, name: (p&&p.name)||'Игрок', score: (p&&p.score)||0, finished: !!(p&&p.finished), isMe:false };
+  }).sort((a,b)=> b.score - a.score);
+
+  const rows = document.getElementById('duelResultRows');
+  rows.innerHTML = all.map((p,i)=>{
+    const nameCls = 'duel-result-name'+(p.isMe?' is-me':'');
+    const pending = p.finished ? '' : '<span class="duel-result-pending">играет…</span>';
+    return `<div class="duel-result-row">
+      <div class="duel-result-rank">${i+1}</div>
+      <div class="${nameCls}">${escapeHtml(p.name)}${p.isMe?' (вы)':''}</div>
+      <div class="duel-result-score">${p.score}/${duel.len}</div>
+      ${pending}
+    </div>`;
+  }).join('');
+
+  const othersFinished = Object.keys(duel.players).filter(id=>id!==duel.myId).every(id=> duel.players[id] && duel.players[id].finished);
+  waitNote.style.display = othersFinished ? 'none' : 'block';
+}
+
+document.getElementById('createDuelBtn').addEventListener('click', ()=>{
+  if(!fbDb){ showToast('Нет соединения с сервером дуэли'); return; }
+  const name = document.getElementById('duelNameInput').value.trim() || 'Друг';
+  duel.myName = name;
+  duel.len = duelSelectedLen;
+  duel.timerEnabled = duelSelectedTimer;
+  duel.roomId = makeRoomId();
+  duel.isHost = true;
+  duel.seedStr = 'duel-'+duel.roomId;
+  duel.started = false;
+
+  const roomRef = fbDb.ref('duels/'+duel.roomId);
+  const myRef = roomRef.child('players').push();
+  duel.myId = myRef.key;
+  roomRef.set({
+    status:'waiting',
+    len: duel.len,
+    timer: duel.timerEnabled,
+    hostId: duel.myId,
+    createdAt: firebase.database.ServerValue.TIMESTAMP,
+    players: { [duel.myId]: { name: duel.myName, score:0, qIndex:0, finished:false } }
+  });
+  attachRoomListener();
+
+  document.getElementById('duelSetupScreen').style.display='none';
+  document.getElementById('duelWaitingScreen').style.display='block';
+});
+
+document.getElementById('duelStartBtn').addEventListener('click', ()=>{
+  if(!fbDb || !duel.roomId) return;
+  fbDb.ref('duels/'+duel.roomId+'/status').set('active');
+});
+
+document.getElementById('duelShareBtn').addEventListener('click', async ()=>{
+  const link = baseUrl()+'?room='+duel.roomId;
+  const text = `${duel.myName} приглашает вас на live-дуэль по именам Аллаха! Ответы будут видны всем в реальном времени.`;
+  if(navigator.share){
+    try{ await navigator.share({ title:'Live-дуэль — 99 имён Аллаха', text, url: link }); return; }
+    catch(e){ /* cancelled, fall through to copy */ }
+  }
+  try{ await navigator.clipboard.writeText(link+'\n\n'+text); showToast('Ссылка скопирована!'); }
+  catch(e){ showToast('Не удалось скопировать ссылку'); }
+});
+
+document.getElementById('duelJoinBtn').addEventListener('click', ()=>{
+  if(!fbDb){ showToast('Нет соединения с сервером дуэли'); return; }
+  const name = document.getElementById('duelJoinNameInput').value.trim() || 'Друг';
+  duel.myName = name;
+  duel.isHost = false;
+  const roomRef = fbDb.ref('duels/'+duel.roomId);
+  const myRef = roomRef.child('players').push();
+  duel.myId = myRef.key;
+  myRef.set({ name: duel.myName, score:0, qIndex:0, finished:false });
+  attachRoomListener();
+  document.getElementById('duelJoinScreen').style.display='none';
+  document.getElementById('duelWaitingScreen').style.display='block';
+});
+
+/* read ?room= duel-invite param on load */
+(function readRoomParam(){
+  const params = new URLSearchParams(location.search);
+  const room = params.get('room');
+  if(room){
+    duel.roomId = room;
+    duel.seedStr = 'duel-'+room;
+    state.pendingRoomId = room;
+    if(fbDb){
+      fbDb.ref('duels/'+room).once('value').then(snap=>{
+        const data = snap.val();
+        if(!data){
+          showToast('Комната не найдена — возможно, ссылка устарела');
+          state.pendingRoomId = null;
+          resetQuizView();
+          return;
+        }
+        duel.len = data.len || 10;
+        duel.timerEnabled = !!data.timer;
+        const players = data.players || {};
+        const hostName = (players[data.hostId] && players[data.hostId].name) || 'Друг';
+        const count = Object.keys(players).length;
+        document.getElementById('duelHostName').textContent = hostName;
+        document.getElementById('duelJoinCount').textContent = `Сейчас в комнате: ${count} ${count===1?'человек':'человека/человек'}`;
+        go('quiz');
+        resetQuizView();
+      }).catch(()=>{ showToast('Не удалось подключиться к дуэли'); });
+    } else {
+      showToast('Live-дуэль недоступна: нет соединения с сервером');
+    }
+    history.replaceState({}, '', baseUrl());
+  }
+})();
 
 /* read ?c= challenge param on load */
 (function readChallenge(){
