@@ -329,12 +329,11 @@ body{
 .duel-participant-chip.me{ border-color:var(--gold-soft); color:var(--gold-soft); }
 .duel-participant-chip.host::after{ content:" · хост"; color:var(--jade); font-size:10.5px; }
 
-.duel-timer{
-  width:46px; height:46px; border-radius:50%; margin:0 auto 14px; display:flex; align-items:center; justify-content:center;
-  border:3px solid var(--jade); font-family:var(--font-num); font-size:19px; font-weight:700; color:var(--ivory);
-  transition: border-color .3s var(--ease), color .3s var(--ease);
-}
-.duel-timer.low{ border-color:var(--rose); color:var(--rose); animation: timer-pulse .6s ease-in-out infinite; }
+.duel-timerbar-wrap{ display:flex; align-items:center; gap:10px; padding:0 20px 12px; flex-shrink:0; }
+.duel-timerbar-track{ flex:1; height:9px; border-radius:5px; background:rgba(255,255,255,0.08); overflow:hidden; border:1px solid var(--line);}
+.duel-timerbar-fill{ height:100%; border-radius:5px; background:linear-gradient(90deg, var(--jade), var(--gold-soft)); width:100%; }
+.duel-timerbar-fill.low{ background:linear-gradient(90deg, var(--rose), #e0704f); animation: timer-pulse .5s ease-in-out infinite; }
+.duel-timerbar-num{ font-family:var(--font-num); font-size:16px; font-weight:700; color:var(--ivory); min-width:22px; text-align:right; flex-shrink:0;}
 @keyframes timer-pulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.08); } }
 
 .duel-result-board{ border:1px solid var(--line); border-radius:16px; padding:14px 16px; margin-bottom:18px; text-align:left; background:rgba(255,255,255,0.02);}
@@ -510,6 +509,10 @@ body{
         <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
         <div class="q-count" id="qCount">1/10</div>
       </div>
+      <div class="duel-timerbar-wrap" id="duelTimerBarWrap" style="display:none">
+        <div class="duel-timerbar-track"><div class="duel-timerbar-fill" id="duelTimerBarFill"></div></div>
+        <span class="duel-timerbar-num" id="duelTimerBarNum">10</span>
+      </div>
       <div class="scroll" id="quizScroll">
 
         <div id="challengeIntro" style="display:none">
@@ -562,7 +565,9 @@ body{
           </div>
           <div class="len-choice" id="duelTimerChoice" style="margin-top:8px;">
             <div class="len-chip active" data-timer="0">Без таймера</div>
-            <div class="len-chip" data-timer="1">10 сек на ответ</div>
+            <div class="len-chip" data-timer="10">10 сек</div>
+            <div class="len-chip" data-timer="15">15 сек</div>
+            <div class="len-chip" data-timer="20">20 сек</div>
           </div>
           <div class="name-field">
             <input type="text" id="duelNameInput" placeholder="Ваше имя" maxlength="24">
@@ -581,7 +586,6 @@ body{
         </div>
 
         <div class="q-card" id="qCard" style="display:none">
-          <div class="duel-timer" id="duelTimer" style="display:none"><span id="duelTimerNum">10</span></div>
           <div class="duel-opp-panel" id="duelOppPanel" style="display:none">
             <div class="duel-opp-top"><span>Соперники — live</span></div>
             <div id="duelLeaderboard"></div>
@@ -1281,7 +1285,7 @@ function showToast(msg){
 const duel = {
   active:false, started:false, isHost:false,
   roomId:null, myId:null, myName:'',
-  len:10, timerEnabled:false, seedStr:null,
+  len:10, timerSeconds:0, seedStr:null,
   roomRef:null, players:{},
   timerInterval:null, timeLeft:10
 };
@@ -1294,34 +1298,45 @@ function makeRoomId(){
   return Math.random().toString(36).slice(2,8).toUpperCase();
 }
 
-let duelSelectedTimer = false;
+let duelSelectedTimer = 0;
 document.querySelectorAll('#duelTimerChoice .len-chip').forEach(chip=>{
   chip.addEventListener('click', ()=>{
     document.querySelectorAll('#duelTimerChoice .len-chip').forEach(c=>c.classList.remove('active'));
     chip.classList.add('active');
-    duelSelectedTimer = chip.dataset.timer === '1';
+    duelSelectedTimer = parseInt(chip.dataset.timer);
   });
 });
 
 function clearDuelTimer(){
   if(duel.timerInterval){ clearInterval(duel.timerInterval); duel.timerInterval=null; }
-  const el = document.getElementById('duelTimer');
-  el.style.display='none';
-  el.classList.remove('low');
+  const wrap = document.getElementById('duelTimerBarWrap');
+  wrap.style.display='none';
+  document.getElementById('duelTimerBarFill').classList.remove('low');
 }
 
 function startDuelTimer(){
   clearDuelTimer();
-  if(!duel.active || !duel.timerEnabled) return;
-  duel.timeLeft = 10;
-  const el = document.getElementById('duelTimer');
-  const num = document.getElementById('duelTimerNum');
-  el.style.display='flex'; el.classList.remove('low');
-  num.textContent = duel.timeLeft;
+  if(!duel.active || !duel.timerSeconds) return;
+  const total = duel.timerSeconds;
+  duel.timeLeft = total;
+  const wrap = document.getElementById('duelTimerBarWrap');
+  const fill = document.getElementById('duelTimerBarFill');
+  const num = document.getElementById('duelTimerBarNum');
+  wrap.style.display='flex';
+  fill.classList.remove('low');
+  fill.style.transition='none';
+  fill.style.width='100%';
+  num.textContent = total;
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      fill.style.transition = `width ${total}s linear`;
+      fill.style.width='0%';
+    });
+  });
   duel.timerInterval = setInterval(()=>{
     duel.timeLeft--;
     num.textContent = Math.max(duel.timeLeft,0);
-    if(duel.timeLeft<=3) el.classList.add('low');
+    if(duel.timeLeft<=3) fill.classList.add('low');
     if(duel.timeLeft<=0){
       clearDuelTimer();
       if(state.quiz && !state.quiz.answered){ finalizeAnswer(null, false); }
@@ -1334,7 +1349,7 @@ function resetDuel(){
   if(duel.roomRef){ try{ duel.roomRef.off('value', onRoomSnapshot); }catch(e){} }
   Object.assign(duel, {
     active:false, started:false, isHost:false, roomId:null, myId:null, myName:'',
-    timerEnabled:false, seedStr:null, roomRef:null, players:{}
+    timerSeconds:0, seedStr:null, roomRef:null, players:{}
   });
   document.getElementById('duelOppPanel').style.display='none';
   document.getElementById('duelWaitNote').style.display='none';
@@ -1352,7 +1367,7 @@ function onRoomSnapshot(snap){
   if(!val) return;
   duel.players = val.players || {};
   duel.len = val.len || duel.len;
-  duel.timerEnabled = !!val.timer;
+  duel.timerSeconds = val.timerSeconds || 0;
   if(!duel.started) renderParticipants(val.hostId);
   if(val.status==='active' && !duel.started){
     duel.started = true;
@@ -1456,7 +1471,7 @@ document.getElementById('createDuelBtn').addEventListener('click', ()=>{
   const name = document.getElementById('duelNameInput').value.trim() || 'Друг';
   duel.myName = name;
   duel.len = duelSelectedLen;
-  duel.timerEnabled = duelSelectedTimer;
+  duel.timerSeconds = duelSelectedTimer;
   duel.roomId = makeRoomId();
   duel.isHost = true;
   duel.seedStr = 'duel-'+duel.roomId;
@@ -1468,7 +1483,7 @@ document.getElementById('createDuelBtn').addEventListener('click', ()=>{
   roomRef.set({
     status:'waiting',
     len: duel.len,
-    timer: duel.timerEnabled,
+    timerSeconds: duel.timerSeconds,
     hostId: duel.myId,
     createdAt: firebase.database.ServerValue.TIMESTAMP,
     players: { [duel.myId]: { name: duel.myName, score:0, qIndex:0, finished:false } }
@@ -1527,7 +1542,7 @@ document.getElementById('duelJoinBtn').addEventListener('click', ()=>{
           return;
         }
         duel.len = data.len || 10;
-        duel.timerEnabled = !!data.timer;
+        duel.timerSeconds = data.timerSeconds || 0;
         const players = data.players || {};
         const hostName = (players[data.hostId] && players[data.hostId].name) || 'Друг';
         const count = Object.keys(players).length;
