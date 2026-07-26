@@ -272,6 +272,10 @@ body{
 .q-eyebrow{ font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--jade); margin-bottom:14px;}
 .q-ar{ font-family:var(--font-ar); font-size:64px; color:var(--gold-soft); direction:rtl; margin-bottom:6px; line-height:1;}
 .q-tr{ font-family:var(--font-display); font-size:20px; color:var(--ivory-dim); margin-bottom:26px;}
+.q-meaning-text{ font-family:var(--font-display); font-size:25px; color:var(--ivory); line-height:1.35; margin-bottom:28px; padding:0 6px;}
+.opt.opt-name{ display:flex; flex-direction:column; align-items:center; gap:5px; text-align:center; }
+.opt.opt-name .opt-ar{ font-family:var(--font-ar); font-size:27px; color:var(--gold-soft); direction:rtl; line-height:1.1;}
+.opt.opt-name .opt-tr{ font-size:13px; color:var(--ivory-dim); }
 .options{ display:flex; flex-direction:column; gap:10px;}
 .opt{
   text-align:left; padding:15px 16px; border-radius:15px; border:1px solid var(--line);
@@ -547,6 +551,10 @@ body{
             <div class="len-chip" data-len="20">20 вопросов</div>
             <div class="len-chip" data-len="99">Все 99</div>
           </div>
+          <div class="len-choice" id="directionChoice" style="margin-top:8px;">
+            <div class="len-chip active" data-dir="n2m">Имя → значение</div>
+            <div class="len-chip" data-dir="m2n">Значение → имя</div>
+          </div>
           <button class="btn btn-primary" id="startQuizBtn" style="max-width:260px;margin:0 auto;">Начать викторину</button>
           <div class="duel-divider"><span>или</span></div>
           <button class="btn btn-ghost" id="openDuelSetupBtn" style="max-width:260px;margin:0 auto;">⚡ Live-дуэль с друзьями</button>
@@ -568,6 +576,10 @@ body{
             <div class="len-chip" data-timer="10">10 сек</div>
             <div class="len-chip" data-timer="15">15 сек</div>
             <div class="len-chip" data-timer="20">20 сек</div>
+          </div>
+          <div class="len-choice" id="duelDirectionChoice" style="margin-top:8px;">
+            <div class="len-chip active" data-dir="n2m">Имя → значение</div>
+            <div class="len-chip" data-dir="m2n">Значение → имя</div>
           </div>
           <div class="name-field">
             <input type="text" id="duelNameInput" placeholder="Ваше имя" maxlength="24">
@@ -591,8 +603,13 @@ body{
             <div id="duelLeaderboard"></div>
           </div>
           <div class="q-eyebrow" id="qEyebrow">Что означает это имя?</div>
-          <div class="q-ar" id="qAr">الله</div>
-          <div class="q-tr" id="qTr">Аллах</div>
+          <div id="qPromptName">
+            <div class="q-ar" id="qAr">الله</div>
+            <div class="q-tr" id="qTr">Аллах</div>
+          </div>
+          <div id="qPromptMeaning" style="display:none">
+            <div class="q-meaning-text" id="qMeaningText">Милостивый</div>
+          </div>
           <div class="options" id="optionsWrap"></div>
           <button class="skip-btn" id="skipBtn">Не знаю — показать ответ</button>
         </div>
@@ -1081,6 +1098,22 @@ document.querySelectorAll('#duelLenChoice .len-chip').forEach(chip=>{
     duelSelectedLen = parseInt(chip.dataset.len);
   });
 });
+let selectedDirection = 'n2m';
+document.querySelectorAll('#directionChoice .len-chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    document.querySelectorAll('#directionChoice .len-chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    selectedDirection = chip.dataset.dir;
+  });
+});
+let duelSelectedDirection = 'n2m';
+document.querySelectorAll('#duelDirectionChoice .len-chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    document.querySelectorAll('#duelDirectionChoice .len-chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    duelSelectedDirection = chip.dataset.dir;
+  });
+});
 
 function resetQuizView(){
   quizIntro.style.display = state.pendingRoomId ? 'none' : 'block';
@@ -1095,12 +1128,12 @@ function resetQuizView(){
 }
 resetQuizView();
 
-function startQuiz(len, seedStr){
+function startQuiz(len, seedStr, direction){
   const seed = seedFromString(seedStr || ('quiz-'+Date.now()+'-'+Math.random()));
   const rng = mulberry32(seed);
   const allIdx = NAMES.map((n,i)=>i);
   const order = shuffleSeeded(allIdx, rng).slice(0, Math.min(len, NAMES.length));
-  state.quiz = { order, qIndex:0, score:0, len: order.length, seedStr: seedStr || ('quiz-'+seed), answered:false };
+  state.quiz = { order, qIndex:0, score:0, len: order.length, seedStr: seedStr || ('quiz-'+seed), answered:false, direction: direction || 'n2m' };
   quizIntro.style.display='none';
   resultWrap.style.display='none';
   qCard.style.display='block';
@@ -1108,7 +1141,7 @@ function startQuiz(len, seedStr){
   renderQuestion();
 }
 document.getElementById('startQuizBtn').addEventListener('click', ()=>{
-  startQuiz(selectedLen, state.challenge ? state.challenge.seed : null);
+  startQuiz(selectedLen, state.challenge ? state.challenge.seed : null, state.challenge ? state.challenge.direction : selectedDirection);
 });
 document.getElementById('quizExit').addEventListener('click', ()=>{
   state.quiz = null; resetDuel(); resetQuizView();
@@ -1125,24 +1158,46 @@ function renderQuestion(){
   if(duel.active) updateOppPanel();
   const i = q.order[q.qIndex];
   const n = NAMES[i];
-  document.getElementById('qAr').textContent = n.ar;
-  document.getElementById('qTr').textContent = n.tr;
   document.getElementById('qCount').textContent = (q.qIndex+1)+'/'+q.len;
   document.getElementById('progressFill').style.width = Math.round((q.qIndex)/q.len*100)+'%';
 
   const rng = mulberry32(seedFromString(q.seedStr+'-opt-'+q.qIndex));
   const distractPool = NAMES.map((nn,ii)=>ii).filter(ii=>ii!==i);
   const shuffledPool = shuffleSeeded(distractPool, rng);
-  const distractors = shuffledPool.slice(0,3).map(ii=>NAMES[ii].m);
-  const options = shuffleSeeded([n.m, ...distractors], rng);
 
   const wrap = document.getElementById('optionsWrap');
-  wrap.innerHTML = options.map(opt=>`<button class="opt" data-opt="${encodeURIComponent(opt)}">${opt}</button>`).join('');
-  q.answered=false;
+  const promptNameEl = document.getElementById('qPromptName');
+  const promptMeaningEl = document.getElementById('qPromptMeaning');
+  q.answered = false;
   document.getElementById('skipBtn').classList.remove('disabled');
-  wrap.querySelectorAll('.opt').forEach(btn=>{
-    btn.addEventListener('click', ()=>answerQuestion(btn, decodeURIComponent(btn.dataset.opt)===n.m));
-  });
+
+  if(q.direction === 'm2n'){
+    document.getElementById('qEyebrow').textContent = 'Какому имени соответствует это значение?';
+    promptNameEl.style.display = 'none';
+    promptMeaningEl.style.display = 'block';
+    document.getElementById('qMeaningText').textContent = n.m;
+
+    const distractNames = shuffledPool.slice(0,3).map(ii=>NAMES[ii]);
+    const options = shuffleSeeded([n, ...distractNames], rng);
+    wrap.innerHTML = options.map(opt=>`<button class="opt opt-name" data-opt="${encodeURIComponent(opt.tr)}"><span class="opt-ar">${opt.ar}</span><span class="opt-tr">${opt.tr}</span></button>`).join('');
+    wrap.querySelectorAll('.opt').forEach(btn=>{
+      btn.addEventListener('click', ()=>answerQuestion(btn, decodeURIComponent(btn.dataset.opt)===n.tr));
+    });
+  } else {
+    document.getElementById('qEyebrow').textContent = 'Что означает это имя?';
+    promptNameEl.style.display = 'block';
+    promptMeaningEl.style.display = 'none';
+    document.getElementById('qAr').textContent = n.ar;
+    document.getElementById('qTr').textContent = n.tr;
+
+    const distractors = shuffledPool.slice(0,3).map(ii=>NAMES[ii].m);
+    const options = shuffleSeeded([n.m, ...distractors], rng);
+    wrap.innerHTML = options.map(opt=>`<button class="opt" data-opt="${encodeURIComponent(opt)}">${opt}</button>`).join('');
+    wrap.querySelectorAll('.opt').forEach(btn=>{
+      btn.addEventListener('click', ()=>answerQuestion(btn, decodeURIComponent(btn.dataset.opt)===n.m));
+    });
+  }
+
   // animate q-card in
   qCard.style.opacity=0; qCard.style.transform='translateY(10px)';
   requestAnimationFrame(()=>{
@@ -1168,10 +1223,11 @@ function finalizeAnswer(btn, isCorrect){
   clearDuelTimer();
   const wrap = document.getElementById('optionsWrap');
   const n = NAMES[q.order[q.qIndex]];
+  const correctVal = q.direction === 'm2n' ? n.tr : n.m;
   wrap.querySelectorAll('.opt').forEach(o=>{
     o.classList.add('disabled');
     const val = decodeURIComponent(o.dataset.opt);
-    if(val===n.m) o.classList.add('correct');
+    if(val===correctVal) o.classList.add('correct');
     else if(o===btn) o.classList.add('wrong');
   });
   document.getElementById('skipBtn').classList.add('disabled');
@@ -1256,7 +1312,7 @@ function baseUrl(){
 document.getElementById('shareBtn').addEventListener('click', async ()=>{
   const q = state.quiz;
   const yourName = document.getElementById('yourNameInput').value.trim() || 'Друг';
-  const payload = { seed: q.seedStr, score: q.score, total: q.len, name: yourName };
+  const payload = { seed: q.seedStr, score: q.score, total: q.len, name: yourName, direction: q.direction };
   const link = baseUrl() + '?c=' + encodeState(payload);
   const shareText = `Я набрал(а) ${q.score}/${q.len} в викторине об именах Аллаха. Сможешь набрать больше?`;
   if(navigator.share){
@@ -1285,7 +1341,7 @@ function showToast(msg){
 const duel = {
   active:false, started:false, isHost:false,
   roomId:null, myId:null, myName:'',
-  len:10, timerSeconds:0, seedStr:null,
+  len:10, timerSeconds:0, direction:'n2m', seedStr:null,
   roomRef:null, players:{},
   timerInterval:null, timeLeft:10
 };
@@ -1349,7 +1405,7 @@ function resetDuel(){
   if(duel.roomRef){ try{ duel.roomRef.off('value', onRoomSnapshot); }catch(e){} }
   Object.assign(duel, {
     active:false, started:false, isHost:false, roomId:null, myId:null, myName:'',
-    timerSeconds:0, seedStr:null, roomRef:null, players:{}
+    timerSeconds:0, direction:'n2m', seedStr:null, roomRef:null, players:{}
   });
   document.getElementById('duelOppPanel').style.display='none';
   document.getElementById('duelWaitNote').style.display='none';
@@ -1368,6 +1424,7 @@ function onRoomSnapshot(snap){
   duel.players = val.players || {};
   duel.len = val.len || duel.len;
   duel.timerSeconds = val.timerSeconds || 0;
+  duel.direction = val.direction || 'n2m';
   if(!duel.started) renderParticipants(val.hostId);
   if(val.status==='active' && !duel.started){
     duel.started = true;
@@ -1401,7 +1458,7 @@ function startDuelQuiz(){
   document.getElementById('duelJoinScreen').style.display='none';
   document.getElementById('duelOppPanel').style.display='block';
   state.pendingRoomId = null;
-  startQuiz(duel.len, duel.seedStr);
+  startQuiz(duel.len, duel.seedStr, duel.direction);
   updateOppPanel();
 }
 
@@ -1472,6 +1529,7 @@ document.getElementById('createDuelBtn').addEventListener('click', ()=>{
   duel.myName = name;
   duel.len = duelSelectedLen;
   duel.timerSeconds = duelSelectedTimer;
+  duel.direction = duelSelectedDirection;
   duel.roomId = makeRoomId();
   duel.isHost = true;
   duel.seedStr = 'duel-'+duel.roomId;
@@ -1484,6 +1542,7 @@ document.getElementById('createDuelBtn').addEventListener('click', ()=>{
     status:'waiting',
     len: duel.len,
     timerSeconds: duel.timerSeconds,
+    direction: duel.direction,
     hostId: duel.myId,
     createdAt: firebase.database.ServerValue.TIMESTAMP,
     players: { [duel.myId]: { name: duel.myName, score:0, qIndex:0, finished:false } }
@@ -1543,6 +1602,7 @@ document.getElementById('duelJoinBtn').addEventListener('click', ()=>{
         }
         duel.len = data.len || 10;
         duel.timerSeconds = data.timerSeconds || 0;
+        duel.direction = data.direction || 'n2m';
         const players = data.players || {};
         const hostName = (players[data.hostId] && players[data.hostId].name) || 'Друг';
         const count = Object.keys(players).length;
@@ -1569,8 +1629,12 @@ document.getElementById('duelJoinBtn').addEventListener('click', ()=>{
       document.getElementById('challengerName').textContent = data.name || 'Друг';
       document.getElementById('challengerScore').textContent = data.score+'/'+data.total;
       selectedLen = data.total;
-      document.querySelectorAll('.len-chip').forEach(c2=>{
+      document.querySelectorAll('#lenChoice .len-chip').forEach(c2=>{
         c2.classList.toggle('active', parseInt(c2.dataset.len)===data.total);
+      });
+      selectedDirection = data.direction || 'n2m';
+      document.querySelectorAll('#directionChoice .len-chip').forEach(c2=>{
+        c2.classList.toggle('active', c2.dataset.dir===selectedDirection);
       });
       go('quiz');
       resetQuizView();
