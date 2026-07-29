@@ -390,6 +390,15 @@ body{
 .duel-result-name.is-me{ color:var(--gold-soft); }
 .duel-result-score{ font-family:var(--font-num); font-size:15px; color:var(--ivory); flex-shrink:0;}
 .duel-result-pending{ font-size:10.5px; color:var(--ivory-dim); flex-shrink:0;}
+.mistakes-board{ border:1px solid var(--line); border-radius:16px; padding:14px 16px; margin-bottom:18px; text-align:left; background:rgba(255,255,255,0.02);}
+.mistakes-title{ font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--rose); font-weight:700; margin-bottom:10px; text-align:center;}
+.mistakes-list{ max-height:280px; overflow-y:auto; }
+.mistake-row{ padding:9px 0; }
+.mistake-row + .mistake-row{ border-top:1px solid rgba(255,255,255,0.05); }
+.mistake-name{ font-size:13.5px; font-weight:700; color:var(--ivory); margin-bottom:3px;}
+.mistake-detail{ font-size:12px; color:var(--ivory-dim); line-height:1.5;}
+.mistake-detail b.wrong{ color:var(--rose); font-weight:700;}
+.mistake-detail b.right{ color:var(--jade); font-weight:700;}
 .name-field{ margin-bottom:16px;}
 .name-field input{ width:100%; text-align:center; background:rgba(255,255,255,0.03); border:1px solid var(--line); border-radius:12px; padding:11px; color:var(--ivory); font-family:var(--font-body); font-size:14px; outline:none;}
 .name-field input:focus{ border-color:var(--gold);}
@@ -696,6 +705,11 @@ body{
             <div id="duelResultRows"></div>
           </div>
           <p id="duelWaitNote" style="display:none;text-align:center;color:var(--jade);font-size:13px;margin:-10px 0 18px;">Ждём, пока остальные завершат дуэль…</p>
+
+          <div class="mistakes-board" id="mistakesBoard" style="display:none">
+            <div class="mistakes-title">Ошибки (<span id="mistakesCount">0</span>)</div>
+            <div class="mistakes-list" id="mistakesList"></div>
+          </div>
 
           <div class="name-field" id="yourNameField">
             <input type="text" id="yourNameInput" placeholder="Ваше имя (для ссылки другу)" maxlength="24">
@@ -1212,7 +1226,8 @@ function startQuiz(len, seedStr, direction, excludeIdx){
   let pool = NAMES.map((n,i)=>i).filter(i=>!exclude.has(i));
   if(pool.length < targetLen) pool = NAMES.map((n,i)=>i);
   const order = shuffleSeeded(pool, rng).slice(0, targetLen);
-  state.quiz = { order, qIndex:0, score:0, len: order.length, seedStr: seedStr || ('quiz-'+seed), answered:false, direction: direction || 'n2m' };
+  state.quiz = { order, qIndex:0, score:0, len: order.length, seedStr: seedStr || ('quiz-'+seed), answered:false, direction: direction || 'n2m', mistakes:[] };
+  document.getElementById('mistakesBoard').style.display='none';
   quizIntro.style.display='none';
   resultWrap.style.display='none';
   qCard.style.display='block';
@@ -1317,6 +1332,7 @@ function finalizeAnswer(btn, isCorrect){
   });
   document.getElementById('skipBtn').classList.add('disabled');
   if(isCorrect) q.score++;
+  else q.mistakes.push({ idx: q.order[q.qIndex], picked: btn ? decodeURIComponent(btn.dataset.opt) : null, correct: correctVal });
   if(duel.active && fbDb){
     fbDb.ref(`duels/${duel.roomId}/players/${duel.myId}`).update({ score:q.score, qIndex:q.qIndex+1 });
     fbDb.ref(`duels/${duel.roomId}/players/${duel.myId}/answers/${q.qIndex}`).set(isCorrect);
@@ -1331,12 +1347,31 @@ function finalizeAnswer(btn, isCorrect){
   }, 950);
 }
 
+function renderMistakes(){
+  const q = state.quiz;
+  const board = document.getElementById('mistakesBoard');
+  const list = document.getElementById('mistakesList');
+  if(!q.mistakes || q.mistakes.length===0){ board.style.display='none'; return; }
+  document.getElementById('mistakesCount').textContent = q.mistakes.length;
+  list.innerHTML = q.mistakes.map(m=>{
+    const n = NAMES[m.idx];
+    const pickedText = m.picked ? escapeHtml(m.picked) : '— (пропущено)';
+    return `<div class="mistake-row">
+      <div class="mistake-name">${n.ar} · ${n.tr}</div>
+      <div class="mistake-detail">Ваш ответ: <b class="wrong">${pickedText}</b></div>
+      <div class="mistake-detail">Правильно: <b class="right">${escapeHtml(m.correct)}</b></div>
+    </div>`;
+  }).join('');
+  board.style.display='block';
+}
+
 function finishQuiz(){
   const q = state.quiz;
   qCard.style.display='none';
   quizHead.style.display='none';
   resultWrap.style.display='block';
   document.getElementById('progressFill').style.width='100%';
+  renderMistakes();
 
   const pct = Math.round(q.score/q.len*100);
   if(!state.bestScore || pct > state.bestScore.pct) state.bestScore = {pct, score:q.score, len:q.len};
