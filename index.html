@@ -697,17 +697,25 @@ body{
           </div>
           <p id="duelWaitNote" style="display:none;text-align:center;color:var(--jade);font-size:13px;margin:-10px 0 18px;">Ждём, пока остальные завершат дуэль…</p>
 
-          <div class="name-field">
+          <div class="name-field" id="yourNameField">
             <input type="text" id="yourNameInput" placeholder="Ваше имя (для ссылки другу)" maxlength="24">
           </div>
 
-          <div class="result-actions">
+          <div class="result-actions" id="soloResultActions">
             <button class="btn btn-primary" id="shareBtn">
               <svg viewBox="0 0 24 24" fill="none"><circle cx="18" cy="5" r="2.6" stroke="currentColor" stroke-width="1.5"/><circle cx="6" cy="12" r="2.6" stroke="currentColor" stroke-width="1.5"/><circle cx="18" cy="19" r="2.6" stroke="currentColor" stroke-width="1.5"/><path d="M8.3 10.7l7.4-4.4M8.3 13.3l7.4 4.4" stroke="currentColor" stroke-width="1.5"/></svg>
               Отправить вызов другу
             </button>
             <div class="result-actions-row">
               <button class="btn btn-ghost" id="retryBtn">Пройти снова</button>
+              <button class="btn btn-ghost" data-nav="study">К изучению</button>
+            </div>
+          </div>
+
+          <div class="result-actions" id="duelResultActions" style="display:none">
+            <button class="btn btn-primary" id="duelRematchBtn">Играть ещё раз в этой комнате</button>
+            <div class="result-actions-row">
+              <button class="btn btn-ghost" id="duelLeaveBtn">Выйти из комнаты</button>
               <button class="btn btn-ghost" data-nav="study">К изучению</button>
             </div>
           </div>
@@ -1343,11 +1351,17 @@ function finishQuiz(){
     if(fbDb) fbDb.ref(`duels/${duel.roomId}/players/${duel.myId}`).update({ finished:true, score:q.score, qIndex:q.len });
     updateDuelResultUI();
   } else if(state.challenge){
+    document.getElementById('yourNameField').style.display='block';
+    document.getElementById('soloResultActions').style.display='flex';
+    document.getElementById('duelResultActions').style.display='none';
     vsBox.style.display='flex';
     document.getElementById('vsChallengerScore').textContent = state.challenge.score+'/'+state.challenge.total;
     document.getElementById('vsChallengerLabel').textContent = state.challenge.name || 'Друг';
     document.getElementById('vsMyScore').textContent = q.score+'/'+q.len;
   } else {
+    document.getElementById('yourNameField').style.display='block';
+    document.getElementById('soloResultActions').style.display='flex';
+    document.getElementById('duelResultActions').style.display='none';
     vsBox.style.display='none';
   }
 }
@@ -1357,6 +1371,30 @@ document.getElementById('retryBtn').addEventListener('click', ()=>{
   resultWrap.style.display='none';
   quizIntro.style.display='block';
   challengeIntro.style.display = state.challenge ? 'block' : 'none';
+});
+
+document.getElementById('duelRematchBtn').addEventListener('click', ()=>{
+  if(!fbDb || !duel.roomId){ showToast('Нет соединения с сервером дуэли'); return; }
+  const roomRef = fbDb.ref('duels/'+duel.roomId);
+  roomRef.transaction(cur=>{
+    if(!cur) return cur;
+    const resetPlayers = {};
+    Object.keys(cur.players||{}).forEach(id=>{
+      resetPlayers[id] = { name: cur.players[id].name, score:0, qIndex:0, finished:false };
+    });
+    cur.players = resetPlayers;
+    cur.round = (cur.round||1)+1;
+    cur.status = 'active';
+    return cur;
+  });
+  showToast('Начинаем новый раунд…');
+});
+
+document.getElementById('duelLeaveBtn').addEventListener('click', ()=>{
+  if(fbDb && duel.roomId && duel.myId){ fbDb.ref(`duels/${duel.roomId}/players/${duel.myId}`).remove(); }
+  resetDuel();
+  resultWrap.style.display='none';
+  quizIntro.style.display='block';
 });
 
 /* =====================================================
@@ -1406,7 +1444,7 @@ const duel = {
   active:false, started:false, isHost:false,
   roomId:null, myId:null, myName:'',
   len:10, timerSeconds:0, direction:'n2m', seedStr:null,
-  roomRef:null, players:{},
+  roomRef:null, players:{}, round:0, lastRound:0,
   timerInterval:null, timeLeft:10
 };
 
@@ -1469,7 +1507,7 @@ function resetDuel(){
   if(duel.roomRef){ try{ duel.roomRef.off('value', onRoomSnapshot); }catch(e){} }
   Object.assign(duel, {
     active:false, started:false, isHost:false, roomId:null, myId:null, myName:'',
-    timerSeconds:0, direction:'n2m', seedStr:null, roomRef:null, players:{}
+    timerSeconds:0, direction:'n2m', seedStr:null, roomRef:null, players:{}, round:0, lastRound:0
   });
   document.getElementById('duelOppPanel').style.display='none';
   document.getElementById('duelWaitNote').style.display='none';
@@ -1490,8 +1528,12 @@ function onRoomSnapshot(snap){
   duel.timerSeconds = val.timerSeconds || 0;
   duel.direction = val.direction || 'n2m';
   if(!duel.started) renderParticipants(val.hostId);
-  if(val.status==='active' && !duel.started){
+  const round = val.round || 1;
+  if(val.status==='active' && round !== duel.lastRound){
+    duel.lastRound = round;
+    duel.round = round;
     duel.started = true;
+    duel.seedStr = 'duel-'+duel.roomId+'-r'+round;
     startDuelQuiz();
   }
   if(duel.active){
@@ -1559,6 +1601,9 @@ function maybeUpdateDuelResult(){
 function updateDuelResultUI(){
   const q = state.quiz;
   document.getElementById('vsBox').style.display='none';
+  document.getElementById('yourNameField').style.display='none';
+  document.getElementById('soloResultActions').style.display='none';
+  document.getElementById('duelResultActions').style.display='flex';
   const board = document.getElementById('duelResultBoard');
   const waitNote = document.getElementById('duelWaitNote');
   board.style.display='block';
@@ -1608,6 +1653,7 @@ document.getElementById('createDuelBtn').addEventListener('click', ()=>{
     timerSeconds: duel.timerSeconds,
     direction: duel.direction,
     hostId: duel.myId,
+    round: 1,
     createdAt: firebase.database.ServerValue.TIMESTAMP,
     players: { [duel.myId]: { name: duel.myName, score:0, qIndex:0, finished:false } }
   });
