@@ -1196,11 +1196,22 @@ function resetQuizView(){
 }
 resetQuizView();
 
-function startQuiz(len, seedStr, direction){
+let recentQuizIdx = [];
+try{ recentQuizIdx = JSON.parse(localStorage.getItem('quizRecentIdx')||'[]'); }catch(e){ recentQuizIdx=[]; }
+function rememberQuizIdx(order){
+  recentQuizIdx = Array.from(new Set(recentQuizIdx.concat(order)));
+  if(recentQuizIdx.length >= NAMES.length) recentQuizIdx = [];
+  try{ localStorage.setItem('quizRecentIdx', JSON.stringify(recentQuizIdx)); }catch(e){}
+}
+
+function startQuiz(len, seedStr, direction, excludeIdx){
   const seed = seedFromString(seedStr || ('quiz-'+Date.now()+'-'+Math.random()));
   const rng = mulberry32(seed);
-  const allIdx = NAMES.map((n,i)=>i);
-  const order = shuffleSeeded(allIdx, rng).slice(0, Math.min(len, NAMES.length));
+  const targetLen = Math.min(len, NAMES.length);
+  const exclude = new Set(excludeIdx||[]);
+  let pool = NAMES.map((n,i)=>i).filter(i=>!exclude.has(i));
+  if(pool.length < targetLen) pool = NAMES.map((n,i)=>i);
+  const order = shuffleSeeded(pool, rng).slice(0, targetLen);
   state.quiz = { order, qIndex:0, score:0, len: order.length, seedStr: seedStr || ('quiz-'+seed), answered:false, direction: direction || 'n2m' };
   quizIntro.style.display='none';
   resultWrap.style.display='none';
@@ -1209,7 +1220,9 @@ function startQuiz(len, seedStr, direction){
   renderQuestion();
 }
 document.getElementById('startQuizBtn').addEventListener('click', ()=>{
-  startQuiz(selectedLen, state.challenge ? state.challenge.seed : null, state.challenge ? state.challenge.direction : selectedDirection);
+  const isChallenge = !!state.challenge;
+  startQuiz(selectedLen, isChallenge ? state.challenge.seed : null, isChallenge ? state.challenge.direction : selectedDirection, isChallenge ? null : recentQuizIdx);
+  if(!isChallenge) rememberQuizIdx(state.quiz.order);
 });
 document.getElementById('quizExit').addEventListener('click', ()=>{
   state.quiz = null; resetDuel(); resetQuizView();
@@ -1444,9 +1457,18 @@ const duel = {
   active:false, started:false, isHost:false,
   roomId:null, myId:null, myName:'',
   len:10, timerSeconds:0, direction:'n2m', seedStr:null,
-  roomRef:null, players:{}, round:0, lastRound:0,
+  roomRef:null, players:{}, round:0, lastRound:0, usedIdx:[],
   timerInterval:null, timeLeft:10
 };
+
+function persistDuelUsedIdx(){
+  if(!fbDb || !duel.roomId || !state.quiz) return;
+  let merged = Array.from(new Set((duel.usedIdx||[]).concat(state.quiz.order)));
+  if(merged.length >= NAMES.length) merged = state.quiz.order.slice();
+  duel.usedIdx = merged;
+  const obj = {}; merged.forEach(i=>{ obj[i]=true; });
+  fbDb.ref('duels/'+duel.roomId+'/usedIdx').set(obj);
+}
 
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1507,7 +1529,7 @@ function resetDuel(){
   if(duel.roomRef){ try{ duel.roomRef.off('value', onRoomSnapshot); }catch(e){} }
   Object.assign(duel, {
     active:false, started:false, isHost:false, roomId:null, myId:null, myName:'',
-    timerSeconds:0, direction:'n2m', seedStr:null, roomRef:null, players:{}, round:0, lastRound:0
+    timerSeconds:0, direction:'n2m', seedStr:null, roomRef:null, players:{}, round:0, lastRound:0, usedIdx:[]
   });
   document.getElementById('duelOppPanel').style.display='none';
   document.getElementById('duelWaitNote').style.display='none';
@@ -1534,6 +1556,7 @@ function onRoomSnapshot(snap){
     duel.round = round;
     duel.started = true;
     duel.seedStr = 'duel-'+duel.roomId+'-r'+round;
+    duel.usedIdx = Object.keys(val.usedIdx||{}).map(Number);
     startDuelQuiz();
   }
   if(duel.active){
@@ -1564,7 +1587,8 @@ function startDuelQuiz(){
   document.getElementById('duelJoinScreen').style.display='none';
   document.getElementById('duelOppPanel').style.display='block';
   state.pendingRoomId = null;
-  startQuiz(duel.len, duel.seedStr, duel.direction);
+  startQuiz(duel.len, duel.seedStr, duel.direction, duel.usedIdx);
+  persistDuelUsedIdx();
   updateOppPanel();
 }
 
@@ -1647,6 +1671,7 @@ document.getElementById('createDuelBtn').addEventListener('click', ()=>{
   const roomRef = fbDb.ref('duels/'+duel.roomId);
   const myRef = roomRef.child('players').push();
   duel.myId = myRef.key;
+  duel.usedIdx = [];
   roomRef.set({
     status:'waiting',
     len: duel.len,
@@ -1654,6 +1679,7 @@ document.getElementById('createDuelBtn').addEventListener('click', ()=>{
     direction: duel.direction,
     hostId: duel.myId,
     round: 1,
+    usedIdx: {},
     createdAt: firebase.database.ServerValue.TIMESTAMP,
     players: { [duel.myId]: { name: duel.myName, score:0, qIndex:0, finished:false } }
   });
