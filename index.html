@@ -613,6 +613,11 @@ body{
             <div class="len-chip active" data-dir="n2m">Имя → значение</div>
             <div class="len-chip" data-dir="m2n">Значение → имя</div>
           </div>
+          <div class="len-choice" id="orderChoice" style="margin-top:8px;">
+            <div class="len-chip active" data-order="random">Случайный порядок</div>
+            <div class="len-chip" data-order="sequential">По порядку</div>
+            <div class="len-chip" data-order="alternate">Через одно</div>
+          </div>
           <button class="btn btn-primary" id="startQuizBtn" style="max-width:260px;margin:0 auto;">Начать викторину</button>
           <div class="duel-divider"><span>или</span></div>
           <button class="btn btn-ghost" id="openDuelSetupBtn" style="max-width:260px;margin:0 auto;">⚡ Live-дуэль с друзьями</button>
@@ -644,6 +649,11 @@ body{
           <div class="len-choice" id="duelDirectionChoice" style="margin-top:8px;">
             <div class="len-chip active" data-dir="n2m">Имя → значение</div>
             <div class="len-chip" data-dir="m2n">Значение → имя</div>
+          </div>
+          <div class="len-choice" id="duelOrderChoice" style="margin-top:8px;">
+            <div class="len-chip active" data-order="random">Случайный порядок</div>
+            <div class="len-chip" data-order="sequential">По порядку</div>
+            <div class="len-chip" data-order="alternate">Через одно</div>
           </div>
           <div class="name-field">
             <input type="text" id="duelNameInput" placeholder="Ваше имя" maxlength="24">
@@ -1196,6 +1206,29 @@ document.querySelectorAll('#duelDirectionChoice .len-chip').forEach(chip=>{
     duelSelectedDirection = chip.dataset.dir;
   });
 });
+let selectedOrder = 'random';
+document.querySelectorAll('#orderChoice .len-chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    document.querySelectorAll('#orderChoice .len-chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    selectedOrder = chip.dataset.order;
+  });
+});
+let duelSelectedOrder = 'random';
+document.querySelectorAll('#duelOrderChoice .len-chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    document.querySelectorAll('#duelOrderChoice .len-chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    duelSelectedOrder = chip.dataset.order;
+  });
+});
+function buildOrderedSequence(mode){
+  const all = NAMES.map((n,i)=>i);
+  if(mode==='alternate'){
+    return all.filter(i=>i%2===0).concat(all.filter(i=>i%2===1));
+  }
+  return all;
+}
 
 function resetQuizView(){
   quizIntro.style.display = state.pendingRoomId ? 'none' : 'block';
@@ -1218,14 +1251,23 @@ function rememberQuizIdx(order){
   try{ localStorage.setItem('quizRecentIdx', JSON.stringify(recentQuizIdx)); }catch(e){}
 }
 
-function startQuiz(len, seedStr, direction, excludeIdx){
+function startQuiz(len, seedStr, direction, excludeIdx, orderMode, orderPos){
   const seed = seedFromString(seedStr || ('quiz-'+Date.now()+'-'+Math.random()));
-  const rng = mulberry32(seed);
   const targetLen = Math.min(len, NAMES.length);
-  const exclude = new Set(excludeIdx||[]);
-  let pool = NAMES.map((n,i)=>i).filter(i=>!exclude.has(i));
-  if(pool.length < targetLen) pool = NAMES.map((n,i)=>i);
-  const order = shuffleSeeded(pool, rng).slice(0, targetLen);
+  let order, newPos = null;
+  if(orderMode==='sequential' || orderMode==='alternate'){
+    const seq = buildOrderedSequence(orderMode);
+    const start = ((orderPos||0) % seq.length + seq.length) % seq.length;
+    order = [];
+    for(let i=0;i<targetLen;i++) order.push(seq[(start+i)%seq.length]);
+    newPos = (start+targetLen) % seq.length;
+  } else {
+    const rng = mulberry32(seed);
+    const exclude = new Set(excludeIdx||[]);
+    let pool = NAMES.map((n,i)=>i).filter(i=>!exclude.has(i));
+    if(pool.length < targetLen) pool = NAMES.map((n,i)=>i);
+    order = shuffleSeeded(pool, rng).slice(0, targetLen);
+  }
   state.quiz = { order, qIndex:0, score:0, len: order.length, seedStr: seedStr || ('quiz-'+seed), answered:false, direction: direction || 'n2m', mistakes:[] };
   document.getElementById('mistakesBoard').style.display='none';
   quizIntro.style.display='none';
@@ -1233,11 +1275,21 @@ function startQuiz(len, seedStr, direction, excludeIdx){
   qCard.style.display='block';
   quizHead.style.display='flex';
   renderQuestion();
+  return newPos;
 }
 document.getElementById('startQuizBtn').addEventListener('click', ()=>{
   const isChallenge = !!state.challenge;
-  startQuiz(selectedLen, isChallenge ? state.challenge.seed : null, isChallenge ? state.challenge.direction : selectedDirection, isChallenge ? null : recentQuizIdx);
-  if(!isChallenge) rememberQuizIdx(state.quiz.order);
+  const mode = isChallenge ? 'random' : selectedOrder;
+  if(mode==='random'){
+    startQuiz(selectedLen, isChallenge ? state.challenge.seed : null, isChallenge ? state.challenge.direction : selectedDirection, isChallenge ? null : recentQuizIdx, 'random');
+    if(!isChallenge) rememberQuizIdx(state.quiz.order);
+  } else {
+    const posKey = 'quizOrderPos_'+mode;
+    let pos = 0;
+    try{ pos = parseInt(localStorage.getItem(posKey)||'0')||0; }catch(e){}
+    const newPos = startQuiz(selectedLen, null, selectedDirection, null, mode, pos);
+    try{ localStorage.setItem(posKey, String(newPos)); }catch(e){}
+  }
 });
 document.getElementById('quizExit').addEventListener('click', ()=>{
   state.quiz = null; resetDuel(); resetQuizView();
@@ -1493,6 +1545,7 @@ const duel = {
   roomId:null, myId:null, myName:'',
   len:10, timerSeconds:0, direction:'n2m', seedStr:null,
   roomRef:null, players:{}, round:0, lastRound:0, usedIdx:[],
+  orderMode:'random', orderPos:0,
   timerInterval:null, timeLeft:10
 };
 
@@ -1564,7 +1617,8 @@ function resetDuel(){
   if(duel.roomRef){ try{ duel.roomRef.off('value', onRoomSnapshot); }catch(e){} }
   Object.assign(duel, {
     active:false, started:false, isHost:false, roomId:null, myId:null, myName:'',
-    timerSeconds:0, direction:'n2m', seedStr:null, roomRef:null, players:{}, round:0, lastRound:0, usedIdx:[]
+    timerSeconds:0, direction:'n2m', seedStr:null, roomRef:null, players:{}, round:0, lastRound:0, usedIdx:[],
+    orderMode:'random', orderPos:0
   });
   document.getElementById('duelOppPanel').style.display='none';
   document.getElementById('duelWaitNote').style.display='none';
@@ -1584,6 +1638,7 @@ function onRoomSnapshot(snap){
   duel.len = val.len || duel.len;
   duel.timerSeconds = val.timerSeconds || 0;
   duel.direction = val.direction || 'n2m';
+  duel.orderMode = val.orderMode || 'random';
   if(!duel.started) renderParticipants(val.hostId);
   const round = val.round || 1;
   if(val.status==='active' && round !== duel.lastRound){
@@ -1592,6 +1647,7 @@ function onRoomSnapshot(snap){
     duel.started = true;
     duel.seedStr = 'duel-'+duel.roomId+'-r'+round;
     duel.usedIdx = Object.keys(val.usedIdx||{}).map(Number);
+    duel.orderPos = val.orderPos || 0;
     startDuelQuiz();
   }
   if(duel.active){
@@ -1622,8 +1678,13 @@ function startDuelQuiz(){
   document.getElementById('duelJoinScreen').style.display='none';
   document.getElementById('duelOppPanel').style.display='block';
   state.pendingRoomId = null;
-  startQuiz(duel.len, duel.seedStr, duel.direction, duel.usedIdx);
-  persistDuelUsedIdx();
+  const newPos = startQuiz(duel.len, duel.seedStr, duel.direction, duel.usedIdx, duel.orderMode, duel.orderPos);
+  if(duel.orderMode==='sequential' || duel.orderMode==='alternate'){
+    duel.orderPos = newPos;
+    if(fbDb && duel.roomId) fbDb.ref('duels/'+duel.roomId+'/orderPos').set(newPos);
+  } else {
+    persistDuelUsedIdx();
+  }
   updateOppPanel();
 }
 
@@ -1698,6 +1759,7 @@ document.getElementById('createDuelBtn').addEventListener('click', ()=>{
   duel.len = duelSelectedLen;
   duel.timerSeconds = duelSelectedTimer;
   duel.direction = duelSelectedDirection;
+  duel.orderMode = duelSelectedOrder;
   duel.roomId = makeRoomId();
   duel.isHost = true;
   duel.seedStr = 'duel-'+duel.roomId;
@@ -1707,11 +1769,14 @@ document.getElementById('createDuelBtn').addEventListener('click', ()=>{
   const myRef = roomRef.child('players').push();
   duel.myId = myRef.key;
   duel.usedIdx = [];
+  duel.orderPos = 0;
   roomRef.set({
     status:'waiting',
     len: duel.len,
     timerSeconds: duel.timerSeconds,
     direction: duel.direction,
+    orderMode: duel.orderMode,
+    orderPos: 0,
     hostId: duel.myId,
     round: 1,
     usedIdx: {},
