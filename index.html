@@ -51,18 +51,11 @@
   --ease: cubic-bezier(.22,1,.36,1);
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-/* See #app below for why the safe-area-inset-top term is here — body's
-   overflow:hidden was clipping #app's bottom once #app got the fix but
-   body itself (its containing block) didn't. */
-html,body{
-  height:100%; height:-webkit-fill-available;
-  height:calc(100dvh + env(safe-area-inset-top, 0px));
-}
+html,body{ height:100%; height:-webkit-fill-available; }
 body{
   margin:0;
   min-height:100%;
   min-height:-webkit-fill-available;
-  min-height:calc(100dvh + env(safe-area-inset-top, 0px));
   font-family:var(--font-body);
   background:var(--bg);
   color:var(--ivory);
@@ -75,12 +68,11 @@ body{
   min-height:100vh;
   min-height:100dvh;
   min-height:-webkit-fill-available;
-  /* iOS standalone (Add to Home Screen) under-reports the viewport height
-     by exactly safe-area-inset-top on notch/Dynamic-Island devices — content
-     already paints correctly under the status bar, dvh/innerHeight just
-     don't count it. Confirmed by direct measurement; resolves to +0px
-     anywhere the bug doesn't apply. */
-  min-height:calc(100dvh + env(safe-area-inset-top, 0px));
+  /* iOS standalone apps report an unreliable viewport height that isn't a
+     fixed offset — it varies between launches. setAppHeight() (end of the
+     main script) measures the real thing at runtime via visualViewport
+     and pins it here as an inline style; these are just the pre-JS
+     fallback for the first paint. */
   display:flex; flex-direction:column;
   background:
     radial-gradient(ellipse 90% 60% at 50% -10%, rgba(203,161,53,0.12), transparent 60%),
@@ -2540,8 +2532,28 @@ initProfile();
 
 updateHomeStats();
 
-/* Temporary diagnostic overlay for the iOS full-height bug — visit with
-   ?debug=1. Safe to remove once the layout is confirmed fixed. */
+/* iOS standalone apps report an unreliable viewport height — sometimes
+   short, sometimes correct, seemingly not a fixed offset (confirmed by
+   direct measurement across launches). A static CSS compensation can't
+   track something that isn't constant. Instead measure the REAL visible
+   height at runtime and pin #app to exactly that, re-checking whenever
+   it might change. */
+(function setAppHeight(){
+  const app = document.getElementById('app');
+  const measure = () => (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+  const apply = () => { app.style.height = measure() + 'px'; };
+  apply();
+  window.addEventListener('resize', apply);
+  window.addEventListener('orientationchange', apply);
+  if(window.visualViewport) window.visualViewport.addEventListener('resize', apply);
+  // iOS can settle to its final size a moment after launch/paint.
+  setTimeout(apply, 100);
+  setTimeout(apply, 500);
+  setTimeout(apply, 1500);
+})();
+
+/* Temporary diagnostic overlay for the iOS full-height bug. Safe to
+   remove once the layout is confirmed fixed. */
 if(true){
   const probe = document.createElement('div');
   probe.style.cssText = 'position:fixed;visibility:hidden;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);';
@@ -2555,11 +2567,11 @@ if(true){
     const topbar = document.querySelector('.topbar');
     const cs = getComputedStyle(probe);
     panel.textContent = [
+      'app.style.height (JS-set): ' + app.style.height,
       'innerHeight: ' + window.innerHeight,
+      'visualViewport.height: ' + (window.visualViewport && window.visualViewport.height),
       'screen.height: ' + screen.height,
       'safe-top: ' + cs.paddingTop + '  safe-bottom: ' + cs.paddingBottom,
-      'html.getBoundingClientRect: ' + JSON.stringify(document.documentElement.getBoundingClientRect()),
-      'body.getBoundingClientRect: ' + JSON.stringify(document.body.getBoundingClientRect()),
       'app.getBoundingClientRect: ' + JSON.stringify(app.getBoundingClientRect()),
       'topbar.getBoundingClientRect: ' + JSON.stringify(topbar.getBoundingClientRect()),
       'tabbar.getBoundingClientRect: ' + JSON.stringify(tabbar.getBoundingClientRect()),
@@ -2567,7 +2579,9 @@ if(true){
     ].join('\n');
   };
   report();
-  setTimeout(report, 500);
+  setTimeout(report, 200);
+  setTimeout(report, 600);
+  setTimeout(report, 1600);
   window.addEventListener('resize', report);
 }
 
