@@ -419,6 +419,92 @@ body{
 .challenge-card .cc-icon{ width:40px;height:40px; margin:0 auto 12px; color:var(--gold-soft);}
 .challenge-card b{ color:var(--gold-soft); }
 
+/* ================= FRIENDS ================= */
+.profile-card{
+  border:1px solid var(--line); border-radius:20px; padding:18px 20px; margin-bottom:18px;
+  background:linear-gradient(160deg, rgba(255,255,255,0.035), rgba(255,255,255,0));
+}
+.profile-name-field{ margin-bottom:14px; }
+.profile-name-field label, .code-box label, .add-friend-form label{
+  display:block; font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--jade); margin-bottom:7px;
+}
+.profile-name-field input{
+  width:100%; background:rgba(255,255,255,0.03); border:1px solid var(--line); border-radius:12px;
+  padding:11px 13px; color:var(--ivory); font-family:var(--font-body); font-size:14px; outline:none;
+}
+.profile-name-field input:focus{ border-color:var(--gold); }
+.code-box{ display:flex; align-items:center; gap:10px; justify-content:space-between; }
+.code-box .code-value{
+  font-family:var(--font-num); font-size:24px; font-weight:700; letter-spacing:.14em; color:var(--gold-soft);
+}
+.code-copy-btn{
+  flex-shrink:0; width:38px;height:38px;border-radius:12px;border:1px solid var(--line);
+  background:rgba(255,255,255,0.03); color:var(--ivory); display:flex;align-items:center;justify-content:center;cursor:pointer;
+}
+.code-copy-btn:active{ transform:scale(.92); }
+.add-friend-form{ display:flex; gap:8px; }
+.add-friend-form input{
+  flex:1; background:rgba(255,255,255,0.03); border:1px solid var(--line); border-radius:12px;
+  padding:11px 13px; color:var(--ivory); font-family:var(--font-body); font-size:14px; letter-spacing:.08em; outline:none; text-transform:uppercase;
+}
+.add-friend-form input:focus{ border-color:var(--gold); }
+.add-friend-form button{ flex-shrink:0; padding:11px 16px; font-size:13px; }
+
+.section-label{
+  font-size:10.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--jade); font-weight:700;
+  margin:22px 0 10px;
+}
+.friend-empty-hint{ font-size:12.5px; color:var(--ivory-dim); text-align:center; padding:18px 10px; opacity:.75; }
+
+.friend-row{
+  display:flex; align-items:center; gap:12px; padding:11px 0;
+}
+.friend-row + .friend-row{ border-top:1px solid rgba(255,255,255,0.06); }
+.friend-avatar{
+  flex-shrink:0; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(145deg, var(--gold-soft), var(--gold)); color:#1a1204; font-family:var(--font-display); font-size:15px; font-weight:700;
+}
+.friend-name{ flex:1; font-size:13.5px; font-weight:700; color:var(--ivory); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.friend-actions{ display:flex; gap:6px; flex-shrink:0; }
+.friend-action-btn{
+  width:34px; height:34px; border-radius:11px; border:1px solid var(--line); background:rgba(255,255,255,0.03);
+  color:var(--ivory); display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+.friend-action-btn svg{ width:16px;height:16px; }
+.friend-action-btn:active{ transform:scale(.92); }
+.friend-action-btn.accept{ border-color:var(--jade); color:var(--jade); }
+.friend-action-btn.decline{ border-color:var(--rose); color:var(--rose); }
+.friend-action-btn.duel{ border-color:var(--gold); color:var(--gold-soft); }
+
+.invite-banner{
+  border:1px solid var(--gold); border-radius:16px; padding:14px 16px; margin-bottom:12px;
+  background:linear-gradient(160deg, rgba(203,161,53,0.12), rgba(203,161,53,0.02));
+}
+.invite-banner p{ margin:0 0 10px; font-size:13px; color:var(--ivory); line-height:1.5; }
+.invite-banner b{ color:var(--gold-soft); }
+.invite-actions{ display:flex; gap:8px; }
+.invite-actions .btn{ padding:9px 12px; font-size:12.5px; flex:1; }
+
+.friend-picker-list{ max-height:44vh; overflow-y:auto; margin:4px 0 4px; }
+.friend-pick-row{
+  display:flex; align-items:center; gap:12px; padding:10px 4px; border-radius:12px; cursor:pointer;
+}
+.friend-pick-row:active{ background:rgba(255,255,255,0.04); }
+.friend-pick-check{
+  flex-shrink:0; width:22px;height:22px;border-radius:7px;border:1.5px solid var(--line);
+  display:flex;align-items:center;justify-content:center; transition:border-color .15s var(--ease), background .15s var(--ease);
+}
+.friend-pick-row.selected .friend-pick-check{ background:var(--gold-soft); border-color:var(--gold-soft); }
+.friend-pick-check svg{ width:13px;height:13px; color:#1a1204; opacity:0; transition:opacity .15s var(--ease); }
+.friend-pick-row.selected .friend-pick-check svg{ opacity:1; }
+.friend-pick-name{ flex:1; font-size:14px; font-weight:600; color:var(--ivory); }
+
+.tab-badge{
+  position:absolute; top:2px; right:calc(50% - 20px); width:8px; height:8px; border-radius:50%;
+  background:var(--rose); border:1.5px solid var(--bg);
+}
+.tab{ position:relative; }
+
 /* ---------- responsive: desktop ---------- */
 @media (min-width:860px){
   body{ overflow:auto; }
@@ -631,7 +717,7 @@ body{
             </button>
             <h2 class="duel-setup-title"><span class="live-word">Live</span>-дуэль</h2>
           </div>
-          <p style="text-align:center;color:var(--ivory-dim);font-size:13.5px;max-width:320px;margin:0 auto 20px;">Создайте комнату и отправьте ссылку одному или нескольким друзьям — увидите ответы всех в реальном времени.</p>
+          <p style="text-align:center;color:var(--ivory-dim);font-size:13.5px;max-width:320px;margin:0 auto 20px;">Создайте комнату и пригласите одного или нескольких друзей — увидите ответы всех в реальном времени.</p>
           <div class="len-choice" id="duelLenChoice">
             <div class="len-chip" data-len="5">5 вопросов</div>
             <div class="len-chip active" data-len="10">10 вопросов</div>
@@ -658,15 +744,17 @@ body{
           <div class="name-field">
             <input type="text" id="duelNameInput" placeholder="Ваше имя" maxlength="24">
           </div>
+          <button class="btn btn-ghost" id="duelPickFriendsBtn" style="max-width:300px;margin:0 auto;display:block;">👥 Пригласить друзей</button>
+          <p id="duelPickFriendsSummary" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:8px 0 16px;"></p>
           <button class="btn btn-primary" id="createDuelBtn" style="width:100%;max-width:300px;margin:0 auto;display:block;">Создать комнату</button>
         </div>
 
         <div id="duelWaitingScreen" style="display:none; text-align:center;">
           <div class="waiting-spinner"></div>
           <h2 style="font-family:var(--font-display);font-size:22px;margin:18px 0 8px;" id="duelWaitTitle">Ждём друзей…</h2>
-          <p style="color:var(--ivory-dim);font-size:13.5px;margin-bottom:16px;" id="duelWaitSub">Отправьте эту ссылку — как только друзья присоединятся, хост сможет начать игру для всех одновременно.</p>
+          <p style="color:var(--ivory-dim);font-size:13.5px;margin-bottom:16px;" id="duelWaitSub">Приглашённые друзья получат уведомление в приложении — как только они присоединятся, хост сможет начать игру для всех одновременно.</p>
           <div class="duel-participants" id="duelParticipants"></div>
-          <button class="btn btn-primary" id="duelShareBtn" style="max-width:280px;margin:14px auto 10px;">Отправить ссылку другу</button>
+          <button class="btn btn-primary" id="duelInviteMoreBtn" style="max-width:280px;margin:14px auto 10px;">👥 Пригласить ещё друзей</button>
           <button class="btn btn-primary" id="duelStartBtn" style="max-width:280px;margin:0 auto;display:none;background:linear-gradient(145deg, var(--jade), #1f6653);color:#fff;">Начать игру для всех</button>
           <p id="duelGuestWaitNote" style="display:none;color:var(--ivory-dim);font-size:12.5px;margin-top:10px;">Хост начнёт игру, когда все будут готовы.</p>
           <button class="btn-back" id="duelWaitBackBtn" style="margin:16px auto 0;">
@@ -721,14 +809,10 @@ body{
             <div class="mistakes-list" id="mistakesList"></div>
           </div>
 
-          <div class="name-field" id="yourNameField">
-            <input type="text" id="yourNameInput" placeholder="Ваше имя (для ссылки другу)" maxlength="24">
-          </div>
-
           <div class="result-actions" id="soloResultActions">
             <button class="btn btn-primary" id="shareBtn">
               <svg viewBox="0 0 24 24" fill="none"><circle cx="18" cy="5" r="2.6" stroke="currentColor" stroke-width="1.5"/><circle cx="6" cy="12" r="2.6" stroke="currentColor" stroke-width="1.5"/><circle cx="18" cy="19" r="2.6" stroke="currentColor" stroke-width="1.5"/><path d="M8.3 10.7l7.4-4.4M8.3 13.3l7.4 4.4" stroke="currentColor" stroke-width="1.5"/></svg>
-              Отправить вызов другу
+              Вызвать друга
             </button>
             <div class="result-actions-row">
               <button class="btn btn-ghost" id="retryBtn">Пройти снова</button>
@@ -748,6 +832,61 @@ body{
       </div>
     </section>
 
+    <!-- FRIENDS -->
+    <section class="screen" data-screen="friends">
+      <div class="scroll">
+
+        <div id="friendInvitesArea"></div>
+
+        <div class="profile-card">
+          <div class="profile-name-field">
+            <label>Ваше имя</label>
+            <input type="text" id="myNameInput" placeholder="Как вас называть друзьям?" maxlength="24">
+          </div>
+          <div class="code-box">
+            <div>
+              <label style="margin-bottom:4px;">Ваш код</label>
+              <div class="code-value" id="myCodeValue">······</div>
+            </div>
+            <button class="code-copy-btn" id="myCodeCopyBtn" title="Скопировать код">
+              <svg viewBox="0 0 24 24" fill="none"><rect x="8" y="8" width="12" height="12" rx="2.5" stroke="currentColor" stroke-width="1.6"/><path d="M16 8V6.5A2.5 2.5 0 0013.5 4H6a2 2 0 00-2 2v7.5A2.5 2.5 0 006.5 16H8" stroke="currentColor" stroke-width="1.6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="add-friend-form">
+          <input type="text" id="friendCodeInput" placeholder="Код друга" maxlength="10">
+          <button class="btn btn-primary" id="addFriendBtn">Добавить</button>
+        </div>
+
+        <div id="friendRequestsSection" style="display:none">
+          <div class="section-label">Заявки в друзья</div>
+          <div id="friendRequestsList"></div>
+        </div>
+
+        <div class="section-label">Мои друзья</div>
+        <div id="friendsList"></div>
+        <div class="friend-empty-hint" id="friendsEmptyHint" style="display:none">Пока нет друзей — поделитесь своим кодом или введите код друга выше.</div>
+
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sheet-backdrop" id="friendPickerBackdrop"></div>
+  <div class="sheet" id="friendPickerSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-top">
+      <div class="sheet-idx" id="friendPickerTitle">Пригласить друзей</div>
+      <button class="sheet-close" id="friendPickerClose">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body">
+      <div class="friend-picker-list" id="friendPickerList"></div>
+      <div class="friend-empty-hint" id="friendPickerEmptyHint" style="display:none">У вас пока нет друзей — добавьте их на вкладке «Друзья».</div>
+      <button class="btn btn-primary" id="friendPickerConfirmBtn" style="width:100%;margin-top:10px;">Готово</button>
+    </div>
   </div>
 
   <div class="tabbar">
@@ -762,6 +901,11 @@ body{
     <button class="tab" data-nav="quiz">
       <svg viewBox="0 0 24 24" fill="none"><path d="M12 2l2 7h7l-5.5 4.5L17.5 21 12 16.5 6.5 21l2-7.5L3 9h7z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
       <span>Викторина</span>
+    </button>
+    <button class="tab" data-nav="friends">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M9 12a3.5 3.5 0 100-7 3.5 3.5 0 000 7z" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 20c.6-3.3 3-5.4 5.5-5.4s4.9 2.1 5.5 5.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M16 8a2.6 2.6 0 100-5.2A2.6 2.6 0 0016 8z" stroke="currentColor" stroke-width="1.5"/><path d="M15 9.6c2 .3 3.6 1.9 4 4.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <span>Друзья</span>
+      <span class="tab-badge" id="friendsBadge" style="display:none"></span>
     </button>
   </div>
 
@@ -794,21 +938,34 @@ body{
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyBa5nCFI0YM6PzfiMJn4wlIUJeqVhwyy1g",
-  authDomain: "ism-1f9ad.firebaseapp.com",
-  databaseURL: "https://ism-1f9ad-default-rtdb.firebaseio.com",
-  projectId: "ism-1f9ad",
-  storageBucket: "ism-1f9ad.firebasestorage.app",
-  messagingSenderId: "579378380332",
-  appId: "1:579378380332:web:41cd9150ae02afa19b5b89"
+  apiKey: "AIzaSyDk_VEd7etsz22k3M41kSObWYhv9SfeGkw",
+  authDomain: "ism-friends.firebaseapp.com",
+  databaseURL: "https://ism-friends-default-rtdb.firebaseio.com",
+  projectId: "ism-friends",
+  storageBucket: "ism-friends.firebasestorage.app",
+  messagingSenderId: "174262670691",
+  appId: "1:174262670691:web:63a740ffd5436c19c2ef56"
 };
 let fbDb = null;
+let fbAuth = null;
+// Resolves once we have a signed-in (anonymous) Firebase user, so DB writes
+// carry a real auth.uid the security rules can check. Friends/codes/invites
+// are gated on this identity — see README note near FRIENDS section below.
+let fbAuthReady = Promise.resolve(null);
 try{
   if(window.firebase){
     firebase.initializeApp(FIREBASE_CONFIG);
     fbDb = firebase.database();
+    fbAuth = firebase.auth();
+    fbAuthReady = new Promise(resolve=>{
+      const unsub = fbAuth.onAuthStateChanged(user=>{
+        if(user){ unsub(); resolve(user); }
+      });
+      fbAuth.signInAnonymously().catch(e=>{ console.warn('Anonymous sign-in failed:', e); resolve(null); });
+    });
   }
 }catch(e){ console.warn('Firebase init failed:', e); }
 </script>
@@ -1299,6 +1456,10 @@ document.getElementById('openDuelSetupBtn').addEventListener('click', ()=>{
   if(!fbDb){ showToast('Live-дуэль недоступна: нет соединения с сервером'); return; }
   quizIntro.style.display='none';
   document.getElementById('duelSetupScreen').style.display='block';
+  const dni = document.getElementById('duelNameInput');
+  if(!dni.value && state.profile && state.profile.name) dni.value = state.profile.name;
+  duelPickedFriends = [];
+  updateDuelPickSummary();
 });
 document.getElementById('duelSetupBackBtn').addEventListener('click', ()=>{
   document.getElementById('duelSetupScreen').style.display='none';
@@ -1451,7 +1612,6 @@ function finishQuiz(){
     if(fbDb) fbDb.ref(`duels/${duel.roomId}/players/${duel.myId}`).update({ finished:true, score:q.score, qIndex:q.len });
     updateDuelResultUI();
   } else if(state.challenge){
-    document.getElementById('yourNameField').style.display='block';
     document.getElementById('soloResultActions').style.display='flex';
     document.getElementById('duelResultActions').style.display='none';
     vsBox.style.display='flex';
@@ -1459,7 +1619,6 @@ function finishQuiz(){
     document.getElementById('vsChallengerLabel').textContent = state.challenge.name || 'Друг';
     document.getElementById('vsMyScore').textContent = q.score+'/'+q.len;
   } else {
-    document.getElementById('yourNameField').style.display='block';
     document.getElementById('soloResultActions').style.display='flex';
     document.getElementById('duelResultActions').style.display='none';
     vsBox.style.display='none';
@@ -1511,22 +1670,15 @@ function decodeState(str){
 function baseUrl(){
   return location.origin + location.pathname;
 }
-document.getElementById('shareBtn').addEventListener('click', async ()=>{
+document.getElementById('shareBtn').addEventListener('click', ()=>{
+  if(!fbDb || !state.profile || !state.profile.uid){ showToast('Нет соединения с сервером'); return; }
   const q = state.quiz;
-  const yourName = document.getElementById('yourNameInput').value.trim() || 'Друг';
-  const payload = { seed: q.seedStr, score: q.score, total: q.len, name: yourName, direction: q.direction };
-  const link = baseUrl() + '?c=' + encodeState(payload);
-  const shareText = `Я набрал(а) ${q.score}/${q.len} в викторине об именах Аллаха. Сможешь набрать больше?`;
-  if(navigator.share){
-    try{ await navigator.share({ title:'99 имён Аллаха — викторина', text: shareText, url: link }); return; }
-    catch(e){ /* user cancelled or fallback below */ }
-  }
-  try{
-    await navigator.clipboard.writeText(link + '\n\n' + shareText);
-    showToast('Ссылка скопирована!');
-  }catch(e){
-    showToast('Не удалось скопировать ссылку');
-  }
+  if(!q) return;
+  openFriendPicker('Вызвать друга', selectedUids=>{
+    if(!selectedUids.length) return;
+    selectedUids.forEach(uid=>sendChallengeToFriend(uid, q));
+    showToast(selectedUids.length>1 ? 'Вызовы отправлены!' : 'Вызов отправлен!');
+  });
 });
 
 function showToast(msg){
@@ -1721,7 +1873,6 @@ function maybeUpdateDuelResult(){
 function updateDuelResultUI(){
   const q = state.quiz;
   document.getElementById('vsBox').style.display='none';
-  document.getElementById('yourNameField').style.display='none';
   document.getElementById('soloResultActions').style.display='none';
   document.getElementById('duelResultActions').style.display='flex';
   const board = document.getElementById('duelResultBoard');
@@ -1784,6 +1935,9 @@ document.getElementById('createDuelBtn').addEventListener('click', ()=>{
     players: { [duel.myId]: { name: duel.myName, score:0, qIndex:0, finished:false } }
   });
   attachRoomListener();
+  duelPickedFriends.forEach(uid=>sendDuelInvite(uid));
+  duelPickedFriends = [];
+  updateDuelPickSummary();
 
   document.getElementById('duelSetupScreen').style.display='none';
   document.getElementById('duelWaitingScreen').style.display='block';
@@ -1794,15 +1948,13 @@ document.getElementById('duelStartBtn').addEventListener('click', ()=>{
   fbDb.ref('duels/'+duel.roomId+'/status').set('active');
 });
 
-document.getElementById('duelShareBtn').addEventListener('click', async ()=>{
-  const link = baseUrl()+'?room='+duel.roomId;
-  const text = `${duel.myName} приглашает вас на live-дуэль по именам Аллаха! Ответы будут видны всем в реальном времени.`;
-  if(navigator.share){
-    try{ await navigator.share({ title:'Live-дуэль — 99 имён Аллаха', text, url: link }); return; }
-    catch(e){ /* cancelled, fall through to copy */ }
-  }
-  try{ await navigator.clipboard.writeText(link+'\n\n'+text); showToast('Ссылка скопирована!'); }
-  catch(e){ showToast('Не удалось скопировать ссылку'); }
+document.getElementById('duelInviteMoreBtn').addEventListener('click', ()=>{
+  if(!fbDb || !state.profile || !state.profile.uid){ showToast('Нет соединения с сервером'); return; }
+  openFriendPicker('Пригласить друзей', selectedUids=>{
+    if(!selectedUids.length) return;
+    selectedUids.forEach(uid=>sendDuelInvite(uid));
+    showToast(selectedUids.length>1 ? 'Приглашения отправлены!' : 'Приглашение отправлено!');
+  });
 });
 document.getElementById('duelWaitBackBtn').addEventListener('click', ()=>{
   resetDuel();
@@ -1810,18 +1962,27 @@ document.getElementById('duelWaitBackBtn').addEventListener('click', ()=>{
   quizIntro.style.display='block';
 });
 
-document.getElementById('duelJoinBtn').addEventListener('click', ()=>{
-  if(!fbDb){ showToast('Нет соединения с сервером дуэли'); return; }
-  const name = document.getElementById('duelJoinNameInput').value.trim() || 'Друг';
-  duel.myName = name;
+function joinDuelAsGuest(roomId, name){
+  duel.roomId = roomId;
+  duel.seedStr = 'duel-'+roomId;
+  duel.myName = name || 'Друг';
   duel.isHost = false;
-  const roomRef = fbDb.ref('duels/'+duel.roomId);
+  const roomRef = fbDb.ref('duels/'+roomId);
   const myRef = roomRef.child('players').push();
   duel.myId = myRef.key;
   myRef.set({ name: duel.myName, score:0, qIndex:0, finished:false });
   attachRoomListener();
+  go('quiz');
+  resetQuizView();
   document.getElementById('duelJoinScreen').style.display='none';
+  document.getElementById('duelSetupScreen').style.display='none';
+  document.getElementById('quizIntro').style.display='none';
   document.getElementById('duelWaitingScreen').style.display='block';
+}
+document.getElementById('duelJoinBtn').addEventListener('click', ()=>{
+  if(!fbDb){ showToast('Нет соединения с сервером дуэли'); return; }
+  const name = document.getElementById('duelJoinNameInput').value.trim() || 'Друг';
+  joinDuelAsGuest(duel.roomId, name);
 });
 
 /* read ?room= duel-invite param on load */
@@ -1849,6 +2010,8 @@ document.getElementById('duelJoinBtn').addEventListener('click', ()=>{
         const count = Object.keys(players).length;
         document.getElementById('duelHostName').textContent = hostName;
         document.getElementById('duelJoinCount').textContent = `Сейчас в комнате: ${count} ${count===1?'человек':'человека/человек'}`;
+        const djni = document.getElementById('duelJoinNameInput');
+        if(!djni.value && state.profile && state.profile.name) djni.value = state.profile.name;
         go('quiz');
         resetQuizView();
       }).catch(()=>{ showToast('Не удалось подключиться к дуэли'); });
@@ -1859,31 +2022,418 @@ document.getElementById('duelJoinBtn').addEventListener('click', ()=>{
   }
 })();
 
+function applyChallenge(data){
+  if(!(data && typeof data.score==='number' && data.seed)) return;
+  state.challenge = data;
+  document.getElementById('challengerName').textContent = data.name || 'Друг';
+  document.getElementById('challengerScore').textContent = data.score+'/'+data.total;
+  selectedLen = data.total;
+  document.querySelectorAll('#lenChoice .len-chip').forEach(c2=>{
+    c2.classList.toggle('active', parseInt(c2.dataset.len)===data.total);
+  });
+  selectedDirection = data.direction || 'n2m';
+  document.querySelectorAll('#directionChoice .len-chip').forEach(c2=>{
+    c2.classList.toggle('active', c2.dataset.dir===selectedDirection);
+  });
+  go('quiz');
+  resetQuizView();
+}
+
 /* read ?c= challenge param on load */
 (function readChallenge(){
   const params = new URLSearchParams(location.search);
   const c = params.get('c');
   if(c){
-    const data = decodeState(c);
-    if(data && typeof data.score==='number' && data.seed){
-      state.challenge = data;
-      document.getElementById('challengerName').textContent = data.name || 'Друг';
-      document.getElementById('challengerScore').textContent = data.score+'/'+data.total;
-      selectedLen = data.total;
-      document.querySelectorAll('#lenChoice .len-chip').forEach(c2=>{
-        c2.classList.toggle('active', parseInt(c2.dataset.len)===data.total);
-      });
-      selectedDirection = data.direction || 'n2m';
-      document.querySelectorAll('#directionChoice .len-chip').forEach(c2=>{
-        c2.classList.toggle('active', c2.dataset.dir===selectedDirection);
-      });
-      go('quiz');
-      resetQuizView();
-    }
+    applyChallenge(decodeState(c));
     // clean URL so a fresh reshare doesn't inherit the old challenge silently
     history.replaceState({}, '', baseUrl());
   }
 })();
+
+/* =====================================================
+   FRIENDS — profile, friend codes, requests, invites
+   (Firebase Realtime Database — same project as duels)
+===================================================== */
+state.profile = null;          // {uid, name, code}
+state.friendsList = [];        // [{uid, name}]
+state.incomingRequests = [];   // [{uid, name}]
+state.duelInvites = [];        // [{roomId, fromUid, fromName, len, timerSeconds, direction, orderMode}]
+state.challengeInvites = [];   // [{id, fromUid, fromName, score, total, seed, direction}]
+
+let duelPickedFriends = [];
+let friendPickerSelection = new Set();
+let friendPickerOnConfirm = null;
+
+function uuid4(){
+  if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c=>{
+    const r = Math.random()*16|0, v = c==='x' ? r : (r&0x3|0x8);
+    return v.toString(16);
+  });
+}
+function randomFriendCode(len){
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I to avoid confusion
+  let s='';
+  for(let i=0;i<len;i++) s += alphabet[Math.floor(Math.random()*alphabet.length)];
+  return s;
+}
+function avatarLetter(name){
+  return (name||'?').trim().charAt(0).toUpperCase() || '?';
+}
+
+async function initProfile(){
+  // show cached name/code instantly while we wait for a verified identity
+  const name = localStorage.getItem('myName') || '';
+  let code = localStorage.getItem('myCode') || '';
+  state.profile = { uid: null, name, code };
+  updateProfileUI();
+  if(!fbDb || !fbAuth) return;
+
+  // uid MUST come from Firebase Auth (not a client-picked value) — the
+  // security rules only let a client write users/{uid} when auth.uid
+  // matches {uid}, so a self-assigned id would just get PERMISSION_DENIED.
+  const user = await fbAuthReady;
+  if(!user) return;
+  const uid = user.uid;
+  state.profile.uid = uid;
+
+  if(!code){
+    for(let i=0;i<8;i++){
+      const candidate = randomFriendCode(6);
+      const exists = (await fbDb.ref('codes/'+candidate).once('value')).exists();
+      if(!exists){ code = candidate; break; }
+    }
+    if(!code) code = randomFriendCode(8);
+    localStorage.setItem('myCode', code);
+    state.profile.code = code;
+    fbDb.ref('codes/'+code).set(uid);
+    updateProfileUI();
+  }
+  fbDb.ref('users/'+uid).update({
+    code: state.profile.code,
+    name: state.profile.name,
+    updatedAt: firebase.database.ServerValue.TIMESTAMP
+  });
+  listenFriendsRealtime();
+}
+
+function updateProfileUI(){
+  if(!state.profile) return;
+  const nameInput = document.getElementById('myNameInput');
+  if(document.activeElement !== nameInput) nameInput.value = state.profile.name;
+  document.getElementById('myCodeValue').textContent = state.profile.code || '······';
+}
+
+document.getElementById('myNameInput').addEventListener('change', ()=>{
+  const val = document.getElementById('myNameInput').value.trim().slice(0,24);
+  if(!state.profile) return;
+  state.profile.name = val;
+  localStorage.setItem('myName', val);
+  if(!fbDb || !state.profile.uid) return; // identity not ready yet — synced once initProfile() finishes
+  fbDb.ref('users/'+state.profile.uid+'/name').set(val);
+  // keep denormalized copies in friends' lists in sync
+  state.friendsList.forEach(f=>{
+    fbDb.ref('users/'+f.uid+'/friends/'+state.profile.uid+'/name').set(val);
+  });
+});
+
+document.getElementById('myCodeCopyBtn').addEventListener('click', async ()=>{
+  if(!state.profile || !state.profile.code) return;
+  try{ await navigator.clipboard.writeText(state.profile.code); showToast('Код скопирован!'); }
+  catch(e){ showToast(state.profile.code); }
+});
+
+document.getElementById('addFriendBtn').addEventListener('click', addFriendByCode);
+document.getElementById('friendCodeInput').addEventListener('keydown', e=>{
+  if(e.key==='Enter') addFriendByCode();
+});
+
+async function addFriendByCode(){
+  if(!fbDb || !state.profile || !state.profile.uid){ showToast('Нет соединения с сервером'); return; }
+  if(!state.profile.name){ showToast('Сначала введите своё имя выше'); return; }
+  const input = document.getElementById('friendCodeInput');
+  const code = input.value.trim().toUpperCase();
+  if(!code) return;
+  if(code === state.profile.code){ showToast('Это ваш собственный код'); return; }
+  try{
+    const codeSnap = await fbDb.ref('codes/'+code).once('value');
+    const targetUid = codeSnap.val();
+    if(!targetUid){ showToast('Код не найден'); return; }
+    if(state.friendsList.some(f=>f.uid===targetUid)){ showToast('Уже в друзьях'); return; }
+    const nameSnap = await fbDb.ref('users/'+targetUid+'/name').once('value');
+    const targetName = nameSnap.val() || 'Друг';
+    const ts = firebase.database.ServerValue.TIMESTAMP;
+    await fbDb.ref('users/'+targetUid+'/friendRequestsIn/'+state.profile.uid).set({ name: state.profile.name, at: ts });
+    await fbDb.ref('users/'+state.profile.uid+'/friendRequestsOut/'+targetUid).set({ name: targetName, at: ts });
+    input.value = '';
+    showToast('Заявка отправлена: '+targetName);
+  }catch(e){ showToast('Не удалось отправить заявку'); }
+}
+
+function acceptFriendRequest(fromUid, fromName){
+  if(!fbDb || !state.profile) return;
+  const ts = firebase.database.ServerValue.TIMESTAMP;
+  fbDb.ref('users/'+state.profile.uid+'/friends/'+fromUid).set({ name: fromName, since: ts });
+  fbDb.ref('users/'+fromUid+'/friends/'+state.profile.uid).set({ name: state.profile.name, since: ts });
+  fbDb.ref('users/'+state.profile.uid+'/friendRequestsIn/'+fromUid).remove();
+  fbDb.ref('users/'+fromUid+'/friendRequestsOut/'+state.profile.uid).remove();
+}
+function declineFriendRequest(fromUid){
+  if(!fbDb || !state.profile) return;
+  fbDb.ref('users/'+state.profile.uid+'/friendRequestsIn/'+fromUid).remove();
+  fbDb.ref('users/'+fromUid+'/friendRequestsOut/'+state.profile.uid).remove();
+}
+function removeFriend(uid){
+  if(!fbDb || !state.profile) return;
+  fbDb.ref('users/'+state.profile.uid+'/friends/'+uid).remove();
+  fbDb.ref('users/'+uid+'/friends/'+state.profile.uid).remove();
+}
+
+function listenFriendsRealtime(){
+  if(!fbDb || !state.profile) return;
+  const uid = state.profile.uid;
+  fbDb.ref('users/'+uid+'/friends').on('value', snap=>{
+    const val = snap.val() || {};
+    state.friendsList = Object.keys(val).map(fuid=>({ uid: fuid, name: val[fuid].name || 'Друг' }));
+    renderFriendsScreen();
+  });
+  fbDb.ref('users/'+uid+'/friendRequestsIn').on('value', snap=>{
+    const val = snap.val() || {};
+    state.incomingRequests = Object.keys(val).map(fuid=>({ uid: fuid, name: val[fuid].name || 'Друг' }));
+    renderFriendsScreen();
+    updateFriendsBadge();
+  });
+  fbDb.ref('users/'+uid+'/duelInvites').on('value', snap=>{
+    const val = snap.val() || {};
+    state.duelInvites = Object.keys(val).map(roomId=>({ roomId, ...val[roomId] }));
+    renderInvitesArea();
+    updateFriendsBadge();
+  });
+  fbDb.ref('users/'+uid+'/challenges').on('value', snap=>{
+    const val = snap.val() || {};
+    state.challengeInvites = Object.keys(val).map(id=>({ id, ...val[id] }));
+    renderInvitesArea();
+    updateFriendsBadge();
+  });
+}
+
+function updateFriendsBadge(){
+  const has = state.incomingRequests.length>0 || state.duelInvites.length>0 || state.challengeInvites.length>0;
+  document.getElementById('friendsBadge').style.display = has ? 'block' : 'none';
+}
+
+function renderFriendsScreen(){
+  const reqSection = document.getElementById('friendRequestsSection');
+  const reqList = document.getElementById('friendRequestsList');
+  if(state.incomingRequests.length){
+    reqSection.style.display = 'block';
+    reqList.innerHTML = state.incomingRequests.map(r => `
+      <div class="friend-row">
+        <div class="friend-avatar">${escapeHtml(avatarLetter(r.name))}</div>
+        <div class="friend-name">${escapeHtml(r.name)}</div>
+        <div class="friend-actions">
+          <button class="friend-action-btn accept" data-accept="${escapeHtml(r.uid)}" data-name="${escapeHtml(r.name)}" title="Принять">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4 10-10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="friend-action-btn decline" data-decline="${escapeHtml(r.uid)}" title="Отклонить">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </div>`).join('');
+  } else {
+    reqSection.style.display = 'none';
+    reqList.innerHTML = '';
+  }
+
+  const list = document.getElementById('friendsList');
+  const emptyHint = document.getElementById('friendsEmptyHint');
+  if(state.friendsList.length){
+    emptyHint.style.display = 'none';
+    list.innerHTML = state.friendsList.map(f => `
+      <div class="friend-row">
+        <div class="friend-avatar">${escapeHtml(avatarLetter(f.name))}</div>
+        <div class="friend-name">${escapeHtml(f.name)}</div>
+        <div class="friend-actions">
+          <button class="friend-action-btn duel" data-duel-friend="${escapeHtml(f.uid)}" title="Live-дуэль">⚡</button>
+          <button class="friend-action-btn decline" data-remove-friend="${escapeHtml(f.uid)}" title="Удалить из друзей">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </div>`).join('');
+  } else {
+    list.innerHTML = '';
+    emptyHint.style.display = 'block';
+  }
+}
+
+document.getElementById('friendRequestsList').addEventListener('click', e=>{
+  const acceptUid = e.target.closest('[data-accept]');
+  const declineUid = e.target.closest('[data-decline]');
+  if(acceptUid) acceptFriendRequest(acceptUid.dataset.accept, acceptUid.dataset.name);
+  else if(declineUid) declineFriendRequest(declineUid.dataset.decline);
+});
+document.getElementById('friendsList').addEventListener('click', e=>{
+  const duelBtn = e.target.closest('[data-duel-friend]');
+  const removeBtn = e.target.closest('[data-remove-friend]');
+  if(duelBtn){
+    if(!fbDb){ showToast('Live-дуэль недоступна: нет соединения с сервером'); return; }
+    go('quiz');
+    resetQuizView();
+    document.getElementById('quizIntro').style.display='none';
+    document.getElementById('duelSetupScreen').style.display='block';
+    const dni = document.getElementById('duelNameInput');
+    if(!dni.value && state.profile.name) dni.value = state.profile.name;
+    duelPickedFriends = [duelBtn.dataset.duelFriend];
+    updateDuelPickSummary();
+  } else if(removeBtn){
+    removeFriend(removeBtn.dataset.removeFriend);
+  }
+});
+
+/* ---------- pending duel / challenge invites banner ---------- */
+function renderInvitesArea(){
+  const area = document.getElementById('friendInvitesArea');
+  let html = '';
+  state.duelInvites.forEach(inv=>{
+    html += `
+      <div class="invite-banner">
+        <p><b>${escapeHtml(inv.fromName||'Друг')}</b> приглашает вас на live-дуэль по именам Аллаха (${inv.len||10} вопросов).</p>
+        <div class="invite-actions">
+          <button class="btn btn-primary" data-join-duel="${escapeHtml(inv.roomId)}">Присоединиться</button>
+          <button class="btn btn-ghost" data-decline-duel="${escapeHtml(inv.roomId)}">Отклонить</button>
+        </div>
+      </div>`;
+  });
+  state.challengeInvites.forEach(inv=>{
+    html += `
+      <div class="invite-banner">
+        <p><b>${escapeHtml(inv.fromName||'Друг')}</b> вызывает вас: набрал(а) ${inv.score}/${inv.total} в викторине об именах Аллаха.</p>
+        <div class="invite-actions">
+          <button class="btn btn-primary" data-accept-challenge="${escapeHtml(inv.id)}">Принять вызов</button>
+          <button class="btn btn-ghost" data-decline-challenge="${escapeHtml(inv.id)}">Отклонить</button>
+        </div>
+      </div>`;
+  });
+  area.innerHTML = html;
+}
+
+document.getElementById('friendInvitesArea').addEventListener('click', e=>{
+  const joinDuel = e.target.closest('[data-join-duel]');
+  const declineDuel = e.target.closest('[data-decline-duel]');
+  const acceptChallenge = e.target.closest('[data-accept-challenge]');
+  const declineChallenge = e.target.closest('[data-decline-challenge]');
+  if(joinDuel) acceptDuelInvite(joinDuel.dataset.joinDuel);
+  else if(declineDuel) declineDuelInvite(declineDuel.dataset.declineDuel);
+  else if(acceptChallenge) acceptChallengeInvite(acceptChallenge.dataset.acceptChallenge);
+  else if(declineChallenge) declineChallengeInvite(declineChallenge.dataset.declineChallenge);
+});
+
+function acceptDuelInvite(roomId){
+  if(!fbDb || !state.profile) return;
+  fbDb.ref('users/'+state.profile.uid+'/duelInvites/'+roomId).remove();
+  joinDuelAsGuest(roomId, state.profile.name || 'Друг');
+}
+function declineDuelInvite(roomId){
+  if(!fbDb || !state.profile) return;
+  fbDb.ref('users/'+state.profile.uid+'/duelInvites/'+roomId).remove();
+}
+function acceptChallengeInvite(id){
+  if(!fbDb || !state.profile) return;
+  const inv = state.challengeInvites.find(c=>c.id===id);
+  fbDb.ref('users/'+state.profile.uid+'/challenges/'+id).remove();
+  if(!inv) return;
+  applyChallenge({ seed: inv.seed, score: inv.score, total: inv.total, name: inv.fromName, direction: inv.direction });
+}
+function declineChallengeInvite(id){
+  if(!fbDb || !state.profile) return;
+  fbDb.ref('users/'+state.profile.uid+'/challenges/'+id).remove();
+}
+
+function sendDuelInvite(friendUid){
+  if(!fbDb || !state.profile || !duel.roomId) return;
+  fbDb.ref('users/'+friendUid+'/duelInvites/'+duel.roomId).set({
+    fromUid: state.profile.uid,
+    fromName: duel.myName || state.profile.name || 'Друг',
+    len: duel.len, timerSeconds: duel.timerSeconds, direction: duel.direction, orderMode: duel.orderMode,
+    at: firebase.database.ServerValue.TIMESTAMP
+  });
+}
+function sendChallengeToFriend(friendUid, q){
+  if(!fbDb || !state.profile) return;
+  fbDb.ref('users/'+friendUid+'/challenges').push({
+    fromUid: state.profile.uid,
+    fromName: state.profile.name || 'Друг',
+    score: q.score, total: q.len, seed: q.seedStr, direction: q.direction,
+    at: firebase.database.ServerValue.TIMESTAMP
+  });
+}
+
+/* ---------- friend-picker sheet (reusable) ---------- */
+const friendPickerSheet = document.getElementById('friendPickerSheet');
+const friendPickerBackdrop = document.getElementById('friendPickerBackdrop');
+function openFriendPicker(title, onConfirm, preselected){
+  document.getElementById('friendPickerTitle').textContent = title || 'Выбрать друзей';
+  friendPickerOnConfirm = onConfirm;
+  friendPickerSelection = new Set(preselected || []);
+  renderFriendPickerList();
+  friendPickerSheet.classList.add('show');
+  friendPickerBackdrop.classList.add('show');
+}
+function closeFriendPicker(){
+  friendPickerSheet.classList.remove('show');
+  friendPickerBackdrop.classList.remove('show');
+}
+function renderFriendPickerList(){
+  const list = document.getElementById('friendPickerList');
+  const emptyHint = document.getElementById('friendPickerEmptyHint');
+  if(!state.friendsList.length){
+    list.innerHTML = '';
+    emptyHint.style.display = 'block';
+    return;
+  }
+  emptyHint.style.display = 'none';
+  list.innerHTML = state.friendsList.map(f => `
+    <div class="friend-pick-row${friendPickerSelection.has(f.uid)?' selected':''}" data-pick="${escapeHtml(f.uid)}">
+      <div class="friend-pick-check"><svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4 10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="friend-pick-name">${escapeHtml(f.name)}</div>
+    </div>`).join('');
+}
+document.getElementById('friendPickerList').addEventListener('click', e=>{
+  const row = e.target.closest('[data-pick]');
+  if(!row) return;
+  const uid = row.dataset.pick;
+  if(friendPickerSelection.has(uid)) friendPickerSelection.delete(uid);
+  else friendPickerSelection.add(uid);
+  row.classList.toggle('selected');
+});
+document.getElementById('friendPickerConfirmBtn').addEventListener('click', ()=>{
+  const selected = Array.from(friendPickerSelection);
+  closeFriendPicker();
+  if(friendPickerOnConfirm) friendPickerOnConfirm(selected);
+});
+document.getElementById('friendPickerClose').addEventListener('click', closeFriendPicker);
+friendPickerBackdrop.addEventListener('click', closeFriendPicker);
+
+/* duel-setup screen: pick friends to invite when creating the room */
+function updateDuelPickSummary(){
+  const el = document.getElementById('duelPickFriendsSummary');
+  if(!duelPickedFriends.length){ el.textContent = ''; return; }
+  const names = duelPickedFriends.map(uid=>{
+    const f = state.friendsList.find(x=>x.uid===uid);
+    return f ? f.name : 'Друг';
+  });
+  el.textContent = 'Пригласить: ' + names.join(', ');
+}
+document.getElementById('duelPickFriendsBtn').addEventListener('click', ()=>{
+  if(!fbDb || !state.profile || !state.profile.uid){ showToast('Нет соединения с сервером'); return; }
+  if(!state.profile.name){ showToast('Сначала введите своё имя на вкладке «Друзья»'); return; }
+  openFriendPicker('Пригласить друзей', selected=>{
+    duelPickedFriends = selected;
+    updateDuelPickSummary();
+  }, duelPickedFriends);
+});
+
+initProfile();
 
 /* =====================================================
    GEOMETRIC BACKGROUND PATTERN (inline SVG data-uri)
