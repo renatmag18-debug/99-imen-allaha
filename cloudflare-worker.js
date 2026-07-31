@@ -48,11 +48,12 @@ export default {
         body: JSON.stringify({
           message: {
             token,
-            notification: { title, body: msgBody || '' },
-            webpush: {
-              notification: { tag: tag || 'ism-notify', icon: 'https://99ism.ru/icons/icon-192.png' },
-              fcm_options: { link: 'https://99ism.ru/' }
-            }
+            // data-only (no top-level "notification") — some browsers show a
+            // push automatically for "notification" payloads AND our service
+            // worker's onBackgroundMessage shows one too, causing duplicates.
+            // With data-only, showNotification() in sw.js is the only path.
+            data: { title, body: msgBody || '', tag: tag || 'ism-notify', link: 'https://99ism.ru/' },
+            webpush: { headers: { Urgency: 'high' } }
           }
         })
       });

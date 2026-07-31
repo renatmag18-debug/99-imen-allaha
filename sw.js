@@ -23,26 +23,30 @@ firebase.initializeApp({
 });
 
 const messaging = firebase.messaging();
-// The push payload already includes a "notification" field, which browsers
-// display automatically even without this handler — it's here mainly to
-// pin the icon/tag and to keep working if a payload ever goes data-only.
+// Push payloads are data-only (no top-level "notification" field) — that's
+// deliberate. When a "notification" field is present, some browsers show it
+// automatically AND this handler fires too, producing two notifications for
+// one push. With data-only, showNotification() below is the only place a
+// notification gets created.
 messaging.onBackgroundMessage((payload) => {
-  const n = payload.notification || {};
-  self.registration.showNotification(n.title || '99 имён Аллаха', {
-    body: n.body || '',
+  const d = payload.data || {};
+  self.registration.showNotification(d.title || '99 имён Аллаха', {
+    body: d.body || '',
     icon: 'icons/icon-192.png',
-    tag: (payload.data && payload.data.tag) || 'ism-notify'
+    tag: d.tag || 'ism-notify',
+    data: { link: d.link || './' }
   });
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const link = (event.notification.data && event.notification.data.link) || './';
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
         if ('focus' in client) return client.focus();
       }
-      if (self.clients.openWindow) return self.clients.openWindow('./');
+      if (self.clients.openWindow) return self.clients.openWindow(link);
     })
   );
 });
