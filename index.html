@@ -65,13 +65,6 @@ body{
 }
 #app{
   position:fixed; inset:0;
-  /* iOS standalone (Add to Home Screen) apps sometimes miscompute the
-     viewport for `inset:0`-only sizing and leave blank space at the
-     bottom — pin an explicit JS-measured height as a reinforcement
-     (see setAppHeight() near the end of the script). */
-  height: 100vh;
-  height: calc(var(--vh, 1vh) * 100);
-  height: -webkit-fill-available;
   display:flex; flex-direction:column;
   background:
     radial-gradient(ellipse 90% 60% at 50% -10%, rgba(203,161,53,0.12), transparent 60%),
@@ -2530,16 +2523,6 @@ initProfile();
 })();
 
 updateHomeStats();
-
-/* Reinforces #app's height on iOS home-screen apps, where `inset:0` alone
-   can leave blank space at the bottom (WebKit standalone-mode viewport bug). */
-(function setAppHeight(){
-  const set = () => document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px');
-  set();
-  window.addEventListener('resize', set);
-  window.addEventListener('orientationchange', set);
-  if(window.visualViewport) window.visualViewport.addEventListener('resize', set);
-})();
 
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
