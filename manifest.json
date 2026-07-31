@@ -6,7 +6,6 @@
   "scope": "./",
   "id": "./",
   "display": "standalone",
-  "orientation": "portrait",
   "background_color": "#0a2129",
   "theme_color": "#0a2129",
   "lang": "ru",
