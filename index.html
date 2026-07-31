@@ -51,9 +51,11 @@
   --ease: cubic-bezier(.22,1,.36,1);
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-html,body{height:100%;}
+html,body{height:100%; height:-webkit-fill-available;}
 body{
   margin:0;
+  min-height:100%;
+  min-height:-webkit-fill-available;
   font-family:var(--font-body);
   background:var(--bg);
   color:var(--ivory);
@@ -69,6 +71,7 @@ body{
      (see setAppHeight() near the end of the script). */
   height: 100vh;
   height: calc(var(--vh, 1vh) * 100);
+  height: -webkit-fill-available;
   display:flex; flex-direction:column;
   background:
     radial-gradient(ellipse 90% 60% at 50% -10%, rgba(203,161,53,0.12), transparent 60%),
