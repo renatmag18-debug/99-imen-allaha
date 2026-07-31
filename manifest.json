@@ -2,18 +2,13 @@
   "name": "99 имён Аллаха — Асма-уль-Хусна",
   "short_name": "99 Имён",
   "description": "Изучайте 99 прекрасных имён Аллаха, проходите викторину и играйте live-дуэли с друзьями",
-  "start_url": "./",
+  "start_url": "./index.html",
   "scope": "./",
-  "id": "./",
   "display": "standalone",
   "background_color": "#0a2129",
   "theme_color": "#0a2129",
-  "lang": "ru",
-  "dir": "ltr",
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }
