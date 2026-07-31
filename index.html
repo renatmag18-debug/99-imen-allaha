@@ -2540,6 +2540,37 @@ initProfile();
 
 updateHomeStats();
 
+/* Temporary diagnostic overlay for the iOS full-height bug — visit with
+   ?debug=1. Safe to remove once the layout is confirmed fixed. */
+if(location.search.includes('debug=1')){
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:fixed;visibility:hidden;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);';
+  document.body.appendChild(probe);
+  const panel = document.createElement('div');
+  panel.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:99999;background:rgba(0,0,0,0.85);color:#0f0;font:11px monospace;padding:10px;border-radius:8px;white-space:pre-wrap;max-height:70vh;overflow:auto;';
+  document.body.appendChild(panel);
+  const report = () => {
+    const app = document.getElementById('app');
+    const tabbar = document.querySelector('.tabbar');
+    const topbar = document.querySelector('.topbar');
+    const cs = getComputedStyle(probe);
+    panel.textContent = [
+      'innerHeight: ' + window.innerHeight,
+      'screen.height: ' + screen.height,
+      'safe-top: ' + cs.paddingTop + '  safe-bottom: ' + cs.paddingBottom,
+      'html.getBoundingClientRect: ' + JSON.stringify(document.documentElement.getBoundingClientRect()),
+      'body.getBoundingClientRect: ' + JSON.stringify(document.body.getBoundingClientRect()),
+      'app.getBoundingClientRect: ' + JSON.stringify(app.getBoundingClientRect()),
+      'topbar.getBoundingClientRect: ' + JSON.stringify(topbar.getBoundingClientRect()),
+      'tabbar.getBoundingClientRect: ' + JSON.stringify(tabbar.getBoundingClientRect()),
+      'stage.getBoundingClientRect: ' + JSON.stringify(document.querySelector('.stage').getBoundingClientRect())
+    ].join('\n');
+  };
+  report();
+  setTimeout(report, 500);
+  window.addEventListener('resize', report);
+}
+
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
 }
