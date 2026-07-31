@@ -5,8 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="99 Имён">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="99 Имён">
 <meta name="theme-color" content="#0a2129">
 <title>99 имён Аллаха — Асма-уль-Хусна</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="description" content="Изучайте 99 прекрасных имён Аллаха и проверяйте знания в викторине вместе с друзьями">
 <meta name="keywords" content="99 имён Аллаха, асма уль хусна, асма аль хусна, имена Аллаха, изучение ислама, викторина ислам">
 <meta property="og:title" content="99 имён Аллаха — Асма-уль-Хусна">
@@ -2449,6 +2456,10 @@ initProfile();
 })();
 
 updateHomeStats();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
 </script>
 </body>
 </html>
