@@ -2542,7 +2542,7 @@ updateHomeStats();
 
 /* Temporary diagnostic overlay for the iOS full-height bug — visit with
    ?debug=1. Safe to remove once the layout is confirmed fixed. */
-if(location.search.includes('debug=1')){
+if(true){
   const probe = document.createElement('div');
   probe.style.cssText = 'position:fixed;visibility:hidden;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);';
   document.body.appendChild(probe);
