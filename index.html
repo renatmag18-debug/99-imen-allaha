@@ -859,6 +859,8 @@ body{
               <svg viewBox="0 0 24 24" fill="none"><rect x="8" y="8" width="12" height="12" rx="2.5" stroke="currentColor" stroke-width="1.6"/><path d="M16 8V6.5A2.5 2.5 0 0013.5 4H6a2 2 0 00-2 2v7.5A2.5 2.5 0 006.5 16H8" stroke="currentColor" stroke-width="1.6"/></svg>
             </button>
           </div>
+          <button class="btn btn-ghost" id="enableNotifBtn" style="width:100%;margin-top:14px;display:none;">🔔 Включить уведомления</button>
+          <p id="notifStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;display:none;"></p>
         </div>
 
         <div class="add-friend-form">
@@ -946,6 +948,7 @@ body{
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script>
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDk_VEd7etsz22k3M41kSObWYhv9SfeGkw",
@@ -956,6 +959,9 @@ const FIREBASE_CONFIG = {
   messagingSenderId: "174262670691",
   appId: "1:174262670691:web:63a740ffd5436c19c2ef56"
 };
+const FCM_VAPID_KEY = "BN0h-AOs5pZ7sow5NPk-NXdCzKJG6Rv7sUvjq7QDaiL83yD1WEEadOwbV3a7DMsIUyAfsKBg_sesH3h84LdtiCY";
+const PUSH_RELAY_URL = "https://99ism-push.99ism-worker.workers.dev";
+const PUSH_RELAY_SECRET = "jhIlWyuUj0n3LYyxDxkFltmAx5eUSKH5suEjgRD9AK0";
 let fbDb = null;
 let fbAuth = null;
 // Resolves once we have a signed-in (anonymous) Firebase user, so DB writes
@@ -2122,6 +2128,8 @@ async function initProfile(){
     updatedAt: firebase.database.ServerValue.TIMESTAMP
   });
   listenFriendsRealtime();
+  updateNotifUI();
+  if(pushSupported() && Notification.permission === 'granted') registerPushToken();
 }
 
 function updateProfileUI(){
@@ -2172,6 +2180,7 @@ async function addFriendByCode(){
     const ts = firebase.database.ServerValue.TIMESTAMP;
     await fbDb.ref('users/'+targetUid+'/friendRequestsIn/'+state.profile.uid).set({ name: state.profile.name, at: ts });
     await fbDb.ref('users/'+state.profile.uid+'/friendRequestsOut/'+targetUid).set({ name: targetName, at: ts });
+    notifyFriend(targetUid, '99 имён Аллаха', (state.profile.name||'Друг')+' хочет добавить вас в друзья', 'friend-request');
     input.value = '';
     showToast('Заявка отправлена: '+targetName);
   }catch(e){ showToast('Не удалось отправить заявку'); }
@@ -2222,6 +2231,59 @@ function listenFriendsRealtime(){
     renderInvitesArea();
     updateFriendsBadge();
   });
+}
+
+/* ---------------- push notifications (FCM) ---------------- */
+function pushSupported(){
+  return 'Notification' in window && 'serviceWorker' in navigator && !!(window.firebase && firebase.messaging);
+}
+function updateNotifUI(){
+  const btn = document.getElementById('enableNotifBtn');
+  const status = document.getElementById('notifStatus');
+  if(!pushSupported()){ btn.style.display='none'; status.style.display='none'; return; }
+  if(Notification.permission === 'granted'){
+    btn.style.display='none';
+    status.textContent = '🔔 Уведомления включены';
+    status.style.display='block';
+  } else if(Notification.permission === 'denied'){
+    btn.style.display='none';
+    status.textContent = 'Уведомления заблокированы в настройках браузера';
+    status.style.display='block';
+  } else {
+    btn.style.display='block';
+    status.style.display='none';
+  }
+}
+async function registerPushToken(){
+  if(!pushSupported() || !fbDb || !state.profile || !state.profile.uid) return;
+  try{
+    const reg = await navigator.serviceWorker.ready;
+    const messaging = firebase.messaging();
+    const token = await messaging.getToken({ vapidKey: FCM_VAPID_KEY, serviceWorkerRegistration: reg });
+    if(token) await fbDb.ref('users/'+state.profile.uid+'/fcmTokens/'+token).set(true);
+  }catch(e){ console.warn('FCM token registration failed:', e); }
+}
+async function enableNotifications(){
+  if(!pushSupported()){ showToast('Уведомления не поддерживаются в этом браузере'); return; }
+  if(!fbDb || !state.profile || !state.profile.uid){ showToast('Нет соединения с сервером'); return; }
+  const perm = await Notification.requestPermission();
+  if(perm === 'granted'){
+    await registerPushToken();
+    showToast('Уведомления включены!');
+  } else {
+    showToast('Уведомления не разрешены');
+  }
+  updateNotifUI();
+}
+document.getElementById('enableNotifBtn').addEventListener('click', enableNotifications);
+
+function notifyFriend(targetUid, title, body, tag){
+  if(!targetUid) return;
+  fetch(PUSH_RELAY_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ targetUid, title, body, tag, secret: PUSH_RELAY_SECRET })
+  }).catch(()=>{});
 }
 
 function updateFriendsBadge(){
@@ -2358,15 +2420,18 @@ function declineChallengeInvite(id){
 
 function sendDuelInvite(friendUid){
   if(!fbDb || !state.profile || !duel.roomId) return;
+  const fromName = duel.myName || state.profile.name || 'Друг';
   fbDb.ref('users/'+friendUid+'/duelInvites/'+duel.roomId).set({
     fromUid: state.profile.uid,
-    fromName: duel.myName || state.profile.name || 'Друг',
+    fromName,
     len: duel.len, timerSeconds: duel.timerSeconds, direction: duel.direction, orderMode: duel.orderMode,
     at: firebase.database.ServerValue.TIMESTAMP
   });
+  notifyFriend(friendUid, '99 имён Аллаха', fromName+' приглашает вас на live-дуэль', 'duel-invite');
 }
 function sendChallengeToFriend(friendUid, q){
   if(!fbDb || !state.profile) return;
+  notifyFriend(friendUid, '99 имён Аллаха', (state.profile.name||'Друг')+' вызывает вас: '+q.score+'/'+q.len, 'challenge');
   fbDb.ref('users/'+friendUid+'/challenges').push({
     fromUid: state.profile.uid,
     fromName: state.profile.name || 'Друг',
