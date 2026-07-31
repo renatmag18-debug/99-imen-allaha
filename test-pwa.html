@@ -25,13 +25,44 @@
     min-height:-webkit-fill-available;
     background:linear-gradient(180deg, lime 0%, lime 10%, blue 10%, blue 90%, yellow 90%, yellow 100%);
     display:flex; align-items:center; justify-content:center;
-    color:#fff; font-family:sans-serif; font-size:24px; text-align:center;
+    color:#fff; font-family:sans-serif; font-size:16px; text-align:left;
   }
+  #info{ background:rgba(0,0,0,0.6); padding:16px; border-radius:12px; line-height:1.7; white-space:pre-wrap; }
 </style>
 </head>
 <body>
 <div id="box">
-  ЕСЛИ ВИДНО КРАСНОЕ<br>СВЕРХУ ИЛИ СНИЗУ —<br>ЭКРАН НЕ ПОЛНЫЙ
+<div id="info">measuring…</div>
 </div>
+<div id="sat-probe" style="position:fixed; visibility:hidden; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);"></div>
+<script>
+function report(){
+  const de = document.documentElement;
+  const lines = [
+    'innerHeight: ' + window.innerHeight,
+    'innerWidth: ' + window.innerWidth,
+    'visualViewport.height: ' + (window.visualViewport ? window.visualViewport.height : 'n/a'),
+    'visualViewport.offsetTop: ' + (window.visualViewport ? window.visualViewport.offsetTop : 'n/a'),
+    'clientHeight (html): ' + de.clientHeight,
+    'scrollHeight (html): ' + de.scrollHeight,
+    'screen.height: ' + screen.height,
+    'screen.availHeight: ' + screen.availHeight,
+    'devicePixelRatio: ' + window.devicePixelRatio,
+    'safe-area-inset-top: ' + getComputedStyle(document.getElementById('sat-probe')).paddingTop,
+    'safe-area-inset-bottom: ' + getComputedStyle(document.getElementById('sat-probe')).paddingBottom,
+    'box.getBoundingClientRect().height: ' + document.getElementById('box').getBoundingClientRect().height,
+    'body.getBoundingClientRect().height: ' + document.body.getBoundingClientRect().height,
+    'standalone: ' + window.navigator.standalone,
+    'displayMode standalone: ' + window.matchMedia('(display-mode: standalone)').matches
+  ];
+  document.getElementById('info').textContent = lines.join('\n');
+}
+report();
+window.addEventListener('resize', report);
+window.addEventListener('orientationchange', report);
+if(window.visualViewport) window.visualViewport.addEventListener('resize', report);
+setTimeout(report, 500);
+setTimeout(report, 1500);
+</script>
 </body>
 </html>
