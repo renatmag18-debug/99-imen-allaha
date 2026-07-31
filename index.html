@@ -68,6 +68,12 @@ body{
   min-height:100vh;
   min-height:100dvh;
   min-height:-webkit-fill-available;
+  /* iOS standalone (Add to Home Screen) under-reports the viewport height
+     by exactly safe-area-inset-top on notch/Dynamic-Island devices — content
+     already paints correctly under the status bar, dvh/innerHeight just
+     don't count it. Confirmed by direct measurement; resolves to +0px
+     anywhere the bug doesn't apply. */
+  min-height:calc(100dvh + env(safe-area-inset-top, 0px));
   display:flex; flex-direction:column;
   background:
     radial-gradient(ellipse 90% 60% at 50% -10%, rgba(203,161,53,0.12), transparent 60%),
