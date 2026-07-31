@@ -64,7 +64,10 @@ body{
   -webkit-font-smoothing:antialiased;
 }
 #app{
-  position:fixed; inset:0;
+  position:relative;
+  min-height:100vh;
+  min-height:100dvh;
+  min-height:-webkit-fill-available;
   display:flex; flex-direction:column;
   background:
     radial-gradient(ellipse 90% 60% at 50% -10%, rgba(203,161,53,0.12), transparent 60%),
