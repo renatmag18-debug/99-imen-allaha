@@ -157,6 +157,25 @@ async function apiAddFriend(friendUsername) {
   }
 }
 
+// Register an FCM push token for the logged-in user. Goes through the worker
+// (admin-authenticated) rather than a direct client-side RTDB write, since
+// the fcmTokens security rule requires auth.uid === $uid and there's no
+// Firebase Auth identity tied to a username/password account.
+async function apiRegisterPushToken(username, password, token) {
+  try {
+    const res = await fetch(`${API_BASE}/api/register-push-token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, token })
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Failed to register push token' };
+    return { ok: true };
+  } catch (e) {
+    return { error: 'Network error' };
+  }
+}
+
 // Get total registered user count. Server-gated to a single admin account —
 // returns an error for everyone else, so the caller just hides the stat then.
 async function apiGetUserCount(username, password) {

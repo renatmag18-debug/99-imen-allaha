@@ -812,9 +812,6 @@ body{
             <div class="len-chip" data-order="sequential">По порядку</div>
             <div class="len-chip" data-order="alternate">Через одно</div>
           </div>
-          <div class="name-field">
-            <input type="text" id="duelNameInput" placeholder="Ваше имя" maxlength="24">
-          </div>
           <button class="btn btn-ghost" id="duelPickFriendsBtn" style="max-width:300px;margin:0 auto;display:block;">👥 Пригласить друзей</button>
           <p id="duelPickFriendsSummary" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:8px 0 16px;"></p>
           <button class="btn btn-primary" id="createDuelBtn" style="width:100%;max-width:300px;margin:0 auto;display:block;">Создать комнату</button>
@@ -1085,6 +1082,8 @@ body{
               </div>
             </div>
           </div>
+          <button class="btn btn-ghost" id="enableNotifBtn" style="width:100%;margin-top:14px;display:none;">🔔 Включить уведомления</button>
+          <p id="notifStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;display:none;"></p>
         </div>
 
         <div class="add-friend-form" id="addFriendForm" style="display:none;">
@@ -1272,6 +1271,11 @@ let fbAuthReady = (async () => {
     return null;
   }
 })();
+// pushSupported() depends on window.firebase, which isn't there yet the
+// first time initProfile() calls updateNotifUI() — re-run it once loading
+// (successfully or not) settles so the notification button/status can
+// actually reflect reality instead of being stuck on "unsupported".
+fbAuthReady.then(()=>{ if(typeof updateNotifUI === 'function') updateNotifUI(); });
 </script>
 <script>
 /* =====================================================
@@ -2313,8 +2317,6 @@ document.getElementById('openDuelSetupBtn').addEventListener('click', ()=>{
   if(!fbDb){ showToast('Live-дуэль недоступна: нет соединения с сервером'); return; }
   quizIntro.style.display='none';
   document.getElementById('duelSetupScreen').style.display='block';
-  const dni = document.getElementById('duelNameInput');
-  if(!dni.value && state.profile && state.profile.name) dni.value = state.profile.name;
   duelPickedFriends = [];
   updateDuelPickSummary();
 });
@@ -2543,7 +2545,7 @@ function baseUrl(){
   return location.origin + location.pathname;
 }
 document.getElementById('shareBtn').addEventListener('click', ()=>{
-  if(!fbDb || !state.profile || !state.profile.uid){ showToast('Нет соединения с сервером'); return; }
+  if(!fbDb || !state.profile || !state.profile.username){ showToast('Нет соединения с сервером'); return; }
   const q = state.quiz;
   if(!q) return;
   openFriendPicker('Вызвать друга', selectedUids=>{
@@ -2777,7 +2779,7 @@ function updateDuelResultUI(){
 
 document.getElementById('createDuelBtn').addEventListener('click', ()=>{
   if(!fbDb){ showToast('Нет соединения с сервером дуэли'); return; }
-  const name = document.getElementById('duelNameInput').value.trim() || 'Друг';
+  const name = (state.profile && state.profile.username) || 'Друг';
   duel.myName = name;
   duel.len = duelSelectedLen;
   duel.timerSeconds = duelSelectedTimer;
@@ -2821,7 +2823,7 @@ document.getElementById('duelStartBtn').addEventListener('click', ()=>{
 });
 
 document.getElementById('duelInviteMoreBtn').addEventListener('click', ()=>{
-  if(!fbDb || !state.profile || !state.profile.uid){ showToast('Нет соединения с сервером'); return; }
+  if(!fbDb || !state.profile || !state.profile.username){ showToast('Нет соединения с сервером'); return; }
   openFriendPicker('Пригласить друзей', selectedUids=>{
     if(!selectedUids.length) return;
     selectedUids.forEach(uid=>sendDuelInvite(uid));
@@ -2883,7 +2885,7 @@ document.getElementById('duelJoinBtn').addEventListener('click', ()=>{
         document.getElementById('duelHostName').textContent = hostName;
         document.getElementById('duelJoinCount').textContent = `Сейчас в комнате: ${count} ${count===1?'человек':'человека/человек'}`;
         const djni = document.getElementById('duelJoinNameInput');
-        if(!djni.value && state.profile && state.profile.name) djni.value = state.profile.name;
+        if(!djni.value && state.profile && state.profile.username) djni.value = state.profile.username;
         go('quiz');
         resetQuizView();
       }).catch(()=>{ showToast('Не удалось подключиться к дуэли'); });
@@ -3348,14 +3350,14 @@ function listenFriendsRealtime(){
   const userFriends = allFriends[state.profile.username] || [];
   state.friendsList = userFriends.map(name=>({ uid: name, name: name }));
   renderFriendsScreen();
-  if(!fbDb || !state.profile.uid) return;
-  fbDb.ref('users/'+state.profile.uid+'/duelInvites').on('value', snap=>{
+  if(!fbDb || !state.profile.username) return;
+  fbDb.ref('users/'+fbKey(state.profile.username)+'/duelInvites').on('value', snap=>{
     const val = snap.val() || {};
     state.duelInvites = Object.keys(val).map(roomId=>({ roomId, ...val[roomId] }));
     renderInvitesArea();
     updateFriendsBadge();
   });
-  fbDb.ref('users/'+uid+'/challenges').on('value', snap=>{
+  fbDb.ref('users/'+fbKey(state.profile.username)+'/challenges').on('value', snap=>{
     const val = snap.val() || {};
     state.challengeInvites = Object.keys(val).map(id=>({ id, ...val[id] }));
     renderInvitesArea();
@@ -3386,17 +3388,19 @@ function updateNotifUI(){
   }
 }
 async function registerPushToken(){
-  if(!pushSupported() || !fbDb || !state.profile || !state.profile.uid) return;
+  if(!pushSupported() || !state.profile || !state.profile.authenticated) return;
+  const auth = getAuthCredentials && getAuthCredentials();
+  if(!auth) return;
   try{
     const reg = await navigator.serviceWorker.ready;
     const messaging = firebase.messaging();
     const token = await messaging.getToken({ vapidKey: FCM_VAPID_KEY, serviceWorkerRegistration: reg });
-    if(token) await fbDb.ref('users/'+state.profile.uid+'/fcmTokens/'+token).set(true);
+    if(token) await apiRegisterPushToken(auth.username, auth.password, token);
   }catch(e){ console.warn('FCM token registration failed:', e); }
 }
 async function enableNotifications(){
   if(!pushSupported()){ showToast('Уведомления не поддерживаются в этом браузере'); return; }
-  if(!fbDb || !state.profile || !state.profile.uid){ showToast('Нет соединения с сервером'); return; }
+  if(!state.profile || !state.profile.authenticated || !getAuthCredentials()){ showToast('Нет соединения с сервером'); return; }
   const perm = await Notification.requestPermission();
   if(perm === 'granted'){
     await registerPushToken();
@@ -3409,12 +3413,22 @@ async function enableNotifications(){
 const enableNotifBtnEl = document.getElementById('enableNotifBtn');
 if(enableNotifBtnEl) enableNotifBtnEl.addEventListener('click', enableNotifications);
 
+// Usernames are case-insensitive (see cloudflare-worker.js's userKey) but this
+// whole duel-invite/challenge/push subsystem writes straight to Firebase RTDB
+// from the client, keyed by whatever casing the friend's name happens to be
+// in locally — normalizing every touchpoint to the same lowercase form here
+// is what keeps the sender's write and the recipient's listener on the same
+// path regardless of how each side originally typed the name.
+function fbKey(username){
+  return (username || '').trim().toLowerCase();
+}
+
 function notifyFriend(targetUid, title, body, tag){
   if(!targetUid) return;
   fetch(PUSH_RELAY_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ targetUid, title, body, tag, secret: PUSH_RELAY_SECRET })
+    body: JSON.stringify({ targetUid: fbKey(targetUid), title, body, tag, secret: PUSH_RELAY_SECRET })
   }).catch(()=>{});
 }
 
@@ -3482,8 +3496,6 @@ document.getElementById('friendsList').addEventListener('click', e=>{
     resetQuizView();
     document.getElementById('quizIntro').style.display='none';
     document.getElementById('duelSetupScreen').style.display='block';
-    const dni = document.getElementById('duelNameInput');
-    if(!dni.value && state.profile.name) dni.value = state.profile.name;
     duelPickedFriends = [duelBtn.dataset.duelFriend];
     updateDuelPickSummary();
   } else if(removeBtn){
@@ -3531,30 +3543,30 @@ document.getElementById('friendInvitesArea').addEventListener('click', e=>{
 
 function acceptDuelInvite(roomId){
   if(!fbDb || !state.profile) return;
-  fbDb.ref('users/'+state.profile.uid+'/duelInvites/'+roomId).remove();
-  joinDuelAsGuest(roomId, state.profile.name || 'Друг');
+  fbDb.ref('users/'+fbKey(state.profile.username)+'/duelInvites/'+roomId).remove();
+  joinDuelAsGuest(roomId, state.profile.username || 'Друг');
 }
 function declineDuelInvite(roomId){
   if(!fbDb || !state.profile) return;
-  fbDb.ref('users/'+state.profile.uid+'/duelInvites/'+roomId).remove();
+  fbDb.ref('users/'+fbKey(state.profile.username)+'/duelInvites/'+roomId).remove();
 }
 function acceptChallengeInvite(id){
   if(!fbDb || !state.profile) return;
   const inv = state.challengeInvites.find(c=>c.id===id);
-  fbDb.ref('users/'+state.profile.uid+'/challenges/'+id).remove();
+  fbDb.ref('users/'+fbKey(state.profile.username)+'/challenges/'+id).remove();
   if(!inv) return;
   applyChallenge({ seed: inv.seed, score: inv.score, total: inv.total, name: inv.fromName, direction: inv.direction });
 }
 function declineChallengeInvite(id){
   if(!fbDb || !state.profile) return;
-  fbDb.ref('users/'+state.profile.uid+'/challenges/'+id).remove();
+  fbDb.ref('users/'+fbKey(state.profile.username)+'/challenges/'+id).remove();
 }
 
 function sendDuelInvite(friendUid){
   if(!fbDb || !state.profile || !duel.roomId) return;
-  const fromName = duel.myName || state.profile.name || 'Друг';
-  fbDb.ref('users/'+friendUid+'/duelInvites/'+duel.roomId).set({
-    fromUid: state.profile.uid,
+  const fromName = duel.myName || state.profile.username || 'Друг';
+  fbDb.ref('users/'+fbKey(friendUid)+'/duelInvites/'+duel.roomId).set({
+    fromUid: state.profile.username,
     fromName,
     len: duel.len, timerSeconds: duel.timerSeconds, direction: duel.direction, orderMode: duel.orderMode,
     at: firebase.database.ServerValue.TIMESTAMP
@@ -3563,10 +3575,10 @@ function sendDuelInvite(friendUid){
 }
 function sendChallengeToFriend(friendUid, q){
   if(!fbDb || !state.profile) return;
-  notifyFriend(friendUid, '99 имён Аллаха', (state.profile.name||'Друг')+' вызывает вас: '+q.score+'/'+q.len, 'challenge');
-  fbDb.ref('users/'+friendUid+'/challenges').push({
-    fromUid: state.profile.uid,
-    fromName: state.profile.name || 'Друг',
+  notifyFriend(friendUid, '99 имён Аллаха', (state.profile.username||'Друг')+' вызывает вас: '+q.score+'/'+q.len, 'challenge');
+  fbDb.ref('users/'+fbKey(friendUid)+'/challenges').push({
+    fromUid: state.profile.username,
+    fromName: state.profile.username || 'Друг',
     score: q.score, total: q.len, seed: q.seedStr, direction: q.direction,
     at: firebase.database.ServerValue.TIMESTAMP
   });
@@ -3629,8 +3641,7 @@ function updateDuelPickSummary(){
   el.textContent = 'Пригласить: ' + names.join(', ');
 }
 document.getElementById('duelPickFriendsBtn').addEventListener('click', ()=>{
-  if(!fbDb || !state.profile || !state.profile.uid){ showToast('Нет соединения с сервером'); return; }
-  if(!state.profile.name){ showToast('Сначала введите своё имя на вкладке «Друзья»'); return; }
+  if(!fbDb || !state.profile || !state.profile.username){ showToast('Нет соединения с сервером'); return; }
   openFriendPicker('Пригласить друзей', selected=>{
     duelPickedFriends = selected;
     updateDuelPickSummary();

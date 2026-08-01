@@ -106,6 +106,11 @@ async function handleAPI(request, env, url) {
     return handleAddFriend(body, env);
   }
 
+  // POST /api/register-push-token
+  if (request.method === 'POST' && path === 'register-push-token') {
+    return handleRegisterPushToken(body, env);
+  }
+
   // GET /api/leaderboard[?username=x] — scoped to that user + their friends when given
   if (request.method === 'GET' && path === 'leaderboard') {
     return handleLeaderboard(env, url.searchParams.get('username'));
@@ -304,6 +309,36 @@ async function handleAddFriend(body, env) {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(friend.username || friendUsername)
+  });
+
+  return corsResponse(jsonResponse({ ok: true }));
+}
+
+async function handleRegisterPushToken(body, env) {
+  const { username, password, token } = body || {};
+
+  if (!username || !password || !token) {
+    return corsResponse(jsonResponse({ error: 'missing data' }, 400));
+  }
+
+  const key = userKey(username);
+
+  // Verify auth
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
+  const user = await userRes.json();
+
+  if (!user || user.password !== btoa(password)) {
+    return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
+  }
+
+  // RTDB rules require auth.uid === $uid for fcmTokens writes, which a
+  // username-keyed path can never satisfy from the client (there's no
+  // Firebase Auth identity tied to a username/password account) — so this
+  // goes through the worker's admin-authenticated rtdbFetch instead.
+  await rtdbFetch(`/users/${encodeURIComponent(key)}/fcmTokens/${encodeURIComponent(token)}.json`, env, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(true)
   });
 
   return corsResponse(jsonResponse({ ok: true }));
