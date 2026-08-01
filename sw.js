@@ -54,6 +54,12 @@ self.addEventListener('notificationclick', (event) => {
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
+        // An already-open tab used to just get focused, landing on whatever
+        // screen it happened to be on — not the room/invite the push was
+        // actually about. Navigate it to the link first, then focus.
+        if ('navigate' in client && 'focus' in client) {
+          return client.navigate(link).then(c => c.focus()).catch(() => client.focus());
+        }
         if ('focus' in client) return client.focus();
       }
       if (self.clients.openWindow) return self.clients.openWindow(link);

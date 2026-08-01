@@ -1235,8 +1235,10 @@ const FIREBASE_CONFIG = {
   appId: "1:174262670691:web:63a740ffd5436c19c2ef56"
 };
 const FCM_VAPID_KEY = "BN0h-AOs5pZ7sow5NPk-NXdCzKJG6Rv7sUvjq7QDaiL83yD1WEEadOwbV3a7DMsIUyAfsKBg_sesH3h84LdtiCY";
-const PUSH_RELAY_URL = "https://99ism-push.99ism-worker.workers.dev";
-const PUSH_RELAY_SECRET = "jhIlWyuUj0n3LYyxDxkFltmAx5eUSKH5suEjgRD9AK0";
+// Own worker, not the older 99ism-push one — this one accepts a per-notification
+// `link` (see notifyFriend), so a duel invite can deep-link straight to the room.
+const PUSH_RELAY_URL = "https://99ism-api.99ism-worker.workers.dev/push";
+const PUSH_RELAY_SECRET = "kJNSpd7TCyYe1rF7o9Lij7u4DSEz4tuIVNy7qQIHbh4=";
 let fbDb = null;
 let fbAuth = null;
 
@@ -2871,41 +2873,45 @@ document.getElementById('duelJoinBtn').addEventListener('click', ()=>{
   joinDuelAsGuest(duel.roomId, name);
 });
 
-/* read ?room= duel-invite param on load */
-(function readRoomParam(){
+/* read ?room= duel-invite param on load — Firebase now loads asynchronously
+   (see fbAuthReady above), so fbDb is essentially always still null at the
+   moment this runs; this used to bail out immediately with "недоступно"
+   instead of actually waiting for it to finish loading. */
+(async function readRoomParam(){
   const params = new URLSearchParams(location.search);
   const room = params.get('room');
-  if(room){
-    duel.roomId = room;
-    duel.seedStr = 'duel-'+room;
-    state.pendingRoomId = room;
-    if(fbDb){
-      fbDb.ref('duels/'+room).once('value').then(snap=>{
-        const data = snap.val();
-        if(!data){
-          showToast('Комната не найдена — возможно, ссылка устарела');
-          state.pendingRoomId = null;
-          resetQuizView();
-          return;
-        }
-        duel.len = data.len || 10;
-        duel.timerSeconds = data.timerSeconds || 0;
-        duel.direction = data.direction || 'n2m';
-        const players = data.players || {};
-        const hostName = (players[data.hostId] && players[data.hostId].name) || 'Друг';
-        const count = Object.keys(players).length;
-        document.getElementById('duelHostName').textContent = hostName;
-        document.getElementById('duelJoinCount').textContent = `Сейчас в комнате: ${count} ${count===1?'человек':'человека/человек'}`;
-        const djni = document.getElementById('duelJoinNameInput');
-        if(!djni.value && state.profile && state.profile.username) djni.value = state.profile.username;
-        go('quiz');
-        resetQuizView();
-      }).catch(()=>{ showToast('Не удалось подключиться к дуэли'); });
-    } else {
-      showToast('Live-дуэль недоступна: нет соединения с сервером');
-    }
-    history.replaceState({}, '', baseUrl());
+  if(!room) return;
+  duel.roomId = room;
+  duel.seedStr = 'duel-'+room;
+  state.pendingRoomId = room;
+  history.replaceState({}, '', baseUrl());
+
+  await fbAuthReady;
+  if(!fbDb){
+    showToast('Live-дуэль недоступна: нет соединения с сервером');
+    return;
   }
+  fbDb.ref('duels/'+room).once('value').then(snap=>{
+    const data = snap.val();
+    if(!data){
+      showToast('Комната не найдена — возможно, ссылка устарела');
+      state.pendingRoomId = null;
+      resetQuizView();
+      return;
+    }
+    duel.len = data.len || 10;
+    duel.timerSeconds = data.timerSeconds || 0;
+    duel.direction = data.direction || 'n2m';
+    const players = data.players || {};
+    const hostName = (players[data.hostId] && players[data.hostId].name) || 'Друг';
+    const count = Object.keys(players).length;
+    document.getElementById('duelHostName').textContent = hostName;
+    document.getElementById('duelJoinCount').textContent = `Сейчас в комнате: ${count} ${count===1?'человек':'человека/человек'}`;
+    const djni = document.getElementById('duelJoinNameInput');
+    if(!djni.value && state.profile && state.profile.username) djni.value = state.profile.username;
+    go('quiz');
+    resetQuizView();
+  }).catch(()=>{ showToast('Не удалось подключиться к дуэли'); });
 })();
 
 function applyChallenge(data){
@@ -3456,12 +3462,12 @@ function fbKey(username){
   return (username || '').trim().toLowerCase();
 }
 
-function notifyFriend(targetUid, title, body, tag){
+function notifyFriend(targetUid, title, body, tag, link){
   if(!targetUid) return;
   fetch(PUSH_RELAY_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ targetUid: fbKey(targetUid), title, body, tag, secret: PUSH_RELAY_SECRET })
+    body: JSON.stringify({ targetUid: fbKey(targetUid), title, body, tag, link, secret: PUSH_RELAY_SECRET })
   }).catch(()=>{});
 }
 
@@ -3614,7 +3620,7 @@ function sendDuelInvite(friendUid){
     len: duel.len, timerSeconds: duel.timerSeconds, direction: duel.direction, orderMode: duel.orderMode,
     at: firebase.database.ServerValue.TIMESTAMP
   });
-  notifyFriend(friendUid, '99 имён Аллаха', fromName+' приглашает вас на live-дуэль', 'duel-invite');
+  notifyFriend(friendUid, '99 имён Аллаха', fromName+' приглашает вас на live-дуэль', 'duel-invite', baseUrl()+'?room='+duel.roomId);
 }
 function sendChallengeToFriend(friendUid, q){
   if(!fbDb || !state.profile) return;

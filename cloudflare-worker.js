@@ -14,7 +14,10 @@
  *   POST /api/remove-friend  — Remove an existing friend (both directions)
  *   GET /api/leaderboard     — Get leaderboard
  *   POST /api/admin/user-count — Total registered users (single admin account only)
- *   POST /api/push-notify    — Send push notification (legacy)
+ *   POST /push                — Send a push notification (used by notifyFriend()
+ *                               in index.html for duel invites, challenges,
+ *                               friend requests; accepts an optional `link`
+ *                               field, defaults to https://99ism.ru/)
  *
  * Required secrets (Cloudflare dashboard -> Worker -> Settings -> Variables
  * and Secrets, all as "Encrypt"):
@@ -520,11 +523,12 @@ async function handlePush(request, env) {
   let body;
   try { body = await request.json(); } catch (e) { return corsResponse(jsonResponse({ error: 'bad json' }, 400)); }
 
-  const { targetUid, title, body: msgBody, tag, secret } = body || {};
+  const { targetUid, title, body: msgBody, tag, link, secret } = body || {};
   if (secret !== env.SHARED_SECRET) return corsResponse(jsonResponse({ error: 'forbidden' }, 403));
   if (!targetUid || !title) return corsResponse(jsonResponse({ error: 'missing targetUid/title' }, 400));
 
-    const tokensRes = await rtdbFetch(`/users/${encodeURIComponent(targetUid)}/fcmTokens.json`, env);
+    const key = userKey(targetUid);
+    const tokensRes = await rtdbFetch(`/users/${encodeURIComponent(key)}/fcmTokens.json`, env);
     const tokensObj = await tokensRes.json();
     const tokens = tokensObj ? Object.keys(tokensObj) : [];
     if (!tokens.length) return corsResponse(jsonResponse({ ok: true, sent: 0, reason: 'no tokens' }));
@@ -540,7 +544,7 @@ async function handlePush(request, env) {
         body: JSON.stringify({
           message: {
             token,
-            data: { title, body: msgBody || '', tag: tag || 'ism-notify', link: 'https://99ism.ru/' },
+            data: { title, body: msgBody || '', tag: tag || 'ism-notify', link: link || 'https://99ism.ru/' },
             webpush: { headers: { Urgency: 'high' } }
           }
         })
@@ -554,7 +558,7 @@ async function handlePush(request, env) {
 
     if (deadTokens.length) {
       await Promise.all(deadTokens.map(t =>
-        rtdbFetch(`/users/${encodeURIComponent(targetUid)}/fcmTokens/${encodeURIComponent(t)}.json`, env, { method: 'DELETE' })
+        rtdbFetch(`/users/${encodeURIComponent(key)}/fcmTokens/${encodeURIComponent(t)}.json`, env, { method: 'DELETE' })
       ));
     }
 
