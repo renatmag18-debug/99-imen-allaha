@@ -1355,10 +1355,23 @@ console.assert(NAMES.length===99, "Ожидается 99 имён, найден�
 /* =====================================================
    STATE
 ===================================================== */
+function loadLearned(){
+  try{ return new Set(JSON.parse(localStorage.getItem('learnedNames')||'[]')); }catch(e){ return new Set(); }
+}
+function saveLearned(){
+  try{ localStorage.setItem('learnedNames', JSON.stringify(Array.from(state.learned))); }catch(e){}
+}
+function loadBestScore(){
+  try{ return JSON.parse(localStorage.getItem('bestScore')||'null'); }catch(e){ return null; }
+}
+function saveBestScore(){
+  try{ localStorage.setItem('bestScore', JSON.stringify(state.bestScore)); }catch(e){}
+}
+
 const state = {
   screen: 'home',
-  learned: new Set(),
-  bestScore: null,
+  learned: loadLearned(),
+  bestScore: loadBestScore(),
   sheetIndex: 0,
   filtered: NAMES.map((n,i)=>i),
   quiz: null, // {order, qIndex, score, len, answered}
@@ -1550,6 +1563,7 @@ document.getElementById('pracRevealBtn').addEventListener('click', ()=>{
 });
 document.getElementById('pracKnowBtn').addEventListener('click', ()=>{
   state.learned.add(practiceCurrent);
+  saveLearned();
   practiceQueue.shift();
   renderGrid(); updateHomeStats();
   showPracticeCard();
@@ -2069,6 +2083,7 @@ document.getElementById('sheetNext').addEventListener('click', ()=>{
 document.getElementById('learnedBtn').addEventListener('click', ()=>{
   const i = state.sheetIndex;
   if(state.learned.has(i)) state.learned.delete(i); else state.learned.add(i);
+  saveLearned();
   renderSheet(); renderGrid(); updateHomeStats();
 });
 // swipe on sheet body
@@ -2356,7 +2371,7 @@ function finishQuiz(){
   renderMistakes();
 
   const pct = Math.round(q.score/q.len*100);
-  if(!state.bestScore || pct > state.bestScore.pct) state.bestScore = {pct, score:q.score, len:q.len};
+  if(!state.bestScore || pct > state.bestScore.pct){ state.bestScore = {pct, score:q.score, len:q.len}; saveBestScore(); }
   updateHomeStats();
 
   document.getElementById('scoreNum').textContent = q.score+'/'+q.len;
