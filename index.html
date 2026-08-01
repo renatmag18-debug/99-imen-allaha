@@ -982,6 +982,22 @@ body{
             <button class="btn btn-ghost" id="loginBtn" style="flex:1;">Вход</button>
           </div>
           <p id="authStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;"></p>
+          <button id="forgotPasswordToggle" style="background:none;border:none;color:var(--gold-soft);font-size:11px;cursor:pointer;margin-top:10px;width:100%;text-decoration:underline;">Забыли пароль?</button>
+        </div>
+
+        <div class="profile-card" id="resetPasswordCard" style="display:none;">
+          <div style="text-align:center;margin-bottom:14px;color:var(--ivory-dim);font-size:12px;">Введите свой никнейм для сброса пароля</div>
+          <div class="profile-name-field">
+            <label>Никнейм</label>
+            <input type="text" id="resetUsernameInput" placeholder="Ваш никнейм" maxlength="20">
+          </div>
+          <div class="profile-name-field">
+            <label>Новый пароль</label>
+            <input type="password" id="resetPasswordInput" placeholder="Новый пароль" maxlength="20">
+          </div>
+          <button class="btn btn-primary" id="resetPasswordBtn" style="width:100%;">Сбросить пароль</button>
+          <button class="btn btn-ghost" id="resetPasswordCancelBtn" style="width:100%;margin-top:10px;">Отмена</button>
+          <p id="resetStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;"></p>
         </div>
 
         <div class="profile-card" id="profileCard" style="display:none;">
@@ -2789,6 +2805,45 @@ document.getElementById('logoutBtn').addEventListener('click', ()=>{
   state.profile = { username: '', authenticated: false };
   updateProfileUI();
   showToast('Вы вышли');
+});
+
+document.getElementById('forgotPasswordToggle').addEventListener('click', ()=>{
+  document.getElementById('authCard').style.display = 'none';
+  document.getElementById('resetPasswordCard').style.display = 'block';
+});
+
+document.getElementById('resetPasswordCancelBtn').addEventListener('click', ()=>{
+  document.getElementById('authCard').style.display = 'block';
+  document.getElementById('resetPasswordCard').style.display = 'none';
+  document.getElementById('resetUsernameInput').value = '';
+  document.getElementById('resetPasswordInput').value = '';
+  document.getElementById('resetStatus').textContent = '';
+});
+
+document.getElementById('resetPasswordBtn').addEventListener('click', ()=>{
+  const username = document.getElementById('resetUsernameInput').value.trim();
+  const newPassword = document.getElementById('resetPasswordInput').value.trim();
+  const resetStatus = document.getElementById('resetStatus');
+
+  if(!username || !newPassword){ resetStatus.textContent = 'Введите никнейм и новый пароль'; return; }
+  if(newPassword.length < 3){ resetStatus.textContent = 'Пароль минимум 3 символа'; return; }
+
+  const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
+  if(!allUsers[username]){ resetStatus.textContent = 'Пользователь не найден'; return; }
+
+  allUsers[username].password = btoa(newPassword);
+  localStorage.setItem('users', JSON.stringify(allUsers));
+
+  resetStatus.textContent = 'Пароль сброшен! Теперь можете войти';
+  setTimeout(()=>{
+    document.getElementById('authCard').style.display = 'block';
+    document.getElementById('resetPasswordCard').style.display = 'none';
+    document.getElementById('usernameInput').value = username;
+    document.getElementById('passwordInput').value = '';
+    document.getElementById('resetUsernameInput').value = '';
+    document.getElementById('resetPasswordInput').value = '';
+    document.getElementById('resetStatus').textContent = '';
+  }, 1500);
 });
 document.getElementById('addFriendBtn').addEventListener('click', addFriendByUsername);
 document.getElementById('friendUsernameInput').addEventListener('keydown', e=>{
