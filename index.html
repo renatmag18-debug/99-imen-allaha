@@ -3142,8 +3142,14 @@ updateHomeStats();
    it might change. */
 (function setAppHeight(){
   const app = document.getElementById('app');
+  const getSafeBottom = () => {
+    const root = document.documentElement;
+    const computedStyle = getComputedStyle(root);
+    const safeBottom = computedStyle.getPropertyValue('--safe-bottom');
+    return parseInt(safeBottom) || 0;
+  };
   const measure = () => (window.visualViewport && window.visualViewport.height) || window.innerHeight;
-  const apply = () => { app.style.height = measure() + 'px'; };
+  const apply = () => { app.style.height = (measure() + getSafeBottom()) + 'px'; };
   apply();
   window.addEventListener('resize', apply);
   window.addEventListener('orientationchange', apply);
