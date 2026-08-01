@@ -545,6 +545,18 @@ body{
 .friend-action-btn.accept{ border-color:var(--jade); color:var(--jade); }
 .friend-action-btn.decline{ border-color:var(--rose); color:var(--rose); }
 .friend-action-btn.duel{ border-color:var(--gold); color:var(--gold-soft); }
+.friend-action-btn.duel-invite{
+  width:auto; padding:0 12px; border-color:var(--gold); color:var(--gold-soft); font-size:12px; font-weight:700; white-space:nowrap;
+}
+.friend-menu-wrap{ position:relative; }
+.friend-menu{
+  display:none; position:absolute; top:40px; right:0; background:var(--panel); border:1px solid var(--line);
+  border-radius:12px; padding:6px 0; min-width:150px; box-shadow:0 4px 12px rgba(0,0,0,0.3); z-index:100;
+}
+.friend-menu button{
+  display:block; width:100%; text-align:left; padding:9px 14px; background:none; border:none; color:var(--rose);
+  cursor:pointer; font-family:var(--font-body); font-size:13px;
+}
 
 .invite-banner{
   border:1px solid var(--gold); border-radius:16px; padding:14px 16px; margin-bottom:12px;
@@ -3178,6 +3190,7 @@ document.getElementById('profileMenuBtn').addEventListener('click', (e)=>{
 
 document.addEventListener('click', ()=>{
   document.getElementById('profileMenu').style.display = 'none';
+  document.querySelectorAll('.friend-menu').forEach(m => m.style.display = 'none');
 });
 
 document.getElementById('profileMenu').addEventListener('click', (e)=>{
@@ -3469,10 +3482,13 @@ function renderFriendsScreen(){
         <div class="friend-avatar">${escapeHtml(avatarLetter(f.name))}</div>
         <div class="friend-name">${escapeHtml(f.name)}</div>
         <div class="friend-actions">
-          <button class="friend-action-btn duel" data-duel-friend="${escapeHtml(f.uid)}" title="Live-дуэль">⚡</button>
-          <button class="friend-action-btn decline" data-remove-friend="${escapeHtml(f.uid)}" title="Удалить из друзей">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-          </button>
+          <button class="friend-action-btn duel-invite" data-duel-friend="${escapeHtml(f.uid)}">Пригласить на дуэль</button>
+          <div class="friend-menu-wrap">
+            <button class="friend-action-btn menu" data-friend-menu="${escapeHtml(f.uid)}" title="Ещё">⋮</button>
+            <div class="friend-menu" data-friend-menu-panel="${escapeHtml(f.uid)}">
+              <button data-remove-friend="${escapeHtml(f.uid)}">Удалить из друзей</button>
+            </div>
+          </div>
         </div>
       </div>`).join('');
   } else {
@@ -3489,6 +3505,7 @@ document.getElementById('friendRequestsList').addEventListener('click', e=>{
 });
 document.getElementById('friendsList').addEventListener('click', e=>{
   const duelBtn = e.target.closest('[data-duel-friend]');
+  const menuBtn = e.target.closest('[data-friend-menu]');
   const removeBtn = e.target.closest('[data-remove-friend]');
   if(duelBtn){
     if(!fbDb){ showToast('Live-дуэль недоступна: нет соединения с сервером'); return; }
@@ -3498,6 +3515,12 @@ document.getElementById('friendsList').addEventListener('click', e=>{
     document.getElementById('duelSetupScreen').style.display='block';
     duelPickedFriends = [duelBtn.dataset.duelFriend];
     updateDuelPickSummary();
+  } else if(menuBtn){
+    e.stopPropagation();
+    const panel = document.querySelector(`[data-friend-menu-panel="${CSS.escape(menuBtn.dataset.friendMenu)}"]`);
+    const isOpen = panel.style.display === 'block';
+    document.querySelectorAll('.friend-menu').forEach(m => m.style.display = 'none');
+    panel.style.display = isOpen ? 'none' : 'block';
   } else if(removeBtn){
     removeFriend(removeBtn.dataset.removeFriend);
   }
