@@ -116,8 +116,8 @@ body{
 .screen{
   position:absolute; inset:0;
   display:flex; flex-direction:column; min-height:0;
-  opacity:0; transform:translateY(18px) scale(.985);
-  pointer-events:none; transition:opacity .5s var(--ease), transform .5s var(--ease);
+  opacity:0; transform:none;
+  pointer-events:none;
 }
 .screen.active{ opacity:1; transform:none; pointer-events:auto; }
 .screen.exit-left{ transform:translateX(-24px) scale(.98); }
