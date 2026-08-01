@@ -3059,7 +3059,9 @@ document.getElementById('registerBtn').addEventListener('click', async ()=>{
   if(result.error){
     // Fallback to localStorage if API fails
     const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
-    if(allUsers[username]){ registerStatus.textContent = 'Этот никнейм уже занят'; return; }
+    if(Object.keys(allUsers).some(k => k.toLowerCase() === username.toLowerCase())){
+      registerStatus.textContent = 'Этот никнейм уже занят'; return;
+    }
 
     allUsers[username] = { password: btoa(password), securityQuestion, securityAnswer };
     localStorage.setItem('users', JSON.stringify(allUsers));
@@ -3088,25 +3090,31 @@ document.getElementById('loginBtn').addEventListener('click', async ()=>{
 
   // Try to login via API
   const result = await apiLogin(username, password);
+  let canonicalUsername = username;
 
   if(result.error){
-    // Fallback to localStorage if API fails
+    // Fallback to localStorage if API fails — match the nickname regardless
+    // of how it was cased when the account was first created here.
     const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
-    const localUser = allUsers[username];
+    const matchKey = Object.keys(allUsers).find(k => k.toLowerCase() === username.toLowerCase());
+    const localUser = matchKey ? allUsers[matchKey] : null;
     if(!localUser || localUser.password !== btoa(password)){
       authStatus.textContent = 'Неверный никнейм или пароль';
       return;
     }
+    canonicalUsername = matchKey;
     // Account predates the backend (or the server was briefly unreachable) —
     // create it server-side now so sync/leaderboard/friends start working.
-    const migrated = await apiRegister(username, password, localUser.securityQuestion, localUser.securityAnswer);
+    const migrated = await apiRegister(canonicalUsername, password, localUser.securityQuestion, localUser.securityAnswer);
     if(migrated && !migrated.error){
       setTimeout(()=>showToast('Аккаунт синхронизирован с сервером'), 400);
     }
+  } else if(result.username){
+    canonicalUsername = result.username;
   }
 
-  saveUsername(username);
-  state.profile = { username, authenticated: true };
+  saveUsername(canonicalUsername);
+  state.profile = { username: canonicalUsername, authenticated: true };
   updateProfileUI();
   authStatus.textContent = 'Вход выполнен!';
   document.getElementById('usernameInput').value = '';
@@ -3191,9 +3199,12 @@ document.getElementById('resetPasswordCancelBtn').addEventListener('click', ()=>
   document.getElementById('newPasswordField').style.display = 'none';
   document.getElementById('resetStatus').textContent = '';
   document.getElementById('resetPasswordBtn').textContent = 'Дальше';
+  resetStep = 'username';
+  resetCanonicalUsername = null;
 });
 
 let resetStep = 'username'; // username -> answer -> password
+let resetCanonicalUsername = null;
 
 document.getElementById('resetPasswordBtn').addEventListener('click', ()=>{
   const resetStatus = document.getElementById('resetStatus');
@@ -3202,16 +3213,18 @@ document.getElementById('resetPasswordBtn').addEventListener('click', ()=>{
   if(resetStep === 'username'){
     const username = document.getElementById('resetUsernameInput').value.trim();
     if(!username){ resetStatus.textContent = 'Введите никнейм'; return; }
-    if(!allUsers[username]){ resetStatus.textContent = 'Пользователь не найден'; return; }
+    const matchKey = Object.keys(allUsers).find(k => k.toLowerCase() === username.toLowerCase());
+    if(!matchKey){ resetStatus.textContent = 'Пользователь не найден'; return; }
+    resetCanonicalUsername = matchKey;
 
-    const questionText = allUsers[username].securityQuestion || 'Контрольный вопрос';
+    const questionText = allUsers[matchKey].securityQuestion || 'Контрольный вопрос';
     document.getElementById('securityQuestionLabel').textContent = questionText;
     document.getElementById('securityQuestionField').style.display = 'block';
     resetStatus.textContent = '';
     resetStep = 'answer';
   }
   else if(resetStep === 'answer'){
-    const username = document.getElementById('resetUsernameInput').value.trim();
+    const username = resetCanonicalUsername;
     const answer = document.getElementById('resetSecurityAnswerInput').value.trim().toLowerCase();
     if(!answer){ resetStatus.textContent = 'Введите ответ'; return; }
     if(allUsers[username].securityAnswer !== answer){ resetStatus.textContent = 'Неверный ответ'; return; }
@@ -3222,7 +3235,7 @@ document.getElementById('resetPasswordBtn').addEventListener('click', ()=>{
     resetStep = 'password';
   }
   else if(resetStep === 'password'){
-    const username = document.getElementById('resetUsernameInput').value.trim();
+    const username = resetCanonicalUsername;
     const newPassword = document.getElementById('resetPasswordInput').value.trim();
     if(!newPassword){ resetStatus.textContent = 'Введите новый пароль'; return; }
     if(newPassword.length < 3){ resetStatus.textContent = 'Пароль минимум 3 символа'; return; }
@@ -3273,7 +3286,7 @@ async function addFriendByUsername(){
   if(result.error){
     // Fallback to localStorage
     const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
-    if(!allUsers[friendUsername]){
+    if(!Object.keys(allUsers).some(k => k.toLowerCase() === friendUsername.toLowerCase())){
       showToast('Пользователь не найден');
       return;
     }
