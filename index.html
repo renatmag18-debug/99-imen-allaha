@@ -1213,10 +1213,6 @@ body{
   <div class="toast" id="toast">Ссылка скопирована</div>
 </div>
 
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script>
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDk_VEd7etsz22k3M41kSObWYhv9SfeGkw",
@@ -1232,23 +1228,50 @@ const PUSH_RELAY_URL = "https://99ism-push.99ism-worker.workers.dev";
 const PUSH_RELAY_SECRET = "jhIlWyuUj0n3LYyxDxkFltmAx5eUSKH5suEjgRD9AK0";
 let fbDb = null;
 let fbAuth = null;
+
+// Firebase's SDK scripts used to be blocking <script src> tags right here,
+// ahead of the entire app script below — on a slow or blocked connection to
+// gstatic.com (VPN issues, regional blocks) the browser would sit there
+// unable to parse/run anything after it, so the app never got past the
+// static logo/home markup already in the HTML. Loading them dynamically
+// instead means that failure mode can only ever cost Firebase-dependent
+// features (live duels, push) — every one of them already checks `fbDb`
+// for null before touching it, so the rest of the app is unaffected.
+function loadScriptTag(src){
+  return new Promise((resolve, reject)=>{
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('failed to load ' + src));
+    document.head.appendChild(s);
+  });
+}
+
 // Resolves once we have a signed-in (anonymous) Firebase user, so DB writes
 // carry a real auth.uid the security rules can check. Friends/codes/invites
 // are gated on this identity — see README note near FRIENDS section below.
-let fbAuthReady = Promise.resolve(null);
-try{
-  if(window.firebase){
+// Resolves to null if the SDK never loads, same as the old synchronous path.
+let fbAuthReady = (async () => {
+  try{
+    await loadScriptTag('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
+    await loadScriptTag('https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js');
+    await loadScriptTag('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js');
+    await loadScriptTag('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
+
     firebase.initializeApp(FIREBASE_CONFIG);
     fbDb = firebase.database();
     fbAuth = firebase.auth();
-    fbAuthReady = new Promise(resolve=>{
+    return new Promise(resolve=>{
       const unsub = fbAuth.onAuthStateChanged(user=>{
         if(user){ unsub(); resolve(user); }
       });
       fbAuth.signInAnonymously().catch(e=>{ console.warn('Anonymous sign-in failed:', e); resolve(null); });
     });
+  }catch(e){
+    console.warn('Firebase init failed:', e);
+    return null;
   }
-}catch(e){ console.warn('Firebase init failed:', e); }
+})();
 </script>
 <script>
 /* =====================================================
