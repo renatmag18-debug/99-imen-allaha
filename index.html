@@ -3250,7 +3250,7 @@ async function addFriendByUsername(){
   const input = document.getElementById('friendUsernameInput');
   const friendUsername = input.value.trim();
   if(!friendUsername) return;
-  if(friendUsername === state.profile.username){ showToast('Это ваш собственный никнейм'); return; }
+  if(friendUsername.toLowerCase() === state.profile.username.toLowerCase()){ showToast('Это ваш собственный никнейм'); return; }
 
   const allFriends = JSON.parse(localStorage.getItem('friends') || '{}');
   if(!allFriends[state.profile.username]) allFriends[state.profile.username] = [];

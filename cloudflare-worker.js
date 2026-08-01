@@ -30,6 +30,14 @@ const RTDB_BASE = 'https://ism-friends-default-rtdb.firebaseio.com';
 // and silently falls back to unauthenticated for OAuth2 tokens) — see getAccessToken().
 const RTDB_SCOPE = 'https://www.googleapis.com/auth/firebase.database https://www.googleapis.com/auth/userinfo.email';
 
+// Usernames are case-insensitive: RTDB keys are always the lowercased form,
+// while the originally-typed casing is kept in each user's `.username` field
+// for display (so "Abu Yusuf" still shows as "Abu Yusuf" after logging in
+// as "abu yusuf").
+function userKey(username) {
+  return (username || '').trim().toLowerCase();
+}
+
 async function rtdbFetch(path, env, options) {
   const token = await getAccessToken(env, RTDB_SCOPE);
   const opts = { ...options, headers: { ...(options && options.headers), 'Authorization': `Bearer ${token}` } };
@@ -118,9 +126,9 @@ const ADMIN_USERNAME = 'Abu Yusuf';
 async function handleAdminUserCount(body, env) {
   const { username, password } = body || {};
   if (!username || !password) return corsResponse(jsonResponse({ error: 'missing auth' }, 401));
-  if (username !== ADMIN_USERNAME) return corsResponse(jsonResponse({ error: 'forbidden' }, 403));
+  if (userKey(username) !== userKey(ADMIN_USERNAME)) return corsResponse(jsonResponse({ error: 'forbidden' }, 403));
 
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(username)}.json`, env);
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(userKey(username))}.json`, env);
   const user = await userRes.json();
   if (!user || user.password !== btoa(password)) return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
 
@@ -145,8 +153,10 @@ async function handleRegister(body, env) {
     return corsResponse(jsonResponse({ error: 'username and password must be at least 3 chars' }, 400));
   }
 
+  const key = userKey(username);
+
   // Check if user exists
-  const existingRes = await rtdbFetch(`/users/${encodeURIComponent(username)}.json`, env);
+  const existingRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
   const existing = await existingRes.json();
 
   if (existing && existing.password) {
@@ -154,8 +164,9 @@ async function handleRegister(body, env) {
   }
 
   // Create user
+  const displayUsername = username.trim();
   const userData = {
-    username,
+    username: displayUsername,
     password: btoa(password),
     securityQuestion: securityQuestion || 'default',
     securityAnswer: (securityAnswer || '').toLowerCase(),
@@ -168,7 +179,7 @@ async function handleRegister(body, env) {
     }
   };
 
-  const createRes = await rtdbFetch(`/users/${encodeURIComponent(username)}.json`, env, {
+  const createRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(userData)
@@ -178,7 +189,7 @@ async function handleRegister(body, env) {
     return corsResponse(jsonResponse({ error: 'failed to create user' }, 500));
   }
 
-  return corsResponse(jsonResponse({ ok: true, username }));
+  return corsResponse(jsonResponse({ ok: true, username: displayUsername }));
 }
 
 async function handleLogin(body, env) {
@@ -188,7 +199,7 @@ async function handleLogin(body, env) {
     return corsResponse(jsonResponse({ error: 'missing username or password' }, 400));
   }
 
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(username)}.json`, env);
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(userKey(username))}.json`, env);
   const user = await userRes.json();
 
   if (!user || !user.password || user.password !== btoa(password)) {
@@ -197,7 +208,7 @@ async function handleLogin(body, env) {
 
   return corsResponse(jsonResponse({
     ok: true,
-    username,
+    username: user.username || username,
     stats: user.stats || {}
   }));
 }
@@ -210,7 +221,7 @@ async function handleSyncProgress(body, env) {
   }
 
   // Verify auth
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(username)}.json`, env);
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(userKey(username))}.json`, env);
   const user = await userRes.json();
 
   if (!user || user.password !== btoa(password)) {
@@ -224,7 +235,7 @@ async function handleSyncProgress(body, env) {
     updateData.stats = { ...user.stats, ...stats, lastActive: new Date().toISOString() };
   }
 
-  await rtdbFetch(`/users/${encodeURIComponent(username)}.json`, env, {
+  await rtdbFetch(`/users/${encodeURIComponent(userKey(username))}.json`, env, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(updateData)
@@ -234,7 +245,7 @@ async function handleSyncProgress(body, env) {
 }
 
 async function handleGetProfile(username, env) {
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(username)}.json`, env);
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(userKey(username))}.json`, env);
   const user = await userRes.json();
 
   if (!user) {
@@ -242,21 +253,22 @@ async function handleGetProfile(username, env) {
   }
 
   return corsResponse(jsonResponse({
-    username,
+    username: user.username || username,
     stats: user.stats || {},
     friendsCount: Object.keys(user.friends || {}).length
   }));
 }
 
 async function handleGetFriends(username, env) {
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(username)}.json`, env);
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(userKey(username))}.json`, env);
   const user = await userRes.json();
 
   if (!user) {
     return corsResponse(jsonResponse({ error: 'user not found' }, 404));
   }
 
-  const friends = Object.keys(user.friends || {});
+  // Friends are stored as {lowercaseKey: displayName} — return the display names.
+  const friends = Object.values(user.friends || {});
   return corsResponse(jsonResponse({ friends }));
 }
 
@@ -267,8 +279,11 @@ async function handleAddFriend(body, env) {
     return corsResponse(jsonResponse({ error: 'missing data' }, 400));
   }
 
+  const key = userKey(username);
+  const friendKey = userKey(friendUsername);
+
   // Verify auth
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(username)}.json`, env);
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
   const user = await userRes.json();
 
   if (!user || user.password !== btoa(password)) {
@@ -276,18 +291,19 @@ async function handleAddFriend(body, env) {
   }
 
   // Check if friend exists
-  const friendRes = await rtdbFetch(`/users/${encodeURIComponent(friendUsername)}.json`, env);
+  const friendRes = await rtdbFetch(`/users/${encodeURIComponent(friendKey)}.json`, env);
   const friend = await friendRes.json();
 
   if (!friend || !friend.password) {
     return corsResponse(jsonResponse({ error: 'friend not found' }, 404));
   }
 
-  // Add friend
-  await rtdbFetch(`/users/${encodeURIComponent(username)}/friends/${encodeURIComponent(friendUsername)}.json`, env, {
+  // Add friend — store their display-cased username as the value so the
+  // friends list can show proper casing without a lookup per friend.
+  await rtdbFetch(`/users/${encodeURIComponent(key)}/friends/${encodeURIComponent(friendKey)}.json`, env, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(true)
+    body: JSON.stringify(friend.username || friendUsername)
   });
 
   return corsResponse(jsonResponse({ ok: true }));
@@ -305,14 +321,15 @@ async function handleLeaderboard(env, scopeUsername) {
 
   let allowed = null;
   if (scopeUsername) {
-    const scopeUser = users[scopeUsername];
-    allowed = new Set([scopeUsername, ...Object.keys((scopeUser && scopeUser.friends) || {})]);
+    const scopeKey = userKey(scopeUsername);
+    const scopeUser = users[scopeKey];
+    allowed = new Set([scopeKey, ...Object.keys((scopeUser && scopeUser.friends) || {})]);
   }
 
   const leaderboard = Object.entries(users)
-    .filter(([username, user]) => user.stats && (!allowed || allowed.has(username)))
-    .map(([username, user]) => ({
-      username,
+    .filter(([key, user]) => user.stats && (!allowed || allowed.has(key)))
+    .map(([key, user]) => ({
+      username: user.username || key,
       totalStudied: user.stats.totalStudied || 0,
       correctAnswers: user.stats.correctAnswers || 0,
       friendsCount: Object.keys(user.friends || {}).length,
