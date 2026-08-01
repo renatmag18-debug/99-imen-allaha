@@ -975,7 +975,12 @@ body{
           </div>
           <div class="profile-name-field">
             <label>Пароль</label>
-            <input type="password" id="passwordInput" placeholder="Пароль" maxlength="20">
+            <div style="position:relative;">
+              <input type="password" id="passwordInput" placeholder="Пароль" maxlength="20">
+              <button type="button" id="togglePassword" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--gold-soft);cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center;">
+                <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+              </button>
+            </div>
           </div>
           <div class="profile-name-field">
             <label>Контрольный вопрос</label>
@@ -2775,6 +2780,19 @@ function updateProfileUI(){
     addFriendForm.style.display = 'none';
   }
 }
+
+document.getElementById('togglePassword').addEventListener('click', (e)=>{
+  e.preventDefault();
+  const passwordInput = document.getElementById('passwordInput');
+  const isPassword = passwordInput.type === 'password';
+  passwordInput.type = isPassword ? 'text' : 'password';
+  const btn = e.target.closest('button');
+  if(isPassword){
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><line x1="3" y1="21" x2="21" y2="3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+  } else {
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+  }
+});
 
 document.getElementById('securityQuestionInput').addEventListener('change', ()=>{
   const value = document.getElementById('securityQuestionInput').value;
