@@ -968,32 +968,33 @@ body{
 
         <div id="friendInvitesArea"></div>
 
-        <div class="profile-card">
+        <div class="profile-card" id="authCard">
           <div class="profile-name-field">
-            <label>Ваше имя</label>
-            <input type="text" id="myNameInput" placeholder="Как вас называть друзьям?" maxlength="24">
+            <label>Никнейм</label>
+            <input type="text" id="usernameInput" placeholder="Ваш никнейм" maxlength="20">
           </div>
-          <div class="code-box">
-            <div>
-              <label style="margin-bottom:4px;">Ваш код</label>
-              <div class="code-value" id="myCodeValue">······</div>
-            </div>
-            <button class="code-copy-btn" id="myCodeCopyBtn" title="Скопировать код">
-              <svg viewBox="0 0 24 24" fill="none"><rect x="8" y="8" width="12" height="12" rx="2.5" stroke="currentColor" stroke-width="1.6"/><path d="M16 8V6.5A2.5 2.5 0 0013.5 4H6a2 2 0 00-2 2v7.5A2.5 2.5 0 006.5 16H8" stroke="currentColor" stroke-width="1.6"/></svg>
-            </button>
+          <div class="profile-name-field">
+            <label>Пароль</label>
+            <input type="password" id="passwordInput" placeholder="Пароль" maxlength="20">
           </div>
-          <button class="btn btn-ghost" id="enableNotifBtn" style="width:100%;margin-top:14px;display:none;">🔔 Включить уведомления</button>
-          <p id="notifStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;display:none;"></p>
-          <div style="display:flex;gap:10px;margin-top:14px;">
-            <button class="btn btn-ghost" id="exportProgressBtn" style="flex:1;font-size:13px;">💾 Экспорт</button>
-            <button class="btn btn-ghost" id="importProgressBtn" style="flex:1;font-size:13px;">📂 Импорт</button>
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-primary" id="registerBtn" style="flex:1;">Регистрация</button>
+            <button class="btn btn-ghost" id="loginBtn" style="flex:1;">Вход</button>
           </div>
-          <input type="file" id="importProgressInput" accept=".json" style="display:none;">
+          <p id="authStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;"></p>
         </div>
 
-        <div class="add-friend-form">
-          <input type="text" id="friendCodeInput" placeholder="Код друга" maxlength="10">
-          <button class="btn btn-primary" id="addFriendBtn">Добавить</button>
+        <div class="profile-card" id="profileCard" style="display:none;">
+          <div style="text-align:center;margin-bottom:14px;">
+            <div style="font-size:14px;color:var(--ivory-dim);margin-bottom:4px;">Вы вошли как</div>
+            <div style="font-size:16px;color:var(--gold-soft);font-weight:700;" id="usernameDisplay"></div>
+          </div>
+          <button class="btn btn-ghost" id="logoutBtn" style="width:100%;">Выход</button>
+        </div>
+
+        <div class="add-friend-form" id="addFriendForm" style="display:none;">
+          <input type="text" id="friendUsernameInput" placeholder="Никнейм друга" maxlength="20">
+          <button class="btn btn-primary" id="addFriendBtn">Добавить в друзья</button>
         </div>
 
         <div id="friendRequestsSection" style="display:none">
@@ -2712,153 +2713,115 @@ function avatarLetter(name){
 }
 
 async function initProfile(){
-  // show cached name/code instantly while we wait for a verified identity
-  const name = localStorage.getItem('myName') || '';
-  let code = localStorage.getItem('myCode') || '';
-  state.profile = { uid: null, name, code };
+  const username = localStorage.getItem('username') || '';
+  state.profile = { username, authenticated: !!username };
   updateProfileUI();
-  if(!fbDb || !fbAuth) return;
-
-  // uid MUST come from Firebase Auth (not a client-picked value) — the
-  // security rules only let a client write users/{uid} when auth.uid
-  // matches {uid}, so a self-assigned id would just get PERMISSION_DENIED.
-  const user = await fbAuthReady;
-  if(!user) return;
-  const uid = user.uid;
-  state.profile.uid = uid;
-
-  if(!code){
-    for(let i=0;i<8;i++){
-      const candidate = randomFriendCode(6);
-      const exists = (await fbDb.ref('codes/'+candidate).once('value')).exists();
-      if(!exists){ code = candidate; break; }
-    }
-    if(!code) code = randomFriendCode(8);
-    localStorage.setItem('myCode', code);
-    state.profile.code = code;
-    fbDb.ref('codes/'+code).set(uid);
-    updateProfileUI();
-  }
-  fbDb.ref('users/'+uid).update({
-    code: state.profile.code,
-    name: state.profile.name,
-    updatedAt: firebase.database.ServerValue.TIMESTAMP
-  });
-  listenFriendsRealtime();
+  if(username) listenFriendsRealtime();
   updateNotifUI();
-  if(pushSupported() && Notification.permission === 'granted') registerPushToken();
 }
 
 function updateProfileUI(){
-  if(!state.profile) return;
-  const nameInput = document.getElementById('myNameInput');
-  if(document.activeElement !== nameInput) nameInput.value = state.profile.name;
-  document.getElementById('myCodeValue').textContent = state.profile.code || '······';
-}
+  const authCard = document.getElementById('authCard');
+  const profileCard = document.getElementById('profileCard');
+  const addFriendForm = document.getElementById('addFriendForm');
 
-document.getElementById('myNameInput').addEventListener('change', ()=>{
-  const val = document.getElementById('myNameInput').value.trim().slice(0,24);
-  if(!state.profile) return;
-  state.profile.name = val;
-  localStorage.setItem('myName', val);
-  if(!fbDb || !state.profile.uid) return; // identity not ready yet — synced once initProfile() finishes
-  fbDb.ref('users/'+state.profile.uid+'/name').set(val);
-  // keep denormalized copies in friends' lists in sync
-  state.friendsList.forEach(f=>{
-    fbDb.ref('users/'+f.uid+'/friends/'+state.profile.uid+'/name').set(val);
-  });
-});
-
-document.getElementById('myCodeCopyBtn').addEventListener('click', async ()=>{
-  if(!state.profile || !state.profile.code) return;
-  try{ await navigator.clipboard.writeText(state.profile.code); showToast('Код скопирован!'); }
-  catch(e){ showToast(state.profile.code); }
-});
-
-function exportProgress(){
-  const progressData = {};
-  for(let i=0; i<localStorage.length; i++){
-    const key = localStorage.key(i);
-    if(key && (key.startsWith('study-pos-') || key === 'myName' || key === 'myCode' || key === 'quizRecentIdx')){
-      progressData[key] = localStorage.getItem(key);
-    }
+  if(state.profile && state.profile.authenticated){
+    authCard.style.display = 'none';
+    profileCard.style.display = 'block';
+    addFriendForm.style.display = 'flex';
+    document.getElementById('usernameDisplay').textContent = state.profile.username;
+  } else {
+    authCard.style.display = 'block';
+    profileCard.style.display = 'none';
+    addFriendForm.style.display = 'none';
   }
-  const timestamp = new Date().toISOString().split('T')[0];
-  const filename = `99-imen-progress-${timestamp}.json`;
-  const dataStr = JSON.stringify(progressData, null, 2);
-  const blob = new Blob([dataStr], {type: 'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast('Прогресс сохранён');
 }
 
-function importProgress(){
-  document.getElementById('importProgressInput').click();
-}
+document.getElementById('registerBtn').addEventListener('click', async ()=>{
+  const username = document.getElementById('usernameInput').value.trim();
+  const password = document.getElementById('passwordInput').value.trim();
+  const authStatus = document.getElementById('authStatus');
 
-document.getElementById('importProgressBtn').addEventListener('click', importProgress);
-document.getElementById('exportProgressBtn').addEventListener('click', exportProgress);
+  if(!username || !password){ authStatus.textContent = 'Введите никнейм и пароль'; return; }
+  if(username.length < 3){ authStatus.textContent = 'Никнейм минимум 3 символа'; return; }
+  if(password.length < 3){ authStatus.textContent = 'Пароль минимум 3 символа'; return; }
 
-document.getElementById('importProgressInput').addEventListener('change', (e)=>{
-  const file = e.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = (event)=>{
-    try{
-      const progressData = JSON.parse(event.target.result);
-      let count = 0;
-      for(const key in progressData){
-        if(key && (key.startsWith('study-pos-') || key === 'myName' || key === 'myCode' || key === 'quizRecentIdx')){
-          localStorage.setItem(key, progressData[key]);
-          count++;
-        }
-      }
-      if(count > 0){
-        showToast(`Восстановлено ${count} элементов`);
-        setTimeout(()=>location.reload(), 500);
-      } else {
-        showToast('Нет данных для импорта');
-      }
-    } catch(err){
-      showToast('Ошибка при импорте файла');
-    }
-  };
-  reader.readAsText(file);
-  e.target.value = '';
+  // Проверка существования никнейма в localStorage (симуляция БД)
+  const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
+  if(allUsers[username]){ authStatus.textContent = 'Этот никнейм уже занят'; return; }
+
+  allUsers[username] = { password: btoa(password) };
+  localStorage.setItem('users', JSON.stringify(allUsers));
+
+  localStorage.setItem('username', username);
+  state.profile = { username, authenticated: true };
+  updateProfileUI();
+  authStatus.textContent = 'Регистрация успешна!';
+  document.getElementById('usernameInput').value = '';
+  document.getElementById('passwordInput').value = '';
+  listenFriendsRealtime();
 });
 
-document.getElementById('addFriendBtn').addEventListener('click', addFriendByCode);
-document.getElementById('friendCodeInput').addEventListener('keydown', e=>{
-  if(e.key==='Enter') addFriendByCode();
+document.getElementById('loginBtn').addEventListener('click', async ()=>{
+  const username = document.getElementById('usernameInput').value.trim();
+  const password = document.getElementById('passwordInput').value.trim();
+  const authStatus = document.getElementById('authStatus');
+
+  if(!username || !password){ authStatus.textContent = 'Введите никнейм и пароль'; return; }
+
+  const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
+  if(!allUsers[username] || allUsers[username].password !== btoa(password)){
+    authStatus.textContent = 'Неверный никнейм или пароль';
+    return;
+  }
+
+  localStorage.setItem('username', username);
+  state.profile = { username, authenticated: true };
+  updateProfileUI();
+  authStatus.textContent = 'Вход выполнен!';
+  document.getElementById('usernameInput').value = '';
+  document.getElementById('passwordInput').value = '';
+  listenFriendsRealtime();
 });
 
-async function addFriendByCode(){
-  if(!fbDb || !state.profile || !state.profile.uid){ showToast('Нет соединения с сервером'); return; }
-  if(!state.profile.name){ showToast('Сначала введите своё имя выше'); return; }
-  const input = document.getElementById('friendCodeInput');
-  const code = input.value.trim().toUpperCase();
-  if(!code) return;
-  if(code === state.profile.code){ showToast('Это ваш собственный код'); return; }
-  try{
-    const codeSnap = await fbDb.ref('codes/'+code).once('value');
-    const targetUid = codeSnap.val();
-    if(!targetUid){ showToast('Код не найден'); return; }
-    if(state.friendsList.some(f=>f.uid===targetUid)){ showToast('Уже в друзьях'); return; }
-    const nameSnap = await fbDb.ref('users/'+targetUid+'/name').once('value');
-    const targetName = nameSnap.val() || 'Друг';
-    const ts = firebase.database.ServerValue.TIMESTAMP;
-    await fbDb.ref('users/'+targetUid+'/friendRequestsIn/'+state.profile.uid).set({ name: state.profile.name, at: ts });
-    await fbDb.ref('users/'+state.profile.uid+'/friendRequestsOut/'+targetUid).set({ name: targetName, at: ts });
-    notifyFriend(targetUid, '99 имён Аллаха', (state.profile.name||'Друг')+' хочет добавить вас в друзья', 'friend-request');
-    input.value = '';
-    showToast('Заявка отправлена: '+targetName);
-  }catch(e){ showToast('Не удалось отправить заявку'); }
+document.getElementById('logoutBtn').addEventListener('click', ()=>{
+  localStorage.removeItem('username');
+  state.profile = { username: '', authenticated: false };
+  updateProfileUI();
+  showToast('Вы вышли');
+});
+document.getElementById('addFriendBtn').addEventListener('click', addFriendByUsername);
+document.getElementById('friendUsernameInput').addEventListener('keydown', e=>{
+  if(e.key==='Enter') addFriendByUsername();
+});
+
+function addFriendByUsername(){
+  if(!state.profile || !state.profile.authenticated){ showToast('Сначала войдите'); return; }
+  const input = document.getElementById('friendUsernameInput');
+  const friendUsername = input.value.trim();
+  if(!friendUsername) return;
+  if(friendUsername === state.profile.username){ showToast('Это ваш собственный никнейм'); return; }
+
+  const allFriends = JSON.parse(localStorage.getItem('friends') || '{}');
+  if(!allFriends[state.profile.username]) allFriends[state.profile.username] = [];
+
+  if(allFriends[state.profile.username].includes(friendUsername)){
+    showToast('Уже в друзьях');
+    return;
+  }
+
+  const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
+  if(!allUsers[friendUsername]){
+    showToast('Пользователь не найден');
+    return;
+  }
+
+  allFriends[state.profile.username].push(friendUsername);
+  localStorage.setItem('friends', JSON.stringify(allFriends));
+
+  input.value = '';
+  showToast('Друг добавлен: '+friendUsername);
+  renderFriendsScreen();
 }
 
 function acceptFriendRequest(fromUid, fromName){
@@ -2881,20 +2844,13 @@ function removeFriend(uid){
 }
 
 function listenFriendsRealtime(){
-  if(!fbDb || !state.profile) return;
-  const uid = state.profile.uid;
-  fbDb.ref('users/'+uid+'/friends').on('value', snap=>{
-    const val = snap.val() || {};
-    state.friendsList = Object.keys(val).map(fuid=>({ uid: fuid, name: val[fuid].name || 'Друг' }));
-    renderFriendsScreen();
-  });
-  fbDb.ref('users/'+uid+'/friendRequestsIn').on('value', snap=>{
-    const val = snap.val() || {};
-    state.incomingRequests = Object.keys(val).map(fuid=>({ uid: fuid, name: val[fuid].name || 'Друг' }));
-    renderFriendsScreen();
-    updateFriendsBadge();
-  });
-  fbDb.ref('users/'+uid+'/duelInvites').on('value', snap=>{
+  if(!state.profile || !state.profile.authenticated) return;
+  const allFriends = JSON.parse(localStorage.getItem('friends') || '{}');
+  const userFriends = allFriends[state.profile.username] || [];
+  state.friendsList = userFriends.map(name=>({ uid: name, name: name }));
+  renderFriendsScreen();
+  if(!fbDb || !state.profile.uid) return;
+  fbDb.ref('users/'+state.profile.uid+'/duelInvites').on('value', snap=>{
     const val = snap.val() || {};
     state.duelInvites = Object.keys(val).map(roomId=>({ roomId, ...val[roomId] }));
     renderInvitesArea();
