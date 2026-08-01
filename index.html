@@ -3092,9 +3092,16 @@ document.getElementById('loginBtn').addEventListener('click', async ()=>{
   if(result.error){
     // Fallback to localStorage if API fails
     const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
-    if(!allUsers[username] || allUsers[username].password !== btoa(password)){
+    const localUser = allUsers[username];
+    if(!localUser || localUser.password !== btoa(password)){
       authStatus.textContent = 'Неверный никнейм или пароль';
       return;
+    }
+    // Account predates the backend (or the server was briefly unreachable) —
+    // create it server-side now so sync/leaderboard/friends start working.
+    const migrated = await apiRegister(username, password, localUser.securityQuestion, localUser.securityAnswer);
+    if(migrated && !migrated.error){
+      setTimeout(()=>showToast('Аккаунт синхронизирован с сервером'), 400);
     }
   }
 
