@@ -1367,6 +1367,14 @@ function loadBestScore(){
 function saveBestScore(){
   try{ localStorage.setItem('bestScore', JSON.stringify(state.bestScore)); }catch(e){}
 }
+// "totalStudied" on the leaderboard means learned-names count (matches the
+// "изучено" label there) — not quiz length, which is what used to be sent.
+function syncStats(extra){
+  const auth = getAuthCredentials && getAuthCredentials();
+  if(!auth) return;
+  const stats = Object.assign({ totalStudied: state.learned.size }, extra || {});
+  apiSyncProgress && apiSyncProgress(null, stats);
+}
 
 const state = {
   screen: 'home',
@@ -1564,6 +1572,7 @@ document.getElementById('pracRevealBtn').addEventListener('click', ()=>{
 document.getElementById('pracKnowBtn').addEventListener('click', ()=>{
   state.learned.add(practiceCurrent);
   saveLearned();
+  syncStats();
   practiceQueue.shift();
   renderGrid(); updateHomeStats();
   showPracticeCard();
@@ -2084,6 +2093,7 @@ document.getElementById('learnedBtn').addEventListener('click', ()=>{
   const i = state.sheetIndex;
   if(state.learned.has(i)) state.learned.delete(i); else state.learned.add(i);
   saveLearned();
+  syncStats();
   renderSheet(); renderGrid(); updateHomeStats();
 });
 // swipe on sheet body
@@ -2417,11 +2427,10 @@ function finishQuiz(){
       lastPercent: pct,
       lastDate: new Date().toISOString()
     };
-    const stats = {
-      totalStudied: state.bestScore ? state.bestScore.len : q.len,
+    apiSyncProgress && apiSyncProgress(quizProgress, {
+      totalStudied: state.learned.size,
       correctAnswers: state.bestScore ? state.bestScore.score : q.score
-    };
-    apiSyncProgress && apiSyncProgress(quizProgress, stats);
+    });
   }
 }
 
