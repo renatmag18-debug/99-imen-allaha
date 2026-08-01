@@ -970,44 +970,79 @@ body{
         <div id="friendInvitesArea"></div>
 
         <div class="profile-card" id="authCard">
-          <div class="profile-name-field">
-            <label>Никнейм</label>
-            <input type="text" id="usernameInput" placeholder="Ваш никнейм" maxlength="20">
-          </div>
-          <div class="profile-name-field">
-            <label>Пароль</label>
-            <div style="position:relative;">
-              <input type="password" id="passwordInput" placeholder="Пароль" maxlength="20">
-              <button type="button" id="togglePassword" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--gold-soft);cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center;">
-                <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
-              </button>
+          <!-- Основные поля входа -->
+          <div id="basicAuthFields">
+            <div class="profile-name-field">
+              <label>Никнейм</label>
+              <input type="text" id="usernameInput" placeholder="Ваш никнейм" maxlength="20">
             </div>
+            <div class="profile-name-field">
+              <label>Пароль</label>
+              <div style="position:relative;">
+                <input type="password" id="passwordInput" placeholder="Пароль" maxlength="20">
+                <button type="button" id="togglePassword" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--gold-soft);cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center;">
+                  <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+                </button>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;margin-bottom:10px;">
+              <button class="btn btn-primary" id="loginBtn" style="flex:1;">Вход</button>
+              <button class="btn btn-ghost" id="showRegisterBtn" style="flex:1;">Регистрация</button>
+            </div>
+            <p id="authStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;"></p>
+            <button id="forgotPasswordToggle" style="background:none;border:none;color:var(--gold-soft);font-size:11px;cursor:pointer;margin-top:10px;width:100%;text-decoration:underline;">Забыли пароль?</button>
           </div>
-          <div class="profile-name-field">
-            <label>Контрольный вопрос</label>
-            <select id="securityQuestionInput" style="width:100%;padding:12px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:14px;color:var(--ivory);font-family:var(--font-body);font-size:14px;outline:none;">
-              <option value="">Выберите вопрос</option>
-              <option value="favorite_name">Какое твоё любимое имя Аллаха?</option>
-              <option value="birth_city">Город твоего рождения?</option>
-              <option value="pet_name">Имя питомца?</option>
-              <option value="favorite_color">Любимый цвет?</option>
-              <option value="custom">📝 Свой вопрос</option>
-            </select>
+
+          <!-- Поля регистрации (скрыто по умолчанию) -->
+          <div id="registerFields" style="display:none;">
+            <div style="text-align:center;margin-bottom:16px;">
+              <h3 style="color:var(--ivory);margin:0 0 8px;font-size:18px;">Создайте аккаунт</h3>
+              <p style="color:var(--ivory-dim);font-size:12px;margin:0;">Для восстановления доступа</p>
+            </div>
+
+            <div class="profile-name-field">
+              <label>Никнейм</label>
+              <input type="text" id="regUsernameInput" placeholder="Ваш никнейм" maxlength="20">
+            </div>
+
+            <div class="profile-name-field">
+              <label>Пароль</label>
+              <div style="position:relative;">
+                <input type="password" id="regPasswordInput" placeholder="Пароль" maxlength="20">
+                <button type="button" id="toggleRegPassword" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--gold-soft);cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center;">
+                  <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="profile-name-field">
+              <label>Контрольный вопрос</label>
+              <select id="securityQuestionInput" style="width:100%;padding:12px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:14px;color:var(--ivory);font-family:var(--font-body);font-size:14px;outline:none;">
+                <option value="">Выберите вопрос</option>
+                <option value="favorite_name">Какое твоё любимое имя Аллаха?</option>
+                <option value="birth_city">Город твоего рождения?</option>
+                <option value="pet_name">Имя питомца?</option>
+                <option value="favorite_color">Любимый цвет?</option>
+                <option value="custom">📝 Свой вопрос</option>
+              </select>
+            </div>
+
+            <div class="profile-name-field" id="customQuestionField" style="display:none;">
+              <label>Ваш вопрос</label>
+              <input type="text" id="customQuestionInput" placeholder="Напишите свой вопрос" maxlength="50">
+            </div>
+
+            <div class="profile-name-field">
+              <label>Ответ на вопрос</label>
+              <input type="text" id="securityAnswerInput" placeholder="Ваш ответ" maxlength="30">
+            </div>
+
+            <div style="display:flex;gap:10px;">
+              <button class="btn btn-primary" id="registerBtn" style="flex:1;">Создать аккаунт</button>
+              <button class="btn btn-ghost" id="hideRegisterBtn" style="flex:1;">Назад</button>
+            </div>
+            <p id="registerStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;"></p>
           </div>
-          <div class="profile-name-field" id="customQuestionField" style="display:none;">
-            <label>Ваш вопрос</label>
-            <input type="text" id="customQuestionInput" placeholder="Напишите свой вопрос" maxlength="50">
-          </div>
-          <div class="profile-name-field">
-            <label>Ответ</label>
-            <input type="text" id="securityAnswerInput" placeholder="Ответ на вопрос" maxlength="30">
-          </div>
-          <div style="display:flex;gap:10px;">
-            <button class="btn btn-primary" id="registerBtn" style="flex:1;">Регистрация</button>
-            <button class="btn btn-ghost" id="loginBtn" style="flex:1;">Вход</button>
-          </div>
-          <p id="authStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;"></p>
-          <button id="forgotPasswordToggle" style="background:none;border:none;color:var(--gold-soft);font-size:11px;cursor:pointer;margin-top:10px;width:100%;text-decoration:underline;">Забыли пароль?</button>
         </div>
 
         <div class="profile-card" id="resetPasswordCard" style="display:none;">
@@ -2909,6 +2944,19 @@ document.getElementById('togglePassword').addEventListener('click', (e)=>{
   }
 });
 
+document.getElementById('toggleRegPassword').addEventListener('click', (e)=>{
+  e.preventDefault();
+  const passwordInput = document.getElementById('regPasswordInput');
+  const isPassword = passwordInput.type === 'password';
+  passwordInput.type = isPassword ? 'text' : 'password';
+  const btn = e.target.closest('button');
+  if(isPassword){
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><line x1="3" y1="21" x2="21" y2="3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+  } else {
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+  }
+});
+
 document.getElementById('securityQuestionInput').addEventListener('change', ()=>{
   const value = document.getElementById('securityQuestionInput').value;
   if(value === 'custom'){
@@ -2919,22 +2967,22 @@ document.getElementById('securityQuestionInput').addEventListener('change', ()=>
 });
 
 document.getElementById('registerBtn').addEventListener('click', async ()=>{
-  const username = document.getElementById('usernameInput').value.trim();
-  const password = document.getElementById('passwordInput').value.trim();
+  const username = document.getElementById('regUsernameInput').value.trim();
+  const password = document.getElementById('regPasswordInput').value.trim();
   const securityQuestionType = document.getElementById('securityQuestionInput').value;
   const securityAnswer = document.getElementById('securityAnswerInput').value.trim().toLowerCase();
-  const authStatus = document.getElementById('authStatus');
+  const registerStatus = document.getElementById('registerStatus');
 
-  if(!username || !password){ authStatus.textContent = 'Введите никнейм и пароль'; return; }
-  if(username.length < 3){ authStatus.textContent = 'Никнейм минимум 3 символа'; return; }
-  if(password.length < 3){ authStatus.textContent = 'Пароль минимум 3 символа'; return; }
-  if(!securityQuestionType){ authStatus.textContent = 'Выберите контрольный вопрос'; return; }
-  if(!securityAnswer){ authStatus.textContent = 'Введите ответ на контрольный вопрос'; return; }
+  if(!username || !password){ registerStatus.textContent = 'Введите никнейм и пароль'; return; }
+  if(username.length < 3){ registerStatus.textContent = 'Никнейм минимум 3 символа'; return; }
+  if(password.length < 3){ registerStatus.textContent = 'Пароль минимум 3 символа'; return; }
+  if(!securityQuestionType){ registerStatus.textContent = 'Выберите контрольный вопрос'; return; }
+  if(!securityAnswer){ registerStatus.textContent = 'Введите ответ на контрольный вопрос'; return; }
 
   let securityQuestion;
   if(securityQuestionType === 'custom'){
     securityQuestion = document.getElementById('customQuestionInput').value.trim();
-    if(!securityQuestion){ authStatus.textContent = 'Напишите свой вопрос'; return; }
+    if(!securityQuestion){ registerStatus.textContent = 'Напишите свой вопрос'; return; }
   } else {
     const questions = {
       'favorite_name': 'Какое твоё любимое имя Аллаха?',
@@ -2945,7 +2993,7 @@ document.getElementById('registerBtn').addEventListener('click', async ()=>{
     securityQuestion = questions[securityQuestionType];
   }
 
-  authStatus.textContent = 'Регистрация...';
+  registerStatus.textContent = 'Создание аккаунта...';
 
   // Try to register via API
   const result = await apiRegister(username, password, securityQuestion, securityAnswer);
@@ -2953,7 +3001,7 @@ document.getElementById('registerBtn').addEventListener('click', async ()=>{
   if(result.error){
     // Fallback to localStorage if API fails
     const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
-    if(allUsers[username]){ authStatus.textContent = 'Этот никнейм уже занят'; return; }
+    if(allUsers[username]){ registerStatus.textContent = 'Этот никнейм уже занят'; return; }
 
     allUsers[username] = { password: btoa(password), securityQuestion, securityAnswer };
     localStorage.setItem('users', JSON.stringify(allUsers));
@@ -2962,9 +3010,12 @@ document.getElementById('registerBtn').addEventListener('click', async ()=>{
   saveUsername(username);
   state.profile = { username, authenticated: true };
   updateProfileUI();
-  authStatus.textContent = 'Регистрация успешна!';
-  document.getElementById('usernameInput').value = '';
-  document.getElementById('passwordInput').value = '';
+  registerStatus.textContent = 'Аккаунт создан! Добро пожаловать!';
+  document.getElementById('regUsernameInput').value = '';
+  document.getElementById('regPasswordInput').value = '';
+  // Скрываем форму регистрации и показываем основную
+  document.getElementById('registerFields').style.display = 'none';
+  document.getElementById('basicAuthFields').style.display = 'block';
   listenFriendsRealtime();
 });
 
@@ -2996,6 +3047,29 @@ document.getElementById('loginBtn').addEventListener('click', async ()=>{
   document.getElementById('usernameInput').value = '';
   document.getElementById('passwordInput').value = '';
   listenFriendsRealtime();
+});
+
+// Переключение на форму регистрации
+document.getElementById('showRegisterBtn').addEventListener('click', ()=>{
+  document.getElementById('basicAuthFields').style.display = 'none';
+  document.getElementById('registerFields').style.display = 'block';
+  document.getElementById('authStatus').textContent = '';
+  document.getElementById('registerStatus').textContent = '';
+});
+
+// Возврат к форме входа
+document.getElementById('hideRegisterBtn').addEventListener('click', ()=>{
+  document.getElementById('registerFields').style.display = 'none';
+  document.getElementById('basicAuthFields').style.display = 'block';
+  document.getElementById('authStatus').textContent = '';
+  document.getElementById('registerStatus').textContent = '';
+  // Очищаем поля регистрации
+  document.getElementById('regUsernameInput').value = '';
+  document.getElementById('regPasswordInput').value = '';
+  document.getElementById('securityAnswerInput').value = '';
+  document.getElementById('securityQuestionInput').value = '';
+  document.getElementById('customQuestionInput').value = '';
+  document.getElementById('customQuestionField').style.display = 'none';
 });
 
 document.getElementById('profileMenuBtn').addEventListener('click', (e)=>{
