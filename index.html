@@ -2765,9 +2765,23 @@ function avatarLetter(name){
   return (name||'?').trim().charAt(0).toUpperCase() || '?';
 }
 
+function saveUsername(username){
+  try { localStorage.setItem('username', username); } catch(e){}
+  try { sessionStorage.setItem('username', username); } catch(e){}
+}
+
+function getUsername(){
+  try { return localStorage.getItem('username') || sessionStorage.getItem('username') || ''; } catch(e){ return ''; }
+}
+
+function clearUsername(){
+  try { localStorage.removeItem('username'); } catch(e){}
+  try { sessionStorage.removeItem('username'); } catch(e){}
+}
+
 async function initProfile(){
   try {
-    const username = localStorage.getItem('username') || '';
+    const username = getUsername();
     if(username){
       state.profile = { username, authenticated: true };
       updateProfileUI();
@@ -2856,7 +2870,7 @@ document.getElementById('registerBtn').addEventListener('click', async ()=>{
   allUsers[username] = { password: btoa(password), securityQuestion, securityAnswer };
   localStorage.setItem('users', JSON.stringify(allUsers));
 
-  localStorage.setItem('username', username);
+  saveUsername(username);
   state.profile = { username, authenticated: true };
   updateProfileUI();
   authStatus.textContent = 'Регистрация успешна!';
@@ -2878,7 +2892,7 @@ document.getElementById('loginBtn').addEventListener('click', async ()=>{
     return;
   }
 
-  localStorage.setItem('username', username);
+  saveUsername(username);
   state.profile = { username, authenticated: true };
   updateProfileUI();
   authStatus.textContent = 'Вход выполнен!';
@@ -2902,7 +2916,7 @@ document.getElementById('profileMenu').addEventListener('click', (e)=>{
 });
 
 document.getElementById('logoutBtn').addEventListener('click', ()=>{
-  localStorage.removeItem('username');
+  clearUsername();
   state.profile = { username: '', authenticated: false };
   updateProfileUI();
   showToast('Вы вышли');
