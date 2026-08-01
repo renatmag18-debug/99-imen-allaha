@@ -97,9 +97,9 @@ async function handleAPI(request, env, url) {
     return handleAddFriend(body, env);
   }
 
-  // GET /api/leaderboard
+  // GET /api/leaderboard[?username=x] — scoped to that user + their friends when given
   if (request.method === 'GET' && path === 'leaderboard') {
-    return handleLeaderboard(env);
+    return handleLeaderboard(env, url.searchParams.get('username'));
   }
 
   return corsResponse(jsonResponse({ error: 'not found' }, 404));
@@ -264,16 +264,24 @@ async function handleAddFriend(body, env) {
   return corsResponse(jsonResponse({ ok: true }));
 }
 
-async function handleLeaderboard(env) {
-  const leaderRes = await rtdbFetch(`/users.json?orderBy="stats/totalStudied"&limitToLast=100`, env);
+async function handleLeaderboard(env, scopeUsername) {
+  // Fetch everyone rather than orderBy+limitToLast: a friends-scoped view needs
+  // to find friends regardless of where they rank globally, not just the top slice.
+  const leaderRes = await rtdbFetch(`/users.json`, env);
   const users = await leaderRes.json();
 
   if (!users) {
     return corsResponse(jsonResponse({ leaderboard: [] }));
   }
 
+  let allowed = null;
+  if (scopeUsername) {
+    const scopeUser = users[scopeUsername];
+    allowed = new Set([scopeUsername, ...Object.keys((scopeUser && scopeUser.friends) || {})]);
+  }
+
   const leaderboard = Object.entries(users)
-    .filter(([_, user]) => user.stats)
+    .filter(([username, user]) => user.stats && (!allowed || allowed.has(username)))
     .map(([username, user]) => ({
       username,
       totalStudied: user.stats.totalStudied || 0,

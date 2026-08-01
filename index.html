@@ -1097,7 +1097,11 @@ body{
 
         <!-- Leaderboard Section -->
         <div style="margin-top:30px;border-top:1px solid var(--line);padding-top:20px;">
-          <h3 style="text-align:center;margin-bottom:20px;color:var(--ivory);">🏆 Рейтинг учащихся</h3>
+          <h3 style="text-align:center;margin-bottom:14px;color:var(--ivory);">🏆 Рейтинг учащихся</h3>
+          <div id="leaderboardScopeChoice" style="display:flex;justify-content:center;gap:8px;margin-bottom:20px;">
+            <button class="len-chip active" data-scope="global">Глобальный</button>
+            <button class="len-chip" data-scope="friends">Друзья</button>
+          </div>
           <div id="leaderboardList" style="display:flex;flex-direction:column;gap:10px;"></div>
           <div id="leaderboardEmpty" style="text-align:center;color:var(--ivory-dim);padding:40px 20px;">Загрузка рейтинга...</div>
         </div>
@@ -1445,16 +1449,34 @@ function updateHomeStats(){
   document.getElementById('bestScoreStat').textContent = state.bestScore ? state.bestScore.pct+'%' : '—';
 }
 
+let leaderboardScope = 'global';
+document.querySelectorAll('#leaderboardScopeChoice .len-chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    document.querySelectorAll('#leaderboardScopeChoice .len-chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    leaderboardScope = chip.dataset.scope;
+    loadLeaderboard();
+  });
+});
+
 async function loadLeaderboard(){
   const listEl = document.getElementById('leaderboardList');
   const emptyEl = document.getElementById('leaderboardEmpty');
+  listEl.innerHTML = '';
+  emptyEl.style.display = 'block';
+  emptyEl.textContent = 'Загрузка рейтинга...';
 
   if(!apiGetLeaderboard){
     emptyEl.textContent = 'Лидерборд недоступен';
     return;
   }
 
-  const result = await apiGetLeaderboard();
+  if(leaderboardScope === 'friends' && (!state.profile || !state.profile.authenticated)){
+    emptyEl.textContent = 'Сначала войдите, чтобы видеть рейтинг среди друзей';
+    return;
+  }
+
+  const result = await apiGetLeaderboard(leaderboardScope === 'friends' ? state.profile.username : null);
 
   if(result.error || !result.leaderboard){
     emptyEl.textContent = 'Ошибка загрузки лидерборда';
@@ -1464,7 +1486,7 @@ async function loadLeaderboard(){
   const board = result.leaderboard || [];
 
   if(board.length === 0){
-    emptyEl.textContent = 'Нет данных для лидерборда';
+    emptyEl.textContent = leaderboardScope === 'friends' ? 'Добавьте друзей, чтобы сравнить прогресс' : 'Нет данных для лидерборда';
     return;
   }
 

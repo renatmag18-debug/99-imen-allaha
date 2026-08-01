@@ -157,10 +157,13 @@ async function apiAddFriend(friendUsername) {
   }
 }
 
-// Get leaderboard
-async function apiGetLeaderboard() {
+// Get leaderboard. Pass a username to scope it to that user + their friends.
+async function apiGetLeaderboard(username) {
   try {
-    const res = await fetch(`${API_BASE}/api/leaderboard`);
+    const url = username
+      ? `${API_BASE}/api/leaderboard?username=${encodeURIComponent(username)}`
+      : `${API_BASE}/api/leaderboard`;
+    const res = await fetch(url);
     const data = await res.json();
     if (!res.ok) return { error: data.error || 'Failed to get leaderboard' };
     return data;
