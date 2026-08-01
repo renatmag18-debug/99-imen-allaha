@@ -444,6 +444,8 @@ body{
 /* ================= MISC (ЗИКРЫ / АЗКАРЫ / ДУА) ================= */
 .misc-intro{ text-align:center; color:var(--ivory-dim); font-size:13px; line-height:1.6; padding:0 6px 18px; }
 .dhikr-list{ display:flex; flex-direction:column; gap:12px; padding-bottom:10px; }
+.search-group-label{ font-family:var(--font-display); font-size:14px; color:var(--gold-soft); padding:14px 2px 2px; }
+.search-group-label:first-child{ padding-top:0; }
 .dhikr-card{
   border:1px solid var(--line); border-radius:18px; padding:18px 18px 16px;
   background:linear-gradient(160deg, rgba(255,255,255,0.035), rgba(255,255,255,0));
@@ -902,7 +904,11 @@ body{
 
     <!-- MISC: ЗИКРЫ / АЗКАРЫ / ДУА -->
     <section class="screen" data-screen="misc">
-      <div class="segmented-wrap">
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <input id="miscSearchInput" type="text" placeholder="Поиск по зикрам, азкарам, дуа, намазу…" autocomplete="off">
+      </div>
+      <div class="segmented-wrap" id="miscSegmentWrap">
         <div class="segmented" id="miscSegment">
           <button class="seg-btn active" data-misc="zikr">Зикры</button>
           <button class="seg-btn" data-misc="azkar">Азкары</button>
@@ -945,6 +951,13 @@ body{
           <div class="section-title">Слова намаза</div>
           <p class="misc-intro">Что говорится во время обязательной молитвы — от азана до завершающих азкаров.</p>
           <div class="dhikr-list" id="namazList"></div>
+        </div>
+      </div>
+
+      <div id="miscSearchWrap" style="display:none">
+        <div class="scroll">
+          <div class="dhikr-list" id="miscSearchResults"></div>
+          <p class="misc-intro" id="miscSearchEmpty" style="display:none;">Ничего не найдено.</p>
         </div>
       </div>
     </section>
@@ -1610,7 +1623,7 @@ const NAMAZ = [
 ];
 
 function dhikrCardHTML(item, tappable){
-  const playBtn = (!tappable && item.audio) ? `<button class="dhikr-play-btn" data-audio="${item.audio[0]}" title="Слушать">🔊</button>` : '';
+  const playBtn = item.audio ? `<button class="dhikr-play-btn" data-audio='${JSON.stringify(item.audio)}' title="Слушать">🔊</button>` : '';
   return `<div class="dhikr-card${tappable?' tappable':''}">
       <div class="dhikr-top">
         <span class="dhikr-title">${item.title||''}</span>
@@ -1627,14 +1640,16 @@ function dhikrCardHTML(item, tappable){
 }
 
 function attachDhikrCounterHandlers(container, items){
-  container.querySelectorAll('.dhikr-card').forEach((card,i)=>{
+  container.querySelectorAll('.dhikr-card.tappable').forEach((card,i)=>{
     card.addEventListener('click', ()=>openDhikrCounter(items[i]));
   });
 }
 
-const duaAudioEl = new Audio();
-let duaAudioActiveBtn = null;
-function resetDuaPlayBtn(btn){
+const inlineAudioEl = new Audio();
+let inlineAudioActiveBtn = null;
+let inlineAudioQueue = [];
+let inlineAudioIndex = 0;
+function resetInlinePlayBtn(btn){
   btn.classList.remove('playing');
   btn.textContent = '🔊';
 }
@@ -1642,29 +1657,40 @@ function attachInlineAudioHandlers(container){
   container.querySelectorAll('.dhikr-play-btn').forEach(btn=>{
     btn.addEventListener('click', (e)=>{
       e.stopPropagation();
-      const url = btn.dataset.audio;
-      if(duaAudioActiveBtn === btn){
-        duaAudioEl.pause();
-        duaAudioEl.currentTime = 0;
-        resetDuaPlayBtn(btn);
-        duaAudioActiveBtn = null;
+      if(inlineAudioActiveBtn === btn){
+        inlineAudioEl.pause();
+        inlineAudioEl.currentTime = 0;
+        resetInlinePlayBtn(btn);
+        inlineAudioActiveBtn = null;
         return;
       }
-      if(duaAudioActiveBtn) resetDuaPlayBtn(duaAudioActiveBtn);
-      duaAudioEl.src = url;
-      duaAudioEl.play().catch(()=>{ resetDuaPlayBtn(btn); duaAudioActiveBtn = null; });
+      stopDhikrAudio();
+      if(inlineAudioActiveBtn) resetInlinePlayBtn(inlineAudioActiveBtn);
+      inlineAudioQueue = JSON.parse(btn.dataset.audio);
+      inlineAudioIndex = 0;
+      inlineAudioEl.src = inlineAudioQueue[0];
+      inlineAudioEl.play().catch(()=>{ resetInlinePlayBtn(btn); inlineAudioActiveBtn = null; });
       btn.classList.add('playing');
       btn.textContent = '⏸';
-      duaAudioActiveBtn = btn;
+      inlineAudioActiveBtn = btn;
     });
   });
 }
-duaAudioEl.addEventListener('ended', ()=>{
-  if(duaAudioActiveBtn){ resetDuaPlayBtn(duaAudioActiveBtn); duaAudioActiveBtn = null; }
+inlineAudioEl.addEventListener('ended', ()=>{
+  if(!inlineAudioActiveBtn) return;
+  inlineAudioIndex++;
+  if(inlineAudioIndex < inlineAudioQueue.length){
+    inlineAudioEl.src = inlineAudioQueue[inlineAudioIndex];
+    inlineAudioEl.play().catch(()=>{ resetInlinePlayBtn(inlineAudioActiveBtn); inlineAudioActiveBtn = null; });
+  } else {
+    resetInlinePlayBtn(inlineAudioActiveBtn);
+    inlineAudioActiveBtn = null;
+  }
 });
 
 document.getElementById('zikrList').innerHTML = ZIKR.map(i=>dhikrCardHTML(i,true)).join('');
 attachDhikrCounterHandlers(document.getElementById('zikrList'), ZIKR);
+attachInlineAudioHandlers(document.getElementById('zikrList'));
 
 const azkarListEl = document.getElementById('azkarList');
 const azkarIntroEl = document.getElementById('azkarIntro');
@@ -1672,6 +1698,7 @@ function renderAzkar(period){
   const list = period==='evening' ? AZKAR_EVENING : AZKAR_MORNING;
   azkarListEl.innerHTML = list.map(i=>dhikrCardHTML(i,true)).join('');
   attachDhikrCounterHandlers(azkarListEl, list);
+  attachInlineAudioHandlers(azkarListEl);
   azkarIntroEl.textContent = period==='evening'
     ? 'Читаются после послеполуденной молитвы до захода солнца.'
     : 'Читаются после утренней молитвы до восхода солнца.';
@@ -1724,6 +1751,7 @@ function openDhikrCounter(item){
   document.getElementById('dhikrCounterM').textContent = item.m;
   updateDhikrCounterUI();
   stopDhikrAudio();
+  if(inlineAudioActiveBtn){ inlineAudioEl.pause(); inlineAudioEl.currentTime = 0; resetInlinePlayBtn(inlineAudioActiveBtn); inlineAudioActiveBtn = null; }
   dhikrCounterPlayBtn.style.display = item.audio ? 'block' : 'none';
   dhikrCounterAudioQueue = item.audio || [];
   dhikrCounterSheet.classList.add('show');
@@ -1785,6 +1813,7 @@ dhikrCounterBackdrop.addEventListener('click', closeDhikrCounter);
 
 document.getElementById('namazList').innerHTML = NAMAZ.map(i=>dhikrCardHTML(i,true)).join('');
 attachDhikrCounterHandlers(document.getElementById('namazList'), NAMAZ);
+attachInlineAudioHandlers(document.getElementById('namazList'));
 
 const miscWraps = {
   zikr: document.getElementById('miscZikrWrap'),
@@ -1800,6 +1829,63 @@ document.querySelectorAll('#miscSegment .seg-btn').forEach(btn=>{
       el.style.display = key===btn.dataset.misc ? 'contents' : 'none';
     });
   });
+});
+
+/* --- поиск по зикрам/азкарам/дуа/намазу --- */
+const MISC_SEARCH_SOURCES = [
+  {label:'Зикры', items:ZIKR, tappable:true},
+  {label:'Азкары (утренние)', items:AZKAR_MORNING, tappable:true},
+  {label:'Азкары (вечерние)', items:AZKAR_EVENING, tappable:true},
+  {label:'Дуа', items:DUA, tappable:false},
+  {label:'Намаз', items:NAMAZ, tappable:true},
+];
+function miscItemMatches(item, q){
+  return [item.title, item.tr, item.m, item.note, item.ar].some(f => f && f.toLowerCase().includes(q));
+}
+const miscSearchInput = document.getElementById('miscSearchInput');
+const miscSegmentWrap = document.getElementById('miscSegmentWrap');
+const miscSearchWrap = document.getElementById('miscSearchWrap');
+const miscSearchResultsEl = document.getElementById('miscSearchResults');
+const miscSearchEmptyEl = document.getElementById('miscSearchEmpty');
+let miscSearchPrevKey = 'zikr';
+
+function renderMiscSearch(query){
+  const q = query.trim().toLowerCase();
+  let html = '';
+  const tappableItems = [];
+  MISC_SEARCH_SOURCES.forEach(src=>{
+    const matched = src.items.filter(item=>miscItemMatches(item, q));
+    if(!matched.length) return;
+    html += `<div class="search-group-label">${src.label}</div>`;
+    matched.forEach(item=>{
+      html += dhikrCardHTML(item, src.tappable);
+      if(src.tappable) tappableItems.push(item);
+    });
+  });
+  miscSearchResultsEl.innerHTML = html;
+  miscSearchEmptyEl.style.display = html ? 'none' : 'block';
+  attachDhikrCounterHandlers(miscSearchResultsEl, tappableItems);
+  attachInlineAudioHandlers(miscSearchResultsEl);
+}
+
+miscSearchInput.addEventListener('input', ()=>{
+  const q = miscSearchInput.value.trim();
+  if(!q){
+    miscSearchWrap.style.display = 'none';
+    miscSegmentWrap.style.display = '';
+    Object.entries(miscWraps).forEach(([key, el])=>{
+      el.style.display = key===miscSearchPrevKey ? 'contents' : 'none';
+    });
+    return;
+  }
+  if(miscSearchWrap.style.display !== 'contents'){
+    const activeBtn = document.querySelector('#miscSegment .seg-btn.active');
+    miscSearchPrevKey = activeBtn ? activeBtn.dataset.misc : 'zikr';
+  }
+  miscSegmentWrap.style.display = 'none';
+  Object.values(miscWraps).forEach(el=>el.style.display='none');
+  miscSearchWrap.style.display = 'contents';
+  renderMiscSearch(q);
 });
 
 /* =====================================================
