@@ -3303,6 +3303,12 @@ document.getElementById('friendUsernameInput').addEventListener('keydown', e=>{
   if(e.key==='Enter') addFriendByUsername();
 });
 
+const ADD_FRIEND_ERRORS = {
+  'cannot add yourself': 'Это ваш собственный никнейм',
+  'friend not found': 'Пользователь не найден',
+  'already friends': 'Уже в друзьях',
+  'request already sent': 'Запрос уже отправлен'
+};
 async function addFriendByUsername(){
   if(!state.profile || !state.profile.authenticated){ showToast('Сначала войдите'); return; }
   const input = document.getElementById('friendUsernameInput');
@@ -3310,59 +3316,61 @@ async function addFriendByUsername(){
   if(!friendUsername) return;
   if(friendUsername.toLowerCase() === state.profile.username.toLowerCase()){ showToast('Это ваш собственный никнейм'); return; }
 
-  const allFriends = JSON.parse(localStorage.getItem('friends') || '{}');
-  if(!allFriends[state.profile.username]) allFriends[state.profile.username] = [];
-
-  if(allFriends[state.profile.username].includes(friendUsername)){
-    showToast('Уже в друзьях');
-    return;
-  }
-
-  // Try to add friend via API
   const result = await apiAddFriend(friendUsername);
 
   if(result.error){
-    // Fallback to localStorage
-    const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
-    if(!Object.keys(allUsers).some(k => k.toLowerCase() === friendUsername.toLowerCase())){
-      showToast('Пользователь не найден');
-      return;
-    }
+    showToast(ADD_FRIEND_ERRORS[result.error] || 'Не удалось отправить запрос');
+    return;
   }
 
-  allFriends[state.profile.username].push(friendUsername);
-  localStorage.setItem('friends', JSON.stringify(allFriends));
+  notifyFriend(friendUsername, '99 имён Аллаха', state.profile.username+' хочет добавить вас в друзья', 'friend-request');
 
   input.value = '';
-  showToast('Друг добавлен: '+friendUsername);
+  showToast('Запрос отправлен: '+friendUsername);
+}
+
+async function acceptFriendRequest(fromUid, fromName){
+  if(!state.profile || !state.profile.authenticated) return;
+  const result = await apiAcceptFriendRequest(fromUid);
+  if(result.error){ showToast('Не удалось принять запрос'); return; }
+  notifyFriend(fromUid, '99 имён Аллаха', state.profile.username+' принял(а) вашу заявку в друзья', 'friend-accept');
+  showToast('Теперь вы друзья: '+(fromName||fromUid));
+  loadFriends();
+  loadFriendRequests();
+}
+async function declineFriendRequest(fromUid){
+  if(!state.profile || !state.profile.authenticated) return;
+  const result = await apiDeclineFriendRequest(fromUid);
+  if(result.error){ showToast('Не удалось отклонить запрос'); return; }
+  loadFriendRequests();
+}
+async function removeFriend(uid){
+  if(!state.profile || !state.profile.authenticated) return;
+  const result = await apiRemoveFriend(uid);
+  if(result.error){ showToast('Не удалось удалить друга'); return; }
+  showToast('Друг удалён');
+  loadFriends();
+}
+
+async function loadFriends(){
+  if(!state.profile || !state.profile.authenticated) return;
+  const result = await apiGetFriends(state.profile.username);
+  if(result.error) return;
+  state.friendsList = (result.friends || []).map(name=>({ uid: name, name: name }));
   renderFriendsScreen();
 }
-
-function acceptFriendRequest(fromUid, fromName){
-  if(!fbDb || !state.profile) return;
-  const ts = firebase.database.ServerValue.TIMESTAMP;
-  fbDb.ref('users/'+state.profile.uid+'/friends/'+fromUid).set({ name: fromName, since: ts });
-  fbDb.ref('users/'+fromUid+'/friends/'+state.profile.uid).set({ name: state.profile.name, since: ts });
-  fbDb.ref('users/'+state.profile.uid+'/friendRequestsIn/'+fromUid).remove();
-  fbDb.ref('users/'+fromUid+'/friendRequestsOut/'+state.profile.uid).remove();
+async function loadFriendRequests(){
+  if(!state.profile || !state.profile.authenticated) return;
+  const result = await apiGetFriendRequests(state.profile.username);
+  if(result.error) return;
+  state.incomingRequests = (result.requests || []).map(name=>({ uid: name, name: name }));
+  renderFriendsScreen();
+  updateFriendsBadge();
 }
-function declineFriendRequest(fromUid){
-  if(!fbDb || !state.profile) return;
-  fbDb.ref('users/'+state.profile.uid+'/friendRequestsIn/'+fromUid).remove();
-  fbDb.ref('users/'+fromUid+'/friendRequestsOut/'+state.profile.uid).remove();
-}
-function removeFriend(uid){
-  if(!fbDb || !state.profile) return;
-  fbDb.ref('users/'+state.profile.uid+'/friends/'+uid).remove();
-  fbDb.ref('users/'+uid+'/friends/'+state.profile.uid).remove();
-}
-
 function listenFriendsRealtime(){
   if(!state.profile || !state.profile.authenticated) return;
-  const allFriends = JSON.parse(localStorage.getItem('friends') || '{}');
-  const userFriends = allFriends[state.profile.username] || [];
-  state.friendsList = userFriends.map(name=>({ uid: name, name: name }));
-  renderFriendsScreen();
+  loadFriends();
+  loadFriendRequests();
   if(!fbDb || !state.profile.username) return;
   fbDb.ref('users/'+fbKey(state.profile.username)+'/duelInvites').on('value', snap=>{
     const val = snap.val() || {};
@@ -3673,10 +3681,14 @@ document.getElementById('duelPickFriendsBtn').addEventListener('click', ()=>{
 
 initProfile();
 
-// Загружаем лидерборд при переходе на вкладку друзей
+// Обновляем лидерборд и заявки в друзья при каждом переходе на вкладку друзей
 document.querySelectorAll('[data-nav="friends"]').forEach(btn => {
   btn.addEventListener('click', () => {
-    setTimeout(() => loadLeaderboard(), 100);
+    setTimeout(() => {
+      loadLeaderboard();
+      loadFriends();
+      loadFriendRequests();
+    }, 100);
   });
 });
 

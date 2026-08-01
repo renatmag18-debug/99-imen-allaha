@@ -133,7 +133,7 @@ async function apiGetFriends(username) {
   }
 }
 
-// Add friend
+// Send a friend request (not an immediate friendship — the recipient has to accept)
 async function apiAddFriend(friendUsername) {
   const auth = getAuthCredentials();
   if (!auth) return { error: 'Not authenticated' };
@@ -151,6 +151,72 @@ async function apiAddFriend(friendUsername) {
 
     const data = await res.json();
     if (!res.ok) return { error: data.error || 'Failed to add friend' };
+    return { ok: true };
+  } catch (e) {
+    return { error: 'Network error' };
+  }
+}
+
+// Get incoming pending friend requests for the logged-in user
+async function apiGetFriendRequests(username) {
+  try {
+    const res = await fetch(`${API_BASE}/api/friend-requests/${encodeURIComponent(username)}`);
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Failed to get friend requests' };
+    return data;
+  } catch (e) {
+    return { error: 'Network error' };
+  }
+}
+
+async function apiAcceptFriendRequest(fromUsername) {
+  const auth = getAuthCredentials();
+  if (!auth) return { error: 'Not authenticated' };
+
+  try {
+    const res = await fetch(`${API_BASE}/api/accept-friend-request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: auth.username, password: auth.password, fromUsername })
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Failed to accept request' };
+    return { ok: true };
+  } catch (e) {
+    return { error: 'Network error' };
+  }
+}
+
+async function apiDeclineFriendRequest(fromUsername) {
+  const auth = getAuthCredentials();
+  if (!auth) return { error: 'Not authenticated' };
+
+  try {
+    const res = await fetch(`${API_BASE}/api/decline-friend-request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: auth.username, password: auth.password, fromUsername })
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Failed to decline request' };
+    return { ok: true };
+  } catch (e) {
+    return { error: 'Network error' };
+  }
+}
+
+async function apiRemoveFriend(friendUsername) {
+  const auth = getAuthCredentials();
+  if (!auth) return { error: 'Not authenticated' };
+
+  try {
+    const res = await fetch(`${API_BASE}/api/remove-friend`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: auth.username, password: auth.password, friendUsername })
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Failed to remove friend' };
     return { ok: true };
   } catch (e) {
     return { error: 'Network error' };

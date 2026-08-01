@@ -7,7 +7,11 @@
  *   POST /api/sync-progress  — Sync quiz progress
  *   GET /api/profile/:username — Get user profile
  *   GET /api/friends/:username — Get friends list
- *   POST /api/add-friend     — Add friend
+ *   GET /api/friend-requests/:username — Get incoming pending friend requests
+ *   POST /api/add-friend     — Send a friend request
+ *   POST /api/accept-friend-request — Accept a pending request (makes both friends)
+ *   POST /api/decline-friend-request — Decline/withdraw a pending request
+ *   POST /api/remove-friend  — Remove an existing friend (both directions)
  *   GET /api/leaderboard     — Get leaderboard
  *   POST /api/admin/user-count — Total registered users (single admin account only)
  *   POST /api/push-notify    — Send push notification (legacy)
@@ -101,9 +105,30 @@ async function handleAPI(request, env, url) {
     return handleGetFriends(username, env);
   }
 
-  // POST /api/add-friend
+  // GET /api/friend-requests/:username — incoming pending requests
+  if (request.method === 'GET' && path.startsWith('friend-requests/')) {
+    const username = decodeURIComponent(path.split('/')[1]);
+    return handleGetFriendRequests(username, env);
+  }
+
+  // POST /api/add-friend — sends a friend request, doesn't friend immediately
   if (request.method === 'POST' && path === 'add-friend') {
     return handleAddFriend(body, env);
+  }
+
+  // POST /api/accept-friend-request
+  if (request.method === 'POST' && path === 'accept-friend-request') {
+    return handleAcceptFriendRequest(body, env);
+  }
+
+  // POST /api/decline-friend-request
+  if (request.method === 'POST' && path === 'decline-friend-request') {
+    return handleDeclineFriendRequest(body, env);
+  }
+
+  // POST /api/remove-friend
+  if (request.method === 'POST' && path === 'remove-friend') {
+    return handleRemoveFriend(body, env);
   }
 
   // POST /api/register-push-token
@@ -277,6 +302,18 @@ async function handleGetFriends(username, env) {
   return corsResponse(jsonResponse({ friends }));
 }
 
+async function handleGetFriendRequests(username, env) {
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(userKey(username))}.json`, env);
+  const user = await userRes.json();
+
+  if (!user) {
+    return corsResponse(jsonResponse({ error: 'user not found' }, 404));
+  }
+
+  const requests = Object.values(user.friendRequestsIn || {});
+  return corsResponse(jsonResponse({ requests }));
+}
+
 async function handleAddFriend(body, env) {
   const { username, password, friendUsername } = body || {};
 
@@ -286,6 +323,10 @@ async function handleAddFriend(body, env) {
 
   const key = userKey(username);
   const friendKey = userKey(friendUsername);
+
+  if (key === friendKey) {
+    return corsResponse(jsonResponse({ error: 'cannot add yourself' }, 400));
+  }
 
   // Verify auth
   const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
@@ -303,13 +344,112 @@ async function handleAddFriend(body, env) {
     return corsResponse(jsonResponse({ error: 'friend not found' }, 404));
   }
 
-  // Add friend — store their display-cased username as the value so the
-  // friends list can show proper casing without a lookup per friend.
-  await rtdbFetch(`/users/${encodeURIComponent(key)}/friends/${encodeURIComponent(friendKey)}.json`, env, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(friend.username || friendUsername)
-  });
+  if (user.friends && user.friends[friendKey]) {
+    return corsResponse(jsonResponse({ error: 'already friends' }, 409));
+  }
+  if (user.friendRequestsOut && user.friendRequestsOut[friendKey]) {
+    return corsResponse(jsonResponse({ error: 'request already sent' }, 409));
+  }
+
+  // Send a request, not an immediate friendship — stored on both sides so
+  // each can look their half up without a join: mine under "out", theirs
+  // under "in", both keyed by the other party and valued with their
+  // display-cased username.
+  await Promise.all([
+    rtdbFetch(`/users/${encodeURIComponent(key)}/friendRequestsOut/${encodeURIComponent(friendKey)}.json`, env, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(friend.username || friendUsername)
+    }),
+    rtdbFetch(`/users/${encodeURIComponent(friendKey)}/friendRequestsIn/${encodeURIComponent(key)}.json`, env, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(user.username || username)
+    })
+  ]);
+
+  return corsResponse(jsonResponse({ ok: true }));
+}
+
+async function handleAcceptFriendRequest(body, env) {
+  const { username, password, fromUsername } = body || {};
+
+  if (!username || !password || !fromUsername) {
+    return corsResponse(jsonResponse({ error: 'missing data' }, 400));
+  }
+
+  const key = userKey(username);
+  const fromKey = userKey(fromUsername);
+
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
+  const user = await userRes.json();
+
+  if (!user || user.password !== btoa(password)) {
+    return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
+  }
+  if (!user.friendRequestsIn || !user.friendRequestsIn[fromKey]) {
+    return corsResponse(jsonResponse({ error: 'no such request' }, 404));
+  }
+
+  const fromRes = await rtdbFetch(`/users/${encodeURIComponent(fromKey)}.json`, env);
+  const fromUser = await fromRes.json();
+
+  await Promise.all([
+    rtdbFetch(`/users/${encodeURIComponent(key)}/friends/${encodeURIComponent(fromKey)}.json`, env, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify((fromUser && fromUser.username) || fromUsername)
+    }),
+    rtdbFetch(`/users/${encodeURIComponent(fromKey)}/friends/${encodeURIComponent(key)}.json`, env, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(user.username || username)
+    }),
+    rtdbFetch(`/users/${encodeURIComponent(key)}/friendRequestsIn/${encodeURIComponent(fromKey)}.json`, env, { method: 'DELETE' }),
+    rtdbFetch(`/users/${encodeURIComponent(fromKey)}/friendRequestsOut/${encodeURIComponent(key)}.json`, env, { method: 'DELETE' })
+  ]);
+
+  return corsResponse(jsonResponse({ ok: true }));
+}
+
+async function handleDeclineFriendRequest(body, env) {
+  const { username, password, fromUsername } = body || {};
+
+  if (!username || !password || !fromUsername) {
+    return corsResponse(jsonResponse({ error: 'missing data' }, 400));
+  }
+
+  const key = userKey(username);
+  const fromKey = userKey(fromUsername);
+
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
+  const user = await userRes.json();
+
+  if (!user || user.password !== btoa(password)) {
+    return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
+  }
+
+  await Promise.all([
+    rtdbFetch(`/users/${encodeURIComponent(key)}/friendRequestsIn/${encodeURIComponent(fromKey)}.json`, env, { method: 'DELETE' }),
+    rtdbFetch(`/users/${encodeURIComponent(fromKey)}/friendRequestsOut/${encodeURIComponent(key)}.json`, env, { method: 'DELETE' })
+  ]);
+
+  return corsResponse(jsonResponse({ ok: true }));
+}
+
+async function handleRemoveFriend(body, env) {
+  const { username, password, friendUsername } = body || {};
+
+  if (!username || !password || !friendUsername) {
+    return corsResponse(jsonResponse({ error: 'missing data' }, 400));
+  }
+
+  const key = userKey(username);
+  const friendKey = userKey(friendUsername);
+
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
+  const user = await userRes.json();
+
+  if (!user || user.password !== btoa(password)) {
+    return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
+  }
+
+  await Promise.all([
+    rtdbFetch(`/users/${encodeURIComponent(key)}/friends/${encodeURIComponent(friendKey)}.json`, env, { method: 'DELETE' }),
+    rtdbFetch(`/users/${encodeURIComponent(friendKey)}/friends/${encodeURIComponent(key)}.json`, env, { method: 'DELETE' })
+  ]);
 
   return corsResponse(jsonResponse({ ok: true }));
 }
