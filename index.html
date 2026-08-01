@@ -455,6 +455,14 @@ body{
   flex-shrink:0; font-family:var(--font-num); font-size:13px; font-weight:700; color:var(--gold-soft);
   background:rgba(203,161,53,0.12); border:1px solid var(--line); border-radius:10px; padding:3px 11px;
 }
+.dhikr-top-right{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.dhikr-play-btn{
+  flex-shrink:0; width:30px; height:30px; border-radius:10px; border:1px solid var(--line);
+  background:rgba(255,255,255,0.03); color:var(--gold-soft); display:flex; align-items:center; justify-content:center;
+  cursor:pointer; font-size:13px; transition:all .2s var(--ease);
+}
+.dhikr-play-btn:active{ transform:scale(.9); }
+.dhikr-play-btn.playing{ border-color:var(--jade); color:var(--jade); background:rgba(46,138,114,0.12); }
 .dhikr-ar{ font-family:var(--font-ar); font-size:23px; color:var(--gold-soft); direction:rtl; line-height:1.85; margin-bottom:12px; text-align:right; }
 .dhikr-tr{ font-size:13.5px; color:var(--ivory); font-weight:700; margin-bottom:6px; line-height:1.5; }
 .dhikr-m{ font-size:13px; color:var(--ivory-dim); line-height:1.6; }
@@ -1454,20 +1462,31 @@ const DUA = [
 {title:"Выходя из дома", ar:"بِسْمِ اللَّهِ تَوَكَّلْتُ عَلَى اللَّهِ وَلَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ", tr:"Бисми-Ллях, таваккяльту аля-Ллах, ва ля хауля ва ля куввата илля би-Ллях", m:"С именем Аллаха, я уповаю на Аллаха, и нет силы и мощи ни у кого, кроме как от Аллаха"},
 {title:"Входя в дом", ar:"بِسْمِ اللَّهِ وَلَجْنَا وَبِسْمِ اللَّهِ خَرَجْنَا وَعَلَىٰ رَبِّنَا تَوَكَّلْنَا", tr:"Бисми-Лляхи валяджна, ва бисми-Лляхи хараджна, ва аля Раббина таваккальна", m:"С именем Аллаха мы входим, с именем Аллаха мы выходим, и на нашего Господа мы уповаем"},
 {title:"Перед сном", ar:"بِاسْمِكَ اللَّهُمَّ أَمُوتُ وَأَحْيَا", tr:"Бисмикя Аллахумма амуту ва ахья", m:"С именем Твоим, о Аллах, я умираю и оживаю"},
-{title:"После пробуждения", ar:"الْحَمْدُ لِلَّهِ الَّذِي أَحْيَانَا بَعْدَ مَا أَمَاتَنَا وَإِلَيْهِ النُّشُورُ", tr:"Аль-хамду лилляхи-ллязи ахьяна ба'да ма аматана ва иляйхи-н-нушур", m:"Хвала Аллаху, Который оживил нас после того, как умертвил нас (сном), и к Нему — воскрешение"},
+{title:"После пробуждения", audio:["http://www.hisnmuslim.com/audio/ar/1.mp3"], ar:"الْحَمْدُ لِلَّهِ الَّذِي أَحْيَانَا بَعْدَ مَا أَمَاتَنَا وَإِلَيْهِ النُّشُورُ", tr:"Аль-хамду лилляхи-ллязи ахьяна ба'да ма аматана ва иляйхи-н-нушур", m:"Хвала Аллаху, Который оживил нас после того, как умертвил нас (сном), и к Нему — воскрешение"},
+{title:"Надевая одежду", audio:["http://www.hisnmuslim.com/audio/ar/5.mp3"], ar:"الْحَمْدُ لِلَّهِ الَّذِي كَسَانِي هَٰذَا وَرَزَقَنِيهِ مِنْ غَيْرِ حَوْلٍ مِنِّي وَلَا قُوَّةٍ", tr:"Аль-хамду лилляхи-ллязи касани хаза ва разакани-хи мин гайри хаулин минни ва ля куввах", m:"Хвала Аллаху, Который одел меня в это и даровал мне это без моей силы и мощи"},
+{title:"Надевая новую одежду", audio:["http://www.hisnmuslim.com/audio/ar/6.mp3"], ar:"اللَّهُمَّ لَكَ الْحَمْدُ أَنْتَ كَسَوْتَنِيهِ أَسْأَلُكَ مِنْ خَيْرِهِ وَخَيْرِ مَا صُنِعَ لَهُ وَأَعُوذُ بِكَ مِنْ شَرِّهِ وَشَرِّ مَا صُنِعَ لَهُ", tr:"Аллахумма ляка-ль-хамду, анта касаутанихи, ас'алюка мин хайрихи ва хайри ма сунийа ляху, ва а'узу бикя мин шаррихи ва шарри ма сунийа ляху", m:"О Аллах, Тебе хвала! Ты одел меня в это. Прошу у Тебя блага этой одежды и блага того, для чего она сделана, и прибегаю к Тебе от зла её и зла того, для чего она сделана"},
+{title:"Тому, кто надел обновку (1)", audio:["http://www.hisnmuslim.com/audio/ar/7.mp3"], ar:"تُبْلِي وَيُخْلِفُ اللَّهُ تَعَالَى", tr:"Тубли ва юхлифу-Ллаху та'аля", m:"Износи её, и Аллах Всевышний заменит её новой — говорят в ответ тому, кто надел обновку"},
+{title:"Тому, кто надел обновку (2)", audio:["http://www.hisnmuslim.com/audio/ar/8.mp3"], ar:"اِلْبَسْ جَدِيدًا وَعِشْ حَمِيدًا وَمُتْ شَهِيدًا", tr:"Ильбас джадидан ва 'иш хамидан ва мут шахидан", m:"Носи обновку, живи достойно и умри шахидом — пожелание тому, кто надел обновку"},
+{title:"Снимая одежду", audio:["http://www.hisnmuslim.com/audio/ar/9.mp3"], ar:"بِسْمِ اللَّهِ", tr:"Бисми-Ллях", m:"С именем Аллаха"},
 {title:"При трудности или печали", ar:"اللَّهُمَّ لَا سَهْلَ إِلَّا مَا جَعَلْتَهُ سَهْلًا وَأَنْتَ تَجْعَلُ الْحَزَنَ إِذَا شِئْتَ سَهْلًا", tr:"Аллахумма ля сахля илля ма джа'альтаху сахля, ва анта тадж'алю-ль-хазна иза ши'та сахля", m:"О Аллах, нет ничего лёгкого, кроме того, что Ты сделал лёгким, а если Ты пожелаешь, Ты делаешь лёгкой любую трудность"},
 {title:"Садясь в транспорт", ar:"سُبْحَانَ الَّذِي سَخَّرَ لَنَا هَٰذَا وَمَا كُنَّا لَهُ مُقْرِنِينَ وَإِنَّا إِلَىٰ رَبِّنَا لَمُنْقَلِبُونَ", tr:"Субхана-ллязи саххара ляна хаза ва ма кунна ляху мукриним, ва инна иля Раббина ля мункалибун", m:"Пречист Тот, Кто подчинил нам это, ведь сами мы не могли этим овладеть, и, поистине, мы к нашему Господу вернёмся"},
 {title:"За родителей", ar:"رَبِّ ارْحَمْهُمَا كَمَا رَبَّيَانِي صَغِيرًا", tr:"Рабби-рхамхума кама раббаяни сагыра", m:"Господи, помилуй их обоих, как они воспитывали меня, когда я был мал"},
 {title:"Заходя в мечеть", ar:"اللَّهُمَّ افْتَحْ لِي أَبْوَابَ رَحْمَتِكَ", tr:"Аллахумма-фтах ли абваба рахматик", m:"О Аллах, открой для меня врата Твоей милости"},
 {title:"Выходя из мечети", ar:"اللَّهُمَّ إِنِّي أَسْأَلُكَ مِنْ فَضْلِكَ", tr:"Аллахумма инни ас'алука мин фадлик", m:"О Аллах, поистине, я прошу у Тебя из Твоей щедрости"},
-{title:"Входя в туалет", ar:"اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْخُبُثِ وَالْخَبَائِثِ", tr:"Аллахумма инни а'узу бикя мина-ль-хубуси ва-ль-хабаис", m:"О Аллах, поистине, я прибегаю к Тебе от зла шайтанов, мужского и женского рода"},
+{title:"Входя в туалет", audio:["http://www.hisnmuslim.com/audio/ar/10.mp3"], ar:"اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْخُبُثِ وَالْخَبَائِثِ", tr:"Аллахумма инни а'узу бикя мина-ль-хубуси ва-ль-хабаис", m:"О Аллах, поистине, я прибегаю к Тебе от зла шайтанов, мужского и женского рода"},
+{title:"Выходя из туалета", audio:["http://www.hisnmuslim.com/audio/ar/11.mp3"], ar:"غُفْرَانَكَ", tr:"Гуфранак", m:"[Прошу у Тебя] прощения"},
+{title:"Перед омовением (вуду)", audio:["http://www.hisnmuslim.com/audio/ar/12.mp3"], ar:"بِسْمِ اللَّهِ", tr:"Бисми-Ллях", m:"С именем Аллаха"},
 ];
 
 function dhikrCardHTML(item, tappable){
+  const playBtn = (!tappable && item.audio) ? `<button class="dhikr-play-btn" data-audio="${item.audio[0]}" title="Слушать">🔊</button>` : '';
   return `<div class="dhikr-card${tappable?' tappable':''}">
       <div class="dhikr-top">
         <span class="dhikr-title">${item.title||''}</span>
-        ${item.count?`<span class="dhikr-count">${item.count}</span>`:''}
+        <span class="dhikr-top-right">
+          ${item.count?`<span class="dhikr-count">${item.count}</span>`:''}
+          ${playBtn}
+        </span>
       </div>
       <div class="dhikr-ar">${item.ar}</div>
       <div class="dhikr-tr">${item.tr}</div>
@@ -1481,6 +1500,37 @@ function attachDhikrCounterHandlers(container, items){
     card.addEventListener('click', ()=>openDhikrCounter(items[i]));
   });
 }
+
+const duaAudioEl = new Audio();
+let duaAudioActiveBtn = null;
+function resetDuaPlayBtn(btn){
+  btn.classList.remove('playing');
+  btn.textContent = '🔊';
+}
+function attachInlineAudioHandlers(container){
+  container.querySelectorAll('.dhikr-play-btn').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const url = btn.dataset.audio;
+      if(duaAudioActiveBtn === btn){
+        duaAudioEl.pause();
+        duaAudioEl.currentTime = 0;
+        resetDuaPlayBtn(btn);
+        duaAudioActiveBtn = null;
+        return;
+      }
+      if(duaAudioActiveBtn) resetDuaPlayBtn(duaAudioActiveBtn);
+      duaAudioEl.src = url;
+      duaAudioEl.play().catch(()=>{ resetDuaPlayBtn(btn); duaAudioActiveBtn = null; });
+      btn.classList.add('playing');
+      btn.textContent = '⏸';
+      duaAudioActiveBtn = btn;
+    });
+  });
+}
+duaAudioEl.addEventListener('ended', ()=>{
+  if(duaAudioActiveBtn){ resetDuaPlayBtn(duaAudioActiveBtn); duaAudioActiveBtn = null; }
+});
 
 document.getElementById('zikrList').innerHTML = ZIKR.map(i=>dhikrCardHTML(i,true)).join('');
 attachDhikrCounterHandlers(document.getElementById('zikrList'), ZIKR);
@@ -1506,6 +1556,7 @@ document.querySelectorAll('#azkarPeriodChoice .len-chip').forEach(chip=>{
 });
 
 document.getElementById('duaList').innerHTML = DUA.map(i=>dhikrCardHTML(i,false)).join('');
+attachInlineAudioHandlers(document.getElementById('duaList'));
 
 /* =====================================================
    DHIKR COUNTER (тасбих-счётчик для зикров и азкаров)
