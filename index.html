@@ -28,6 +28,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Marcellus&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
+@font-face{
+  font-family:'KFGQPC Uthmanic Script HAFS';
+  src:url('fonts/KFGQPC-Uthmanic-Script-HAFS-Regular.otf') format('opentype');
+  font-weight:normal; font-style:normal; font-display:swap;
+}
 :root{
   --bg:#0a2129;
   --bg2:#0f313c;
@@ -43,7 +48,7 @@
   --rose:#b4543a;
   --rose-soft: rgba(180,84,58,0.18);
   --font-display:'Marcellus', serif;
-  --font-ar:'Amiri', serif;
+  --font-ar:'KFGQPC Uthmanic Script HAFS', 'Amiri', serif;
   --font-body:'Manrope', sans-serif;
   --font-num:'Cormorant Garamond', serif;
   --safe-top: env(safe-area-inset-top, 0px);
@@ -458,6 +463,9 @@ body{
 .dhikr-card.tappable:hover{ border-color:var(--gold); background:rgba(255,255,255,0.06); }
 .dhikr-card.tappable:active{ transform:scale(.98); }
 
+#dhikrCounterSheet .sheet-body{ display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden; }
+.counter-textscroll{ overflow-y:auto; -webkit-overflow-scrolling:touch; flex:1; min-height:60px; padding:4px 2px 10px; }
+.counter-fixed{ flex-shrink:0; }
 .counter-circle{
   width:150px; height:150px; margin:22px auto 6px; border-radius:50%; cursor:pointer; user-select:none;
   display:flex; align-items:center; justify-content:center; border:2px solid var(--gold);
@@ -992,16 +1000,20 @@ body{
         <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
       </button>
     </div>
-    <div class="sheet-body">
-      <div class="dhikr-ar" id="dhikrCounterAr" style="text-align:center;font-size:28px;"></div>
-      <div class="dhikr-tr" id="dhikrCounterTr" style="text-align:center;"></div>
-      <div class="dhikr-m" id="dhikrCounterM" style="text-align:center;"></div>
-      <div class="counter-circle" id="dhikrCounterCircle">
-        <span class="counter-num" id="dhikrCounterNum">0</span>
+    <div class="sheet-body" id="dhikrCounterBody">
+      <div class="counter-textscroll" id="dhikrCounterTextScroll">
+        <div class="dhikr-ar" id="dhikrCounterAr" style="text-align:center;font-size:28px;"></div>
+        <div class="dhikr-tr" id="dhikrCounterTr" style="text-align:center;"></div>
+        <div class="dhikr-m" id="dhikrCounterM" style="text-align:center;"></div>
       </div>
-      <div class="counter-target" id="dhikrCounterTargetLabel" style="display:none;"></div>
-      <p class="counter-hint">Нажимайте на круг, чтобы считать</p>
-      <button class="btn btn-ghost" id="dhikrCounterReset" style="width:100%;margin-top:6px;">Сбросить счётчик</button>
+      <div class="counter-fixed">
+        <div class="counter-circle" id="dhikrCounterCircle">
+          <span class="counter-num" id="dhikrCounterNum">0</span>
+        </div>
+        <div class="counter-target" id="dhikrCounterTargetLabel" style="display:none;"></div>
+        <p class="counter-hint">Нажимайте на круг, чтобы считать</p>
+        <button class="btn btn-ghost" id="dhikrCounterReset" style="width:100%;margin-top:6px;">Сбросить счётчик</button>
+      </div>
     </div>
   </div>
 
