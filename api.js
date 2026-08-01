@@ -157,6 +157,23 @@ async function apiAddFriend(friendUsername) {
   }
 }
 
+// Get total registered user count. Server-gated to a single admin account —
+// returns an error for everyone else, so the caller just hides the stat then.
+async function apiGetUserCount(username, password) {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/user-count`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Failed to get user count' };
+    return data;
+  } catch (e) {
+    return { error: 'Network error' };
+  }
+}
+
 // Get leaderboard. Pass a username to scope it to that user + their friends.
 async function apiGetLeaderboard(username) {
   try {

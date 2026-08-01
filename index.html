@@ -1069,6 +1069,7 @@ body{
             <div style="text-align:center;flex:1;">
               <div style="font-size:14px;color:var(--ivory-dim);margin-bottom:4px;">Вы вошли как</div>
               <div style="font-size:16px;color:var(--gold-soft);font-weight:700;" id="usernameDisplay"></div>
+              <div style="font-size:12px;color:var(--ivory-dim);margin-top:6px;display:none;" id="adminUserCount"></div>
             </div>
             <div style="position:relative;">
               <button id="profileMenuBtn" style="background:none;border:none;color:var(--ivory-dim);cursor:pointer;padding:4px;font-size:20px;">⋮</button>
@@ -1459,6 +1460,18 @@ document.querySelectorAll('#leaderboardScopeChoice .len-chip').forEach(chip=>{
   });
 });
 
+async function loadAdminUserCount(){
+  const el = document.getElementById('adminUserCount');
+  el.style.display = 'none';
+  if(!apiGetUserCount || !state.profile || !state.profile.authenticated) return;
+  const auth = getAuthCredentials && getAuthCredentials();
+  if(!auth) return;
+  const result = await apiGetUserCount(auth.username, auth.password);
+  if(result.error || typeof result.count !== 'number') return; // not the admin account, or offline
+  el.textContent = `Всего зарегистрировано: ${result.count}`;
+  el.style.display = 'block';
+}
+
 async function loadLeaderboard(){
   const listEl = document.getElementById('leaderboardList');
   const emptyEl = document.getElementById('leaderboardEmpty');
@@ -1498,7 +1511,7 @@ async function loadLeaderboard(){
       </div>
       <div style="flex:1;">
         <div style="color:var(--ivory);font-weight:500;">${escapeHtml(user.username)}</div>
-        <div style="font-size:12px;color:var(--ivory-dim);">Правильных: ${user.correctAnswers} | Друзей: ${user.friendsCount}</div>
+        <div style="font-size:12px;color:var(--ivory-dim);">Правильных: ${user.correctAnswers}</div>
       </div>
       <div style="flex-shrink:0;text-align:right;font-family:var(--font-num);color:var(--gold-soft);">
         <div style="font-size:16px;font-weight:bold;">${user.totalStudied}</div>
@@ -2963,6 +2976,7 @@ function updateProfileUI(){
     profileCard.style.display = 'block';
     addFriendForm.style.display = 'flex';
     document.getElementById('usernameDisplay').textContent = state.profile.username;
+    loadAdminUserCount();
   } else {
     authCard.style.display = 'block';
     profileCard.style.display = 'none';

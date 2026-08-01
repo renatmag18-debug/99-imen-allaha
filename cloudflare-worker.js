@@ -9,6 +9,7 @@
  *   GET /api/friends/:username — Get friends list
  *   POST /api/add-friend     — Add friend
  *   GET /api/leaderboard     — Get leaderboard
+ *   POST /api/admin/user-count — Total registered users (single admin account only)
  *   POST /api/push-notify    — Send push notification (legacy)
  *
  * Required secrets (Cloudflare dashboard -> Worker -> Settings -> Variables
@@ -102,7 +103,35 @@ async function handleAPI(request, env, url) {
     return handleLeaderboard(env, url.searchParams.get('username'));
   }
 
+  // POST /api/admin/user-count
+  if (request.method === 'POST' && path === 'admin/user-count') {
+    return handleAdminUserCount(body, env);
+  }
+
   return corsResponse(jsonResponse({ error: 'not found' }, 404));
+}
+
+// Single hardcoded admin account — not a secret by itself, the password
+// check below is what actually gates this endpoint.
+const ADMIN_USERNAME = 'Abu Yusuf';
+
+async function handleAdminUserCount(body, env) {
+  const { username, password } = body || {};
+  if (!username || !password) return corsResponse(jsonResponse({ error: 'missing auth' }, 401));
+  if (username !== ADMIN_USERNAME) return corsResponse(jsonResponse({ error: 'forbidden' }, 403));
+
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(username)}.json`, env);
+  const user = await userRes.json();
+  if (!user || user.password !== btoa(password)) return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
+
+  // /users also holds legacy anonymous-Firebase-Auth entries from the duel
+  // feature (keyed by Firebase uid, no password/stats) — only count real
+  // username/password registrations, same marker handleLeaderboard uses.
+  const allRes = await rtdbFetch(`/users.json`, env);
+  const all = await allRes.json();
+  const count = all ? Object.values(all).filter(u => u && u.password).length : 0;
+
+  return corsResponse(jsonResponse({ count }));
 }
 
 async function handleRegister(body, env) {
