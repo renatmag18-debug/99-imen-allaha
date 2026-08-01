@@ -1,22 +1,12 @@
 /**
  * 99ism API Client
  * Handles communication with Cloudflare Worker backend
- * Uses Cloudflare Worker routes deployed to the same domain
+ * 99ism.ru's DNS isn't on Cloudflare (site is on GitHub Pages), so the
+ * Worker can't be routed at 99ism.ru/api/* — it's served from its
+ * workers.dev subdomain instead.
  */
 
-// Detect API base URL based on environment
-const API_BASE = (function(){
-  // If running on 99ism.ru, use the root domain (Cloudflare Worker)
-  if (typeof window !== 'undefined' && window.location.hostname.includes('99ism.ru')) {
-    return 'https://99ism.ru';
-  }
-  // For local development, use localhost
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    return 'http://localhost:8787';
-  }
-  // Fallback
-  return 'https://99ism.ru';
-})();
+const API_BASE = 'https://99ism-api.99ism-worker.workers.dev';
 
 // Cache current auth credentials
 let currentAuth = null;

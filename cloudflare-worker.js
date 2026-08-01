@@ -13,14 +13,27 @@
  *
  * Required secrets (Cloudflare dashboard -> Worker -> Settings -> Variables
  * and Secrets, all as "Encrypt"):
- *   FCM_PROJECT_ID    e.g. "ism-friends"
- *   FCM_CLIENT_EMAIL  service account email
- *   FCM_PRIVATE_KEY   full PEM private key
+ *   FCM_CLIENT_EMAIL  service account email — REQUIRED for all endpoints,
+ *                     used to mint an OAuth token for RTDB REST calls
+ *                     (rules require auth != null) and for FCM push sends
+ *   FCM_PRIVATE_KEY   full PEM private key for the same service account
+ *   FCM_PROJECT_ID    e.g. "ism-friends" — only needed for push notify
  *   SHARED_SECRET     random string for push auth
- *   FIREBASE_API_KEY  Firebase API key for auth (optional)
  */
 
 const RTDB_BASE = 'https://ism-friends-default-rtdb.firebaseio.com';
+
+// RTDB write/protected-read rules require `auth != null`. RTDB's REST API only
+// accepts a service-account OAuth token via the `Authorization: Bearer` header
+// (the `?auth=` query param is for Firebase Auth ID tokens / legacy secrets,
+// and silently falls back to unauthenticated for OAuth2 tokens) — see getAccessToken().
+const RTDB_SCOPE = 'https://www.googleapis.com/auth/firebase.database https://www.googleapis.com/auth/userinfo.email';
+
+async function rtdbFetch(path, env, options) {
+  const token = await getAccessToken(env, RTDB_SCOPE);
+  const opts = { ...options, headers: { ...(options && options.headers), 'Authorization': `Bearer ${token}` } };
+  return fetch(`${RTDB_BASE}${path}`, opts);
+}
 
 export default {
   async fetch(request, env) {
@@ -104,7 +117,7 @@ async function handleRegister(body, env) {
   }
 
   // Check if user exists
-  const existingRes = await fetch(`${RTDB_BASE}/users/${encodeURIComponent(username)}.json`);
+  const existingRes = await rtdbFetch(`/users/${encodeURIComponent(username)}.json`, env);
   const existing = await existingRes.json();
 
   if (existing && existing.password) {
@@ -126,7 +139,7 @@ async function handleRegister(body, env) {
     }
   };
 
-  const createRes = await fetch(`${RTDB_BASE}/users/${encodeURIComponent(username)}.json`, {
+  const createRes = await rtdbFetch(`/users/${encodeURIComponent(username)}.json`, env, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(userData)
@@ -146,7 +159,7 @@ async function handleLogin(body, env) {
     return corsResponse(jsonResponse({ error: 'missing username or password' }, 400));
   }
 
-  const userRes = await fetch(`${RTDB_BASE}/users/${encodeURIComponent(username)}.json`);
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(username)}.json`, env);
   const user = await userRes.json();
 
   if (!user || !user.password || user.password !== btoa(password)) {
@@ -168,7 +181,7 @@ async function handleSyncProgress(body, env) {
   }
 
   // Verify auth
-  const userRes = await fetch(`${RTDB_BASE}/users/${encodeURIComponent(username)}.json`);
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(username)}.json`, env);
   const user = await userRes.json();
 
   if (!user || user.password !== btoa(password)) {
@@ -182,7 +195,7 @@ async function handleSyncProgress(body, env) {
     updateData.stats = { ...user.stats, ...stats, lastActive: new Date().toISOString() };
   }
 
-  await fetch(`${RTDB_BASE}/users/${encodeURIComponent(username)}.json`, {
+  await rtdbFetch(`/users/${encodeURIComponent(username)}.json`, env, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(updateData)
@@ -192,7 +205,7 @@ async function handleSyncProgress(body, env) {
 }
 
 async function handleGetProfile(username, env) {
-  const userRes = await fetch(`${RTDB_BASE}/users/${encodeURIComponent(username)}.json`);
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(username)}.json`, env);
   const user = await userRes.json();
 
   if (!user) {
@@ -207,7 +220,7 @@ async function handleGetProfile(username, env) {
 }
 
 async function handleGetFriends(username, env) {
-  const userRes = await fetch(`${RTDB_BASE}/users/${encodeURIComponent(username)}.json`);
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(username)}.json`, env);
   const user = await userRes.json();
 
   if (!user) {
@@ -226,7 +239,7 @@ async function handleAddFriend(body, env) {
   }
 
   // Verify auth
-  const userRes = await fetch(`${RTDB_BASE}/users/${encodeURIComponent(username)}.json`);
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(username)}.json`, env);
   const user = await userRes.json();
 
   if (!user || user.password !== btoa(password)) {
@@ -234,7 +247,7 @@ async function handleAddFriend(body, env) {
   }
 
   // Check if friend exists
-  const friendRes = await fetch(`${RTDB_BASE}/users/${encodeURIComponent(friendUsername)}.json`);
+  const friendRes = await rtdbFetch(`/users/${encodeURIComponent(friendUsername)}.json`, env);
   const friend = await friendRes.json();
 
   if (!friend || !friend.password) {
@@ -242,7 +255,7 @@ async function handleAddFriend(body, env) {
   }
 
   // Add friend
-  await fetch(`${RTDB_BASE}/users/${encodeURIComponent(username)}/friends/${encodeURIComponent(friendUsername)}.json`, {
+  await rtdbFetch(`/users/${encodeURIComponent(username)}/friends/${encodeURIComponent(friendUsername)}.json`, env, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(true)
@@ -252,7 +265,7 @@ async function handleAddFriend(body, env) {
 }
 
 async function handleLeaderboard(env) {
-  const leaderRes = await fetch(`${RTDB_BASE}/users.json?orderBy="stats/totalStudied"&limitToLast=100`);
+  const leaderRes = await rtdbFetch(`/users.json?orderBy="stats/totalStudied"&limitToLast=100`, env);
   const users = await leaderRes.json();
 
   if (!users) {
@@ -282,12 +295,12 @@ async function handlePush(request, env) {
   if (secret !== env.SHARED_SECRET) return corsResponse(jsonResponse({ error: 'forbidden' }, 403));
   if (!targetUid || !title) return corsResponse(jsonResponse({ error: 'missing targetUid/title' }, 400));
 
-    const tokensRes = await fetch(`${RTDB_BASE}/users/${encodeURIComponent(targetUid)}/fcmTokens.json`);
+    const tokensRes = await rtdbFetch(`/users/${encodeURIComponent(targetUid)}/fcmTokens.json`, env);
     const tokensObj = await tokensRes.json();
     const tokens = tokensObj ? Object.keys(tokensObj) : [];
     if (!tokens.length) return corsResponse(jsonResponse({ ok: true, sent: 0, reason: 'no tokens' }));
 
-    const accessToken = await getAccessToken(env);
+    const accessToken = await getAccessToken(env, 'https://www.googleapis.com/auth/firebase.messaging');
     let sent = 0;
     const deadTokens = [];
 
@@ -312,54 +325,12 @@ async function handlePush(request, env) {
 
     if (deadTokens.length) {
       await Promise.all(deadTokens.map(t =>
-        fetch(`${RTDB_BASE}/users/${encodeURIComponent(targetUid)}/fcmTokens/${encodeURIComponent(t)}.json`, { method: 'DELETE' })
+        rtdbFetch(`/users/${encodeURIComponent(targetUid)}/fcmTokens/${encodeURIComponent(t)}.json`, env, { method: 'DELETE' })
       ));
     }
 
     return corsResponse(jsonResponse({ ok: true, sent, removed: deadTokens.length }));
 }
-
-    const tokensRes = await fetch(`${RTDB_BASE}/users/${encodeURIComponent(targetUid)}/fcmTokens.json`);
-    const tokensObj = await tokensRes.json();
-    const tokens = tokensObj ? Object.keys(tokensObj) : [];
-    if (!tokens.length) return corsResponse(jsonResponse({ ok: true, sent: 0, reason: 'no tokens' }));
-
-    const accessToken = await getAccessToken(env);
-    let sent = 0;
-    const deadTokens = [];
-
-    await Promise.all(tokens.map(async (token) => {
-      const res = await fetch(`https://fcm.googleapis.com/v1/projects/${env.FCM_PROJECT_ID}/messages:send`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: {
-            token,
-            // data-only (no top-level "notification") — some browsers show a
-            // push automatically for "notification" payloads AND our service
-            // worker's onBackgroundMessage shows one too, causing duplicates.
-            // With data-only, showNotification() in sw.js is the only path.
-            data: { title, body: msgBody || '', tag: tag || 'ism-notify', link: 'https://99ism.ru/' },
-            webpush: { headers: { Urgency: 'high' } }
-          }
-        })
-      });
-      if (res.ok) { sent++; return; }
-      const errText = await res.text();
-      if (res.status === 404 || errText.includes('UNREGISTERED') || errText.includes('NOT_FOUND')) {
-        deadTokens.push(token);
-      }
-    }));
-
-    if (deadTokens.length) {
-      await Promise.all(deadTokens.map(t =>
-        fetch(`${RTDB_BASE}/users/${encodeURIComponent(targetUid)}/fcmTokens/${encodeURIComponent(t)}.json`, { method: 'DELETE' })
-      ));
-    }
-
-    return corsResponse(jsonResponse({ ok: true, sent, removed: deadTokens.length }));
-  }
-};
 
 function corsResponse(res) {
   const h = new Headers(res.headers);
@@ -374,16 +345,17 @@ function jsonResponse(obj, status) {
 
 /* ---------------- Google OAuth2 (service account, RS256 JWT) ---------------- */
 
-let cachedToken = null; // { token, exp } — reused across requests hitting the same isolate
+const cachedTokens = {}; // scope -> { token, exp } — reused across requests hitting the same isolate
 
-async function getAccessToken(env) {
+async function getAccessToken(env, scope) {
   const now = Math.floor(Date.now() / 1000);
-  if (cachedToken && cachedToken.exp - 60 > now) return cachedToken.token;
+  const cached = cachedTokens[scope];
+  if (cached && cached.exp - 60 > now) return cached.token;
 
   const header = { alg: 'RS256', typ: 'JWT' };
   const claim = {
     iss: env.FCM_CLIENT_EMAIL,
-    scope: 'https://www.googleapis.com/auth/firebase.messaging',
+    scope,
     aud: 'https://oauth2.googleapis.com/token',
     iat: now,
     exp: now + 3600
@@ -401,12 +373,15 @@ async function getAccessToken(env) {
   const tokenJson = await tokenRes.json();
   if (!tokenJson.access_token) throw new Error('OAuth failed: ' + JSON.stringify(tokenJson));
 
-  cachedToken = { token: tokenJson.access_token, exp: now + (tokenJson.expires_in || 3600) };
-  return cachedToken.token;
+  cachedTokens[scope] = { token: tokenJson.access_token, exp: now + (tokenJson.expires_in || 3600) };
+  return cachedTokens[scope].token;
 }
 
 async function importPrivateKey(pem) {
   const clean = pem
+    .trim()
+    .replace(/^["']|["']$/g, '')
+    .replace(/\\n/g, '\n')
     .replace(/-----BEGIN PRIVATE KEY-----/, '')
     .replace(/-----END PRIVATE KEY-----/, '')
     .replace(/\s+/g, '');
