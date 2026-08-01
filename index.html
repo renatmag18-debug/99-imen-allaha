@@ -3335,6 +3335,10 @@ async function acceptFriendRequest(fromUid, fromName){
   if(result.error){ showToast('Не удалось принять запрос'); return; }
   notifyFriend(fromUid, '99 имён Аллаха', state.profile.username+' принял(а) вашу заявку в друзья', 'friend-accept');
   showToast('Теперь вы друзья: '+(fromName||fromUid));
+  state.incomingRequests = state.incomingRequests.filter(r => r.uid !== fromUid);
+  if(!state.friendsList.some(f => f.uid === fromUid)) state.friendsList.push({ uid: fromUid, name: fromName || fromUid });
+  renderFriendsScreen();
+  updateFriendsBadge();
   loadFriends();
   loadFriendRequests();
 }
@@ -3342,6 +3346,9 @@ async function declineFriendRequest(fromUid){
   if(!state.profile || !state.profile.authenticated) return;
   const result = await apiDeclineFriendRequest(fromUid);
   if(result.error){ showToast('Не удалось отклонить запрос'); return; }
+  state.incomingRequests = state.incomingRequests.filter(r => r.uid !== fromUid);
+  renderFriendsScreen();
+  updateFriendsBadge();
   loadFriendRequests();
 }
 async function removeFriend(uid){
@@ -3349,6 +3356,11 @@ async function removeFriend(uid){
   const result = await apiRemoveFriend(uid);
   if(result.error){ showToast('Не удалось удалить друга'); return; }
   showToast('Друг удалён');
+  // Update the list immediately instead of waiting on a re-fetch — the row
+  // (and its ⋮ menu) needs to actually vanish the moment removal succeeds,
+  // not just whenever the next background refresh happens to land.
+  state.friendsList = state.friendsList.filter(f => f.uid !== uid);
+  renderFriendsScreen();
   loadFriends();
 }
 
