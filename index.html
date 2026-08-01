@@ -1029,11 +1029,20 @@ body{
         </div>
 
         <div class="profile-card" id="profileCard" style="display:none;">
-          <div style="text-align:center;margin-bottom:14px;">
-            <div style="font-size:14px;color:var(--ivory-dim);margin-bottom:4px;">Вы вошли как</div>
-            <div style="font-size:16px;color:var(--gold-soft);font-weight:700;" id="usernameDisplay"></div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div style="text-align:center;flex:1;">
+              <div style="font-size:14px;color:var(--ivory-dim);margin-bottom:4px;">Вы вошли как</div>
+              <div style="font-size:16px;color:var(--gold-soft);font-weight:700;" id="usernameDisplay"></div>
+            </div>
+            <div style="position:relative;">
+              <button id="profileMenuBtn" style="background:none;border:none;color:var(--ivory-dim);cursor:pointer;padding:4px;font-size:20px;">⋮</button>
+              <div id="profileMenu" style="display:none;position:absolute;top:28px;right:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 0;min-width:150px;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:100;">
+                <button id="logoutBtn" style="display:block;width:100%;text-align:left;padding:10px 16px;background:none;border:none;color:var(--rose);cursor:pointer;font-family:var(--font-body);font-size:13px;transition:background .2s;">
+                  Выход
+                </button>
+              </div>
+            </div>
           </div>
-          <button class="btn btn-ghost" id="logoutBtn" style="width:100%;">Выход</button>
         </div>
 
         <div class="add-friend-form" id="addFriendForm" style="display:none;">
@@ -2865,6 +2874,20 @@ document.getElementById('loginBtn').addEventListener('click', async ()=>{
   document.getElementById('usernameInput').value = '';
   document.getElementById('passwordInput').value = '';
   listenFriendsRealtime();
+});
+
+document.getElementById('profileMenuBtn').addEventListener('click', (e)=>{
+  e.stopPropagation();
+  const menu = document.getElementById('profileMenu');
+  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+});
+
+document.addEventListener('click', ()=>{
+  document.getElementById('profileMenu').style.display = 'none';
+});
+
+document.getElementById('profileMenu').addEventListener('click', (e)=>{
+  e.stopPropagation();
 });
 
 document.getElementById('logoutBtn').addEventListener('click', ()=>{
