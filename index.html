@@ -2766,10 +2766,21 @@ function avatarLetter(name){
 }
 
 async function initProfile(){
-  const username = localStorage.getItem('username') || '';
-  state.profile = { username, authenticated: !!username };
-  updateProfileUI();
-  if(username) listenFriendsRealtime();
+  try {
+    const username = localStorage.getItem('username') || '';
+    if(username){
+      state.profile = { username, authenticated: true };
+      updateProfileUI();
+      listenFriendsRealtime();
+    } else {
+      state.profile = { username: '', authenticated: false };
+      updateProfileUI();
+    }
+  } catch(e){
+    console.error('Profile init error:', e);
+    state.profile = { username: '', authenticated: false };
+    updateProfileUI();
+  }
   updateNotifUI();
 }
 
