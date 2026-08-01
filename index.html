@@ -985,7 +985,12 @@ body{
               <option value="birth_city">Город твоего рождения?</option>
               <option value="pet_name">Имя питомца?</option>
               <option value="favorite_color">Любимый цвет?</option>
+              <option value="custom">📝 Свой вопрос</option>
             </select>
+          </div>
+          <div class="profile-name-field" id="customQuestionField" style="display:none;">
+            <label>Ваш вопрос</label>
+            <input type="text" id="customQuestionInput" placeholder="Напишите свой вопрос" maxlength="50">
           </div>
           <div class="profile-name-field">
             <label>Ответ</label>
@@ -2771,18 +2776,41 @@ function updateProfileUI(){
   }
 }
 
+document.getElementById('securityQuestionInput').addEventListener('change', ()=>{
+  const value = document.getElementById('securityQuestionInput').value;
+  if(value === 'custom'){
+    document.getElementById('customQuestionField').style.display = 'block';
+  } else {
+    document.getElementById('customQuestionField').style.display = 'none';
+  }
+});
+
 document.getElementById('registerBtn').addEventListener('click', async ()=>{
   const username = document.getElementById('usernameInput').value.trim();
   const password = document.getElementById('passwordInput').value.trim();
-  const securityQuestion = document.getElementById('securityQuestionInput').value;
+  const securityQuestionType = document.getElementById('securityQuestionInput').value;
   const securityAnswer = document.getElementById('securityAnswerInput').value.trim().toLowerCase();
   const authStatus = document.getElementById('authStatus');
 
   if(!username || !password){ authStatus.textContent = 'Введите никнейм и пароль'; return; }
   if(username.length < 3){ authStatus.textContent = 'Никнейм минимум 3 символа'; return; }
   if(password.length < 3){ authStatus.textContent = 'Пароль минимум 3 символа'; return; }
-  if(!securityQuestion){ authStatus.textContent = 'Выберите контрольный вопрос'; return; }
+  if(!securityQuestionType){ authStatus.textContent = 'Выберите контрольный вопрос'; return; }
   if(!securityAnswer){ authStatus.textContent = 'Введите ответ на контрольный вопрос'; return; }
+
+  let securityQuestion;
+  if(securityQuestionType === 'custom'){
+    securityQuestion = document.getElementById('customQuestionInput').value.trim();
+    if(!securityQuestion){ authStatus.textContent = 'Напишите свой вопрос'; return; }
+  } else {
+    const questions = {
+      'favorite_name': 'Какое твоё любимое имя Аллаха?',
+      'birth_city': 'Город твоего рождения?',
+      'pet_name': 'Имя питомца?',
+      'favorite_color': 'Любимый цвет?'
+    };
+    securityQuestion = questions[securityQuestionType];
+  }
 
   const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
   if(allUsers[username]){ authStatus.textContent = 'Этот никнейм уже занят'; return; }
@@ -2856,15 +2884,7 @@ document.getElementById('resetPasswordBtn').addEventListener('click', ()=>{
     if(!username){ resetStatus.textContent = 'Введите никнейм'; return; }
     if(!allUsers[username]){ resetStatus.textContent = 'Пользователь не найден'; return; }
 
-    const questions = {
-      'favorite_name': 'Какое твоё любимое имя Аллаха?',
-      'birth_city': 'Город твоего рождения?',
-      'pet_name': 'Имя питомца?',
-      'favorite_color': 'Любимый цвет?'
-    };
-    const questionKey = allUsers[username].securityQuestion;
-    const questionText = questions[questionKey] || 'Контрольный вопрос';
-
+    const questionText = allUsers[username].securityQuestion || 'Контрольный вопрос';
     document.getElementById('securityQuestionLabel').textContent = questionText;
     document.getElementById('securityQuestionField').style.display = 'block';
     resetStatus.textContent = '';
