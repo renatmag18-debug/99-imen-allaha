@@ -607,6 +607,7 @@ body{
   *{ animation-duration:0.001ms !important; transition-duration:0.001ms !important; }
 }
 </style>
+<script src="api.js"></script>
 </head>
 <body>
 <div id="app">
@@ -1062,6 +1063,16 @@ body{
       </div>
     </section>
 
+    <section class="screen" data-screen="leaderboard">
+      <div class="scroll">
+        <div style="padding:20px;">
+          <h2 style="text-align:center;margin-bottom:20px;">🏆 Рейтинг учащихся</h2>
+          <div id="leaderboardList" style="display:flex;flex-direction:column;gap:10px;"></div>
+          <div id="leaderboardEmpty" style="text-align:center;color:var(--ivory-dim);padding:40px 20px;">Загрузка рейтинга...</div>
+        </div>
+      </div>
+    </section>
+
   </div>
 
   <div class="sheet-backdrop" id="friendPickerBackdrop"></div>
@@ -1125,6 +1136,10 @@ body{
     <button class="tab" data-nav="misc">
       <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="4" r="1.3" fill="currentColor"/><circle cx="18.9" cy="8" r="1.3" fill="currentColor"/><circle cx="18.9" cy="16" r="1.3" fill="currentColor"/><circle cx="12" cy="20" r="1.3" fill="currentColor"/><circle cx="5.1" cy="16" r="1.3" fill="currentColor"/><circle cx="5.1" cy="8" r="1.3" fill="currentColor"/></svg>
       <span>Прочее</span>
+    </button>
+    <button class="tab" data-nav="leaderboard">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" stroke-width="1.6"/><polyline points="9 22 9 12 15 12 15 22" stroke="currentColor" stroke-width="1.6"/></svg>
+      <span>Рейтинг</span>
     </button>
     <button class="tab" data-nav="friends">
       <svg viewBox="0 0 24 24" fill="none"><path d="M9 12a3.5 3.5 0 100-7 3.5 3.5 0 000 7z" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 20c.6-3.3 3-5.4 5.5-5.4s4.9 2.1 5.5 5.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M16 8a2.6 2.6 0 100-5.2A2.6 2.6 0 0016 8z" stroke="currentColor" stroke-width="1.5"/><path d="M15 9.6c2 .3 3.6 1.9 4 4.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -1380,6 +1395,48 @@ function updateHomeStats(){
   document.getElementById('learnedCount').textContent = state.learned.size;
   document.getElementById('bestScoreStat').textContent = state.bestScore ? state.bestScore.pct+'%' : '—';
 }
+
+async function loadLeaderboard(){
+  const listEl = document.getElementById('leaderboardList');
+  const emptyEl = document.getElementById('leaderboardEmpty');
+
+  if(!apiGetLeaderboard){
+    emptyEl.textContent = 'Лидерборд недоступен';
+    return;
+  }
+
+  const result = await apiGetLeaderboard();
+
+  if(result.error || !result.leaderboard){
+    emptyEl.textContent = 'Ошибка загрузки лидерборда';
+    return;
+  }
+
+  const board = result.leaderboard || [];
+
+  if(board.length === 0){
+    emptyEl.textContent = 'Нет данных для лидерборда';
+    return;
+  }
+
+  emptyEl.style.display = 'none';
+  listEl.innerHTML = board.map((user, idx) => `
+    <div style="display:flex;align-items:center;gap:12px;padding:12px;background:rgba(255,255,255,0.02);border-radius:10px;border:1px solid var(--line);">
+      <div style="flex-shrink:0;font-size:20px;font-weight:bold;color:var(--gold);min-width:30px;">
+        ${idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : (idx + 1)}
+      </div>
+      <div style="flex:1;">
+        <div style="color:var(--ivory);font-weight:500;">${escapeHtml(user.username)}</div>
+        <div style="font-size:12px;color:var(--ivory-dim);">Правильных: ${user.correctAnswers} | Друзей: ${user.friendsCount}</div>
+      </div>
+      <div style="flex-shrink:0;text-align:right;font-family:var(--font-num);color:var(--gold-soft);">
+        <div style="font-size:16px;font-weight:bold;">${user.totalStudied}</div>
+        <div style="font-size:11px;color:var(--ivory-dim);">изучено</div>
+      </div>
+    </div>
+  `).join('');
+}
+
 // name of day: deterministic by date
 (function initNameOfDay(){
   const d = new Date();
@@ -2307,6 +2364,22 @@ function finishQuiz(){
     document.getElementById('duelResultActions').style.display='none';
     vsBox.style.display='none';
   }
+
+  // Sync progress to backend
+  const auth = getAuthCredentials && getAuthCredentials();
+  if (auth) {
+    const quizProgress = {
+      lastScore: q.score,
+      lastTotal: q.len,
+      lastPercent: pct,
+      lastDate: new Date().toISOString()
+    };
+    const stats = {
+      totalStudied: state.bestScore ? state.bestScore.len : q.len,
+      correctAnswers: state.bestScore ? state.bestScore.score : q.score
+    };
+    apiSyncProgress && apiSyncProgress(quizProgress, stats);
+  }
 }
 
 document.getElementById('retryBtn').addEventListener('click', ()=>{
@@ -2783,9 +2856,17 @@ async function initProfile(){
   try {
     const username = getUsername();
     if(username){
+      // Try to restore auth credentials
+      if(loadAuthCredentials){
+        loadAuthCredentials();
+      }
       state.profile = { username, authenticated: true };
       updateProfileUI();
       listenFriendsRealtime();
+      // Load leaderboard if on that screen
+      if(state.screen === 'leaderboard'){
+        loadLeaderboard();
+      }
     } else {
       state.profile = { username: '', authenticated: false };
       updateProfileUI();
@@ -2864,11 +2945,19 @@ document.getElementById('registerBtn').addEventListener('click', async ()=>{
     securityQuestion = questions[securityQuestionType];
   }
 
-  const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
-  if(allUsers[username]){ authStatus.textContent = 'Этот никнейм уже занят'; return; }
+  authStatus.textContent = 'Регистрация...';
 
-  allUsers[username] = { password: btoa(password), securityQuestion, securityAnswer };
-  localStorage.setItem('users', JSON.stringify(allUsers));
+  // Try to register via API
+  const result = await apiRegister(username, password, securityQuestion, securityAnswer);
+
+  if(result.error){
+    // Fallback to localStorage if API fails
+    const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
+    if(allUsers[username]){ authStatus.textContent = 'Этот никнейм уже занят'; return; }
+
+    allUsers[username] = { password: btoa(password), securityQuestion, securityAnswer };
+    localStorage.setItem('users', JSON.stringify(allUsers));
+  }
 
   saveUsername(username);
   state.profile = { username, authenticated: true };
@@ -2886,10 +2975,18 @@ document.getElementById('loginBtn').addEventListener('click', async ()=>{
 
   if(!username || !password){ authStatus.textContent = 'Введите никнейм и пароль'; return; }
 
-  const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
-  if(!allUsers[username] || allUsers[username].password !== btoa(password)){
-    authStatus.textContent = 'Неверный никнейм или пароль';
-    return;
+  authStatus.textContent = 'Вход...';
+
+  // Try to login via API
+  const result = await apiLogin(username, password);
+
+  if(result.error){
+    // Fallback to localStorage if API fails
+    const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
+    if(!allUsers[username] || allUsers[username].password !== btoa(password)){
+      authStatus.textContent = 'Неверный никнейм или пароль';
+      return;
+    }
   }
 
   saveUsername(username);
@@ -2998,7 +3095,7 @@ document.getElementById('friendUsernameInput').addEventListener('keydown', e=>{
   if(e.key==='Enter') addFriendByUsername();
 });
 
-function addFriendByUsername(){
+async function addFriendByUsername(){
   if(!state.profile || !state.profile.authenticated){ showToast('Сначала войдите'); return; }
   const input = document.getElementById('friendUsernameInput');
   const friendUsername = input.value.trim();
@@ -3013,10 +3110,16 @@ function addFriendByUsername(){
     return;
   }
 
-  const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
-  if(!allUsers[friendUsername]){
-    showToast('Пользователь не найден');
-    return;
+  // Try to add friend via API
+  const result = await apiAddFriend(friendUsername);
+
+  if(result.error){
+    // Fallback to localStorage
+    const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
+    if(!allUsers[friendUsername]){
+      showToast('Пользователь не найден');
+      return;
+    }
   }
 
   allFriends[state.profile.username].push(friendUsername);
@@ -3340,6 +3443,13 @@ document.getElementById('duelPickFriendsBtn').addEventListener('click', ()=>{
 });
 
 initProfile();
+
+// Загружаем лидерборд при переходе на вкладку
+document.querySelectorAll('[data-nav="leaderboard"]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    setTimeout(() => loadLeaderboard(), 100);
+  });
+});
 
 /* =====================================================
    GEOMETRIC BACKGROUND PATTERN (inline SVG data-uri)
