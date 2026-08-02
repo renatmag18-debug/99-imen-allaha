@@ -1200,6 +1200,7 @@ body{
       </button>
     </div>
     <div class="sheet-body">
+      <div class="profile-view-avatar" id="avatarPreview" style="margin-bottom:16px;"></div>
       <div class="section-label" style="margin-top:0;">Значок</div>
       <div class="avatar-picker-grid" id="avatarEmojiGrid"></div>
       <div class="section-label">Цвет</div>
@@ -3743,6 +3744,7 @@ function renderAvatarPickerGrids(){
   document.getElementById('avatarColorGrid').innerHTML = Object.keys(AVATAR_COLORS).map(c=>
     `<button class="avatar-pick-color ${c===avatarPickerState.color?'active':''}" data-color="${c}" style="background:${avatarGradient(c)};"></button>`
   ).join('');
+  renderAvatarInto(document.getElementById('avatarPreview'), avatarPickerState, state.profile && state.profile.username);
 }
 function openAvatarPicker(){
   const current = (state.profile && state.profile.avatar) || {};
@@ -3772,12 +3774,24 @@ document.getElementById('avatarColorGrid').addEventListener('click', e=>{
   renderAvatarPickerGrids();
 });
 document.getElementById('avatarSaveBtn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('avatarSaveBtn');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Сохранение…';
   const result = await apiUpdateAvatar(avatarPickerState.emoji, avatarPickerState.color);
-  if(result.error){ showToast('Не удалось сохранить аватарку'); return; }
+  btn.disabled = false;
+  if(result.error){
+    btn.textContent = originalText;
+    showToast(result.error === 'Not authenticated' ? 'Сначала войдите в аккаунт' : 'Не удалось сохранить — проверьте соединение');
+    return;
+  }
   state.profile.avatar = { emoji: avatarPickerState.emoji, color: avatarPickerState.color };
   renderAvatarInto(document.getElementById('ownAvatarCircle'), state.profile.avatar, state.profile.username);
+  btn.textContent = 'Сохранено ✓';
   showToast('Аватарка сохранена');
-  closeAvatarPicker();
+  setTimeout(()=>{ btn.textContent = originalText; }, 1500);
+  // Stays open on purpose — the preview + toast are the confirmation;
+  // auto-closing right after saving made it easy to miss that it worked.
 });
 
 /* ---------------- public profile view ---------------- */
