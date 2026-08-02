@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "ru.ism99.app",
+    "sha256_cert_fingerprints": [
+      "89:62:70:97:7E:23:29:D5:88:02:0F:C0:B3:01:12:E0:4D:26:0E:A2:28:4F:89:D2:7F:6F:BD:0F:F2:71:F1:F0"
+    ]
+  }
+}]
