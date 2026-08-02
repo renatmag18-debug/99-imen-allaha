@@ -1603,12 +1603,15 @@ async function loadAdminUserCount(){
   el.style.display = 'block';
 }
 
+let leaderboardPresenceUnsubs = [];
 async function loadLeaderboard(){
   const listEl = document.getElementById('leaderboardList');
   const emptyEl = document.getElementById('leaderboardEmpty');
   listEl.innerHTML = '';
   emptyEl.style.display = 'block';
   emptyEl.textContent = 'Загрузка рейтинга...';
+  leaderboardPresenceUnsubs.forEach(unsub => unsub());
+  leaderboardPresenceUnsubs = [];
 
   if(!apiGetLeaderboard){
     emptyEl.textContent = 'Лидерборд недоступен';
@@ -1640,7 +1643,10 @@ async function loadLeaderboard(){
       <div style="flex-shrink:0;font-size:20px;font-weight:bold;color:var(--gold);min-width:30px;">
         ${idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : (idx + 1)}
       </div>
-      <div class="friend-avatar" style="flex-shrink:0;${user.avatar&&user.avatar.emoji&&user.avatar.color?`background:${avatarGradient(user.avatar.color)};font-size:16px;`:''}">${user.avatar&&user.avatar.emoji?user.avatar.emoji:escapeHtml(avatarLetter(user.username))}</div>
+      <div class="avatar-wrap static">
+        <div class="friend-avatar" style="${user.avatar&&user.avatar.emoji&&user.avatar.color?`background:${avatarGradient(user.avatar.color)};font-size:16px;`:''}">${user.avatar&&user.avatar.emoji?user.avatar.emoji:escapeHtml(avatarLetter(user.username))}</div>
+        <div class="presence-dot" id="lbPresence-${idx}"></div>
+      </div>
       <div style="flex:1;min-width:0;">
         <div style="color:var(--ivory);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(user.username)}</div>
         <div style="font-size:12px;color:var(--ivory-dim);">Правильных: ${user.correctAnswers}</div>
@@ -1651,6 +1657,11 @@ async function loadLeaderboard(){
       </div>
     </div>
   `).join('');
+
+  leaderboardPresenceUnsubs = board.map((user, idx) => {
+    const dot = document.getElementById('lbPresence-'+idx);
+    return watchPresence(user.username, online => { if(dot) dot.classList.toggle('online', online); });
+  });
 }
 document.getElementById('leaderboardList').addEventListener('click', e=>{
   const row = e.target.closest('[data-view-profile]');
@@ -3558,11 +3569,24 @@ function setupPresence(){
 // an unsubscribe function. Callers are responsible for calling it before
 // re-rendering the same rows, or listeners pile up across every refresh.
 function watchPresence(username, cb){
-  if(!fbDb || !username) return ()=>{};
-  const ref = fbDb.ref('presence/'+fbKey(username));
-  const listener = snap => cb(snap.val() === true);
-  ref.on('value', listener);
-  return () => ref.off('value', listener);
+  if(!username) return ()=>{};
+  // renderFriendsScreen()/loadLeaderboard() can run before the async Firebase
+  // SDK finishes loading (the network fetch behind them often beats it) —
+  // checking fbDb synchronously here missed that window every time, same
+  // race as the earlier ?room= and duelInvites bugs this session. Waiting on
+  // fbAuthReady instead of bailing out means the listener still attaches
+  // whenever Firebase actually does become available.
+  let ref = null, listener = null, cancelled = false;
+  fbAuthReady.then(()=>{
+    if(cancelled || !fbDb) return;
+    ref = fbDb.ref('presence/'+fbKey(username));
+    listener = snap => cb(snap.val() === true);
+    ref.on('value', listener);
+  });
+  return () => {
+    cancelled = true;
+    if(ref && listener) ref.off('value', listener);
+  };
 }
 
 /* ---------------- push notifications (FCM) ---------------- */
@@ -3828,7 +3852,7 @@ async function openProfileView(username){
   }
   renderAvatarInto(document.getElementById('profileViewAvatar'), result.avatar, result.username);
   document.getElementById('profileViewName').textContent = result.username;
-  document.getElementById('profileViewStatus').textContent = 'На сайте с '+formatJoinedDate(result.joinedAt);
+  document.getElementById('profileViewStatus').textContent = 'Проверка статуса…';
 
   const stats = result.stats || {};
   document.getElementById('profileViewStats').innerHTML = `
@@ -3838,12 +3862,17 @@ async function openProfileView(username){
     <div class="profile-stat-tile"><b>${formatDuration(stats.totalTimeSeconds)}</b><span>времени на сайте</span></div>
     <div class="profile-stat-tile"><b>${result.friendsCount||0}</b><span>друзей</span></div>
     <div class="profile-stat-tile"><b>${stats.correctAnswers||0}</b><span>правильных в лучшей викторине</span></div>
+    <div class="profile-stat-tile"><b>${formatJoinedDate(result.joinedAt)}</b><span>на сайте с</span></div>
   `;
 
   if(profileViewPresenceUnsub) profileViewPresenceUnsub();
   const dot = document.getElementById('profileViewPresence');
   dot.classList.remove('online');
-  profileViewPresenceUnsub = watchPresence(username, online => dot.classList.toggle('online', online));
+  const statusEl = document.getElementById('profileViewStatus');
+  profileViewPresenceUnsub = watchPresence(username, online => {
+    dot.classList.toggle('online', online);
+    statusEl.textContent = online ? '🟢 В сети' : 'Не в сети';
+  });
 }
 function closeProfileView(){
   profileViewSheet.classList.remove('show');
