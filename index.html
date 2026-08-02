@@ -3385,10 +3385,16 @@ async function loadFriendRequests(){
   renderFriendsScreen();
   updateFriendsBadge();
 }
-function listenFriendsRealtime(){
+async function listenFriendsRealtime(){
   if(!state.profile || !state.profile.authenticated) return;
   loadFriends();
   loadFriendRequests();
+  // Firebase loads asynchronously (see fbAuthReady) — this used to check
+  // fbDb synchronously right here, when it's still always null this early,
+  // so the realtime duelInvites/challenges listeners below silently never
+  // attached for the rest of the session. Reopening the app didn't help
+  // because the exact same race happened again on every fresh load.
+  await fbAuthReady;
   if(!fbDb || !state.profile.username) return;
   fbDb.ref('users/'+fbKey(state.profile.username)+'/duelInvites').on('value', snap=>{
     const val = snap.val() || {};
