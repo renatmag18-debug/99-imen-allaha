@@ -926,6 +926,7 @@ body{
           <button class="btn btn-ghost" id="duelPickFriendsBtn" style="max-width:300px;margin:0 auto;display:block;">👥 Пригласить друзей</button>
           <p id="duelPickFriendsSummary" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:8px 0 16px;"></p>
           <button class="btn btn-primary" id="createDuelBtn" style="width:100%;max-width:300px;margin:0 auto;display:block;">Создать комнату</button>
+          <button class="btn btn-primary" id="duelApplySettingsBtn" style="width:100%;max-width:300px;margin:0 auto;display:none;">Сохранить и играть</button>
         </div>
 
         <div id="duelWaitingScreen" style="display:none; text-align:center;">
@@ -1001,6 +1002,7 @@ body{
 
           <div class="result-actions" id="duelResultActions" style="display:none">
             <button class="btn btn-primary" id="duelRematchBtn">Играть ещё раз в этой комнате</button>
+            <button class="btn btn-ghost" id="duelChangeModeBtn" style="width:100%;display:none;">Изменить настройки и играть ещё</button>
             <div class="result-actions-row">
               <button class="btn btn-ghost" id="duelLeaveBtn">Выйти из комнаты</button>
               <button class="btn btn-ghost" data-nav="study">К изучению</button>
@@ -2725,14 +2727,72 @@ document.getElementById('quizExit').addEventListener('click', ()=>{
 document.getElementById('skipBtn').addEventListener('click', skipQuestion);
 document.getElementById('openDuelSetupBtn').addEventListener('click', ()=>{
   if(!fbDb){ showToast('Live-дуэль недоступна: нет соединения с сервером'); return; }
+  duelSetupMode = 'create';
+  setDuelSetupCreateWidgets(true);
   quizIntro.style.display='none';
   document.getElementById('duelSetupScreen').style.display='block';
   duelPickedFriends = [];
   updateDuelPickSummary();
 });
+let duelSetupMode = 'create'; // 'create' (new room) | 'edit' (changing settings of the current room, from the results screen)
+function setDuelSetupCreateWidgets(show){
+  document.getElementById('duelPickFriendsBtn').style.display = show ? '' : 'none';
+  document.getElementById('duelPickFriendsSummary').style.display = show ? '' : 'none';
+  document.getElementById('createDuelBtn').style.display = show ? '' : 'none';
+  document.getElementById('duelApplySettingsBtn').style.display = show ? 'none' : 'block';
+}
+function setDuelChipActive(containerId, datasetKey, value){
+  document.querySelectorAll('#'+containerId+' .len-chip').forEach(c=>{
+    c.classList.toggle('active', c.dataset[datasetKey] == value);
+  });
+}
+document.getElementById('duelChangeModeBtn').addEventListener('click', ()=>{
+  duelSetupMode = 'edit';
+  duelSelectedLen = duel.len;
+  duelSelectedTimer = duel.timerSeconds;
+  duelSelectedDirection = duel.direction;
+  duelSelectedOrder = duel.orderMode;
+  setDuelChipActive('duelLenChoice', 'len', duel.len);
+  setDuelChipActive('duelTimerChoice', 'timer', duel.timerSeconds);
+  setDuelChipActive('duelDirectionChoice', 'dir', duel.direction);
+  setDuelChipActive('duelOrderChoice', 'order', duel.orderMode);
+  setDuelSetupCreateWidgets(false);
+  resultWrap.style.display='none';
+  document.getElementById('duelSetupScreen').style.display='block';
+});
+document.getElementById('duelApplySettingsBtn').addEventListener('click', ()=>{
+  if(!fbDb || !duel.roomId){ showToast('Нет соединения с сервером дуэли'); return; }
+  const roomRef = fbDb.ref('duels/'+duel.roomId);
+  roomRef.transaction(cur=>{
+    if(!cur) return cur;
+    const resetPlayers = {};
+    Object.keys(cur.players||{}).forEach(id=>{
+      resetPlayers[id] = { name: cur.players[id].name, score:0, qIndex:0, finished:false };
+    });
+    cur.players = resetPlayers;
+    cur.round = (cur.round||1)+1;
+    cur.status = 'active';
+    cur.len = duelSelectedLen;
+    cur.timerSeconds = duelSelectedTimer;
+    cur.direction = duelSelectedDirection;
+    cur.orderMode = duelSelectedOrder;
+    cur.orderPos = 0;
+    return cur;
+  });
+  duelSetupMode = 'create';
+  setDuelSetupCreateWidgets(true);
+  document.getElementById('duelSetupScreen').style.display='none';
+  showToast('Настройки обновлены — начинаем!');
+});
 document.getElementById('duelSetupBackBtn').addEventListener('click', ()=>{
   document.getElementById('duelSetupScreen').style.display='none';
-  quizIntro.style.display='block';
+  if(duelSetupMode === 'edit'){
+    duelSetupMode = 'create';
+    setDuelSetupCreateWidgets(true);
+    resultWrap.style.display='block';
+  } else {
+    quizIntro.style.display='block';
+  }
 });
 
 function renderQuestion(){
@@ -2935,7 +2995,11 @@ document.getElementById('duelRematchBtn').addEventListener('click', ()=>{
 });
 
 document.getElementById('duelLeaveBtn').addEventListener('click', ()=>{
-  if(fbDb && duel.roomId && duel.myId){ fbDb.ref(`duels/${duel.roomId}/players/${duel.myId}`).remove(); }
+  // Used to delete this player's entry from duels/{roomId}/players — but that
+  // ran the moment anyone left the post-game results screen, so their final
+  // score vanished from everyone else's results board who was still looking
+  // at it. Leaving now only detaches the local client; the room keeps their
+  // last result until the room is reset by a rematch.
   resetDuel();
   resultWrap.style.display='none';
   quizIntro.style.display='block';
@@ -3161,6 +3225,7 @@ function updateDuelResultUI(){
   document.getElementById('vsBox').style.display='none';
   document.getElementById('soloResultActions').style.display='none';
   document.getElementById('duelResultActions').style.display='flex';
+  document.getElementById('duelChangeModeBtn').style.display = duel.isHost ? 'block' : 'none';
   const board = document.getElementById('duelResultBoard');
   const waitNote = document.getElementById('duelWaitNote');
   board.style.display='block';
