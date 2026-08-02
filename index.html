@@ -487,8 +487,9 @@ body{
 .dhikr-fav-btn.active{ border-color:var(--gold); color:var(--gold-soft); background:rgba(203,161,53,0.12); }
 
 .weekly-challenge-card{
-  border:1px solid var(--gold); border-radius:18px; padding:16px 18px; margin-bottom:14px; cursor:pointer;
+  border:1px solid var(--gold); border-radius:18px; padding:16px 18px; margin:0 auto 14px; cursor:pointer;
   background:linear-gradient(160deg, rgba(203,161,53,0.14), rgba(203,161,53,0.02));
+  max-width:90%;
 }
 .weekly-challenge-top{ display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; }
 .weekly-challenge-badge{ font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--gold-soft); font-weight:700; }
@@ -1720,7 +1721,10 @@ async function loadLeaderboard(){
   const result = await apiGetLeaderboard(leaderboardScope === 'friends' ? state.profile.username : null);
 
   if(result.error || !result.leaderboard){
-    emptyEl.textContent = 'Ошибка загрузки лидерборда';
+    console.warn('loadLeaderboard failed:', result.error);
+    emptyEl.innerHTML = 'Ошибка загрузки лидерборда — проверьте соединение<br><span style="text-decoration:underline;cursor:pointer;color:var(--gold-soft);" id="leaderboardRetryBtn">Попробовать снова</span>';
+    const retryBtn = document.getElementById('leaderboardRetryBtn');
+    if(retryBtn) retryBtn.addEventListener('click', loadLeaderboard);
     return;
   }
 
@@ -2294,6 +2298,18 @@ const miscWraps = {
   namaz: document.getElementById('miscNamazWrap'),
   favorites: document.getElementById('miscFavoritesWrap'),
 };
+// The weekly-challenge card used to sit pinned above the segmented tabs,
+// permanently eating vertical space from the zikr/azkar/dua/namaz list
+// below it. It's a single DOM node that gets relocated (not cloned) into
+// whichever wrap's .scroll is currently active, so it scrolls away with
+// the rest of the content instead of staying fixed.
+const weeklyChallengeCardEl = document.getElementById('weeklyChallengeCard');
+function moveWeeklyChallengeCardInto(wrapEl){
+  if(!wrapEl) return;
+  const scrollEl = wrapEl.querySelector('.scroll');
+  if(scrollEl) scrollEl.insertBefore(weeklyChallengeCardEl, scrollEl.firstChild);
+}
+moveWeeklyChallengeCardInto(miscWraps.zikr);
 document.querySelectorAll('#miscSegment .seg-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     document.querySelectorAll('#miscSegment .seg-btn').forEach(b=>b.classList.remove('active'));
@@ -2301,6 +2317,7 @@ document.querySelectorAll('#miscSegment .seg-btn').forEach(btn=>{
     Object.entries(miscWraps).forEach(([key, el])=>{
       el.style.display = key===btn.dataset.misc ? 'contents' : 'none';
     });
+    moveWeeklyChallengeCardInto(miscWraps[btn.dataset.misc]);
     if(btn.dataset.misc==='favorites') renderMiscFavorites();
   });
 });
@@ -2468,6 +2485,7 @@ miscSearchInput.addEventListener('input', ()=>{
     Object.entries(miscWraps).forEach(([key, el])=>{
       el.style.display = key===miscSearchPrevKey ? 'contents' : 'none';
     });
+    moveWeeklyChallengeCardInto(miscWraps[miscSearchPrevKey]);
     return;
   }
   if(miscSearchWrap.style.display !== 'contents'){
@@ -2478,6 +2496,7 @@ miscSearchInput.addEventListener('input', ()=>{
   Object.values(miscWraps).forEach(el=>el.style.display='none');
   miscSearchWrap.style.display = 'contents';
   renderMiscSearch(q);
+  moveWeeklyChallengeCardInto(miscSearchWrap);
 });
 
 /* =====================================================
@@ -3234,6 +3253,16 @@ document.getElementById('duelJoinBtn').addEventListener('click', ()=>{
   state.pendingRoomId = room;
   history.replaceState({}, '', baseUrl());
 
+  // Show the join screen immediately with a loading placeholder instead of
+  // leaving whatever screen was already open on display — fbAuthReady below
+  // can take a couple of seconds on a cold start (Firebase SDK + anonymous
+  // sign-in over the network), which read as "tapping the notification did
+  // nothing" before this.
+  document.getElementById('duelHostName').textContent = 'Друг';
+  document.getElementById('duelJoinCount').textContent = 'Загружаем приглашение…';
+  go('quiz');
+  resetQuizView();
+
   await fbAuthReady;
   if(!fbDb){
     showToast('Live-дуэль недоступна: нет соединения с сервером');
@@ -3290,12 +3319,26 @@ function applyChallenge(data){
   }
 })();
 
+/* read ?screen= deep link on load — friend-request/friend-accept/challenge
+   push notifications land here so tapping one jumps straight to the
+   friends screen (where the accept/decline banner renders) instead of
+   leaving the user on whatever screen happened to be open, wondering
+   whether the tap did anything. */
+(function readScreenParam(){
+  const params = new URLSearchParams(location.search);
+  const screenName = params.get('screen');
+  if(!screenName) return;
+  history.replaceState({}, '', baseUrl());
+  go(screenName);
+})();
+
 /* =====================================================
    FRIENDS — profile, friend codes, requests, invites
    (Firebase Realtime Database — same project as duels)
 ===================================================== */
 state.profile = null;          // {uid, name, code}
 state.friendsList = [];        // [{uid, name}]
+state.friendsListError = false;
 state.incomingRequests = [];   // [{uid, name}]
 state.duelInvites = [];        // [{roomId, fromUid, fromName, len, timerSeconds, direction, orderMode}]
 state.challengeInvites = [];   // [{id, fromUid, fromName, score, total, seed, direction}]
@@ -3731,7 +3774,7 @@ async function addFriendByUsername(){
     return;
   }
 
-  notifyFriend(friendUsername, '99 имён Аллаха', state.profile.username+' хочет добавить вас в друзья', 'friend-request');
+  notifyFriend(friendUsername, '99 имён Аллаха', state.profile.username+' хочет добавить вас в друзья', 'friend-request', baseUrl()+'?screen=friends');
 
   input.value = '';
   showToast('Запрос отправлен: '+friendUsername);
@@ -3741,7 +3784,7 @@ async function acceptFriendRequest(fromUid, fromName){
   if(!state.profile || !state.profile.authenticated) return;
   const result = await apiAcceptFriendRequest(fromUid);
   if(result.error){ showToast('Не удалось принять запрос'); return; }
-  notifyFriend(fromUid, '99 имён Аллаха', state.profile.username+' принял(а) вашу заявку в друзья', 'friend-accept');
+  notifyFriend(fromUid, '99 имён Аллаха', state.profile.username+' принял(а) вашу заявку в друзья', 'friend-accept', baseUrl()+'?screen=friends');
   showToast('Теперь вы друзья: '+(fromName||fromUid));
   state.incomingRequests = state.incomingRequests.filter(r => r.uid !== fromUid);
   if(!state.friendsList.some(f => f.uid === fromUid)) state.friendsList.push({ uid: fromUid, name: fromName || fromUid });
@@ -3775,14 +3818,20 @@ async function removeFriend(uid){
 async function loadFriends(){
   if(!state.profile || !state.profile.authenticated) return;
   const result = await apiGetFriends(state.profile.username);
-  if(result.error) return;
+  if(result.error){
+    console.warn('loadFriends failed:', result.error);
+    state.friendsListError = true;
+    renderFriendsScreen();
+    return;
+  }
+  state.friendsListError = false;
   state.friendsList = (result.friends || []).map(f=>({ uid: f.username, name: f.username, avatar: f.avatar }));
   renderFriendsScreen();
 }
 async function loadFriendRequests(){
   if(!state.profile || !state.profile.authenticated) return;
   const result = await apiGetFriendRequests(state.profile.username);
-  if(result.error) return;
+  if(result.error){ console.warn('loadFriendRequests failed:', result.error); return; }
   state.incomingRequests = (result.requests || []).map(name=>({ uid: name, name: name }));
   renderFriendsScreen();
   updateFriendsBadge();
@@ -3859,6 +3908,7 @@ function watchPresence(username, cb){
 function pushSupported(){
   return 'Notification' in window && 'serviceWorker' in navigator && !!(window.firebase && firebase.messaging);
 }
+let pushTokenRefreshedThisSession = false;
 function updateNotifUI(){
   const btn = document.getElementById('enableNotifBtn');
   const status = document.getElementById('notifStatus');
@@ -3868,6 +3918,18 @@ function updateNotifUI(){
     btn.style.display='none';
     status.textContent = '🔔 Уведомления включены';
     status.style.display='block';
+    // Permission already being granted doesn't mean our stored FCM token is
+    // still valid — tokens rotate (browser data cleared, PWA reinstalled,
+    // FCM's own refresh cycle), and registerPushToken() used to only ever
+    // run from the manual "enable" button click. Once granted, that button
+    // stays hidden forever, so a rotated token meant push notifications
+    // silently stopped with no way for the user to notice or re-trigger it.
+    // Re-registering (idempotent — see handleRegisterPushToken) once per
+    // session whenever we're actually logged in keeps it current.
+    if(!pushTokenRefreshedThisSession && state.profile && state.profile.authenticated){
+      pushTokenRefreshedThisSession = true;
+      registerPushToken();
+    }
   } else if(Notification.permission === 'denied'){
     btn.style.display='none';
     status.textContent = 'Уведомления заблокированы в настройках браузера';
@@ -3988,6 +4050,9 @@ function renderFriendsScreen(){
   } else {
     list.innerHTML = '';
     emptyHint.style.display = 'block';
+    emptyHint.textContent = state.friendsListError
+      ? 'Не удалось загрузить список друзей — проверьте соединение и попробуйте снова.'
+      : 'Пока нет друзей — поделитесь своим никнеймом или введите никнейм друга выше.';
   }
 }
 
@@ -4267,7 +4332,7 @@ function sendDuelInvite(friendUid){
 }
 function sendChallengeToFriend(friendUid, q){
   if(!fbDb || !state.profile) return;
-  notifyFriend(friendUid, '99 имён Аллаха', (state.profile.username||'Друг')+' вызывает вас: '+q.score+'/'+q.len, 'challenge');
+  notifyFriend(friendUid, '99 имён Аллаха', (state.profile.username||'Друг')+' вызывает вас: '+q.score+'/'+q.len, 'challenge', baseUrl()+'?screen=friends');
   fbDb.ref('users/'+fbKey(friendUid)+'/challenges').push({
     fromUid: state.profile.username,
     fromName: state.profile.username || 'Друг',
@@ -4460,6 +4525,18 @@ function sendDhikrRoomInvite(friendUid){
   const zroom = params.get('zroom');
   if(!zroom) return;
   history.replaceState({}, '', baseUrl());
+
+  // Immediate feedback while fbAuthReady resolves — same cold-start delay
+  // as readRoomParam above. dhikrRoom.roomId is set early purely so
+  // openDhikrRoomSheet() treats this as "already in a room" and shows the
+  // active view instead of the create-a-room setup screen; joinDhikrRoomAsGuest
+  // below overwrites it with the same value once the real join happens.
+  dhikrRoom.roomId = zroom;
+  document.getElementById('dhikrRoomAr').textContent = '';
+  document.getElementById('dhikrRoomTr').textContent = 'Загружаем приглашение…';
+  showDhikrRoomActive();
+  openDhikrRoomSheet();
+
   await fbAuthReady;
   if(!fbDb){ showToast('Недоступно: нет соединения с сервером'); return; }
   const name = (state.profile && state.profile.username) || 'Друг';
