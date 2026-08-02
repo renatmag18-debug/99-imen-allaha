@@ -3487,9 +3487,19 @@ document.getElementById('registerBtn').addEventListener('click', async ()=>{
 
   // Try to register via API
   const result = await apiRegister(username, password, securityQuestion, securityAnswer);
+  let localOnly = false;
 
   if(result.error){
-    // Fallback to localStorage if API fails
+    // Fallback to localStorage if API fails — this used to silently claim
+    // full success here, so accounts created while the server was
+    // unreachable (bad connection, blocked request, etc.) looked identical
+    // to real ones: profile showed up locally but never existed on the
+    // backend, so they never appeared on anyone else's leaderboard. The
+    // account still self-heals — apiRegister is retried on next login (see
+    // the login handler below) — but the user needs to actually be told
+    // it's local-only now, not after they've already gone looking for
+    // themselves in the leaderboard and come up empty.
+    console.warn('apiRegister failed, falling back to localStorage:', result.error);
     const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
     if(Object.keys(allUsers).some(k => k.toLowerCase() === username.toLowerCase())){
       registerStatus.textContent = 'Этот никнейм уже занят'; return;
@@ -3497,12 +3507,15 @@ document.getElementById('registerBtn').addEventListener('click', async ()=>{
 
     allUsers[username] = { password: btoa(password), securityQuestion, securityAnswer };
     localStorage.setItem('users', JSON.stringify(allUsers));
+    localOnly = true;
   }
 
   saveUsername(username);
   state.profile = { username, authenticated: true };
   updateProfileUI();
-  registerStatus.textContent = 'Аккаунт создан! Добро пожаловать!';
+  registerStatus.textContent = localOnly
+    ? 'Аккаунт создан локально — нет связи с сервером. Друзья и рейтинг заработают, как только вы войдёте ещё раз при рабочем интернете.'
+    : 'Аккаунт создан! Добро пожаловать!';
   document.getElementById('regUsernameInput').value = '';
   document.getElementById('regPasswordInput').value = '';
   // Скрываем форму регистрации и показываем основную
