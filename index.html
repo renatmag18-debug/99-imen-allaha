@@ -485,6 +485,18 @@ body{
 }
 .dhikr-fav-btn:active{ transform:scale(.9); }
 .dhikr-fav-btn.active{ border-color:var(--gold); color:var(--gold-soft); background:rgba(203,161,53,0.12); }
+
+.weekly-challenge-card{
+  border:1px solid var(--gold); border-radius:18px; padding:16px 18px; margin-bottom:14px; cursor:pointer;
+  background:linear-gradient(160deg, rgba(203,161,53,0.14), rgba(203,161,53,0.02));
+}
+.weekly-challenge-top{ display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; }
+.weekly-challenge-badge{ font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--gold-soft); font-weight:700; }
+.weekly-challenge-timer{ font-size:11px; color:var(--ivory-dim); flex-shrink:0; }
+.weekly-challenge-title{ font-family:var(--font-display); font-size:16px; color:var(--ivory); margin-bottom:10px; }
+.weekly-progress-bar{ height:8px; border-radius:5px; background:rgba(255,255,255,0.08); overflow:hidden; margin-bottom:6px; }
+.weekly-progress-fill{ height:100%; width:0%; background:linear-gradient(90deg, var(--jade), var(--gold-soft)); border-radius:5px; transition:width .4s var(--ease); }
+.weekly-challenge-count-label{ font-size:11.5px; color:var(--ivory-dim); text-align:center; }
 .dhikr-ar{ font-family:var(--font-ar); font-size:23px; color:var(--gold-soft); direction:rtl; line-height:1.85; margin-bottom:12px; text-align:right; }
 .dhikr-tr{ font-size:13.5px; color:var(--ivory); font-weight:700; margin-bottom:6px; line-height:1.5; }
 .dhikr-m{ font-size:13px; color:var(--ivory-dim); line-height:1.6; }
@@ -971,6 +983,16 @@ body{
         <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
         <input id="miscSearchInput" type="text" placeholder="Поиск по зикрам, азкарам, дуа, намазу…" autocomplete="off">
       </div>
+      <div id="weeklyChallengeCard" class="weekly-challenge-card" style="display:none">
+        <div class="weekly-challenge-top">
+          <span class="weekly-challenge-badge" id="weeklyChallengeBadge">Задание недели</span>
+          <span class="weekly-challenge-timer" id="weeklyChallengeTimer"></span>
+        </div>
+        <div class="weekly-challenge-title">📿 Салават на Пророка ﷺ — читаем всей уммой</div>
+        <div class="weekly-progress-bar"><div class="weekly-progress-fill weekly-challenge-fill-target"></div></div>
+        <div class="weekly-challenge-count-label"></div>
+      </div>
+      <button class="btn btn-ghost" id="openDhikrRoomBtn" style="max-width:280px;margin:0 auto 14px;flex:none;">👥 Зикр с друзьями</button>
       <div class="segmented-wrap" id="miscSegmentWrap">
         <div class="segmented" id="miscSegment">
           <button class="seg-btn active" data-misc="zikr">Зикры</button>
@@ -1324,6 +1346,57 @@ body{
     <div class="sheet-nav">
       <button class="nav-arrow" id="sheetPrev"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <button class="nav-arrow" id="sheetNext"><svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>
+  </div>
+
+  <div class="sheet-backdrop" id="weeklyChallengeBackdrop"></div>
+  <div class="sheet" id="weeklyChallengeSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-top">
+      <div class="sheet-idx">Задание недели</div>
+      <button class="sheet-close" id="weeklyChallengeClose">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body" style="text-align:center;">
+      <p class="misc-intro" id="weeklyChallengeSheetTimer" style="padding-bottom:6px;"></p>
+      <div class="dhikr-ar" style="text-align:center;font-size:26px;">اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَعَلَى آلِ مُحَمَّدٍ</div>
+      <div class="dhikr-tr" style="text-align:center;">Аллахумма салли аля Мухаммад ва аля али Мухаммад</div>
+      <div class="dhikr-m" style="text-align:center;margin-bottom:6px;">О Аллах, благослови Мухаммада и его род</div>
+      <div class="counter-circle" id="weeklyChallengeCircle"><span class="counter-num" id="weeklyChallengeNum">0</span></div>
+      <p class="counter-hint">Общий счёт всех участников — нажимайте вместе</p>
+      <div class="weekly-progress-bar"><div class="weekly-progress-fill weekly-challenge-fill-target"></div></div>
+      <div class="weekly-challenge-count-label"></div>
+      <p style="font-size:12px;color:var(--ivory-dim);margin-top:14px;">Ваш вклад: <b id="weeklyChallengeMyCount" style="color:var(--gold-soft);">0</b></p>
+    </div>
+  </div>
+
+  <div class="sheet-backdrop" id="dhikrRoomBackdrop"></div>
+  <div class="sheet" id="dhikrRoomSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-top">
+      <div class="sheet-idx">👥 Зикр с друзьями</div>
+      <button class="sheet-close" id="dhikrRoomClose">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body">
+      <div id="dhikrRoomSetup">
+        <p class="misc-intro">Выберите зикр и пригласите друзей — счёт общий, нажатия всех участников складываются.</p>
+        <div class="len-choice" id="dhikrRoomZikrChoice"></div>
+        <button class="btn btn-ghost" id="dhikrRoomInviteBtn" style="width:100%;margin-top:14px;">👥 Выбрать друзей</button>
+        <p id="dhikrRoomPickSummary" style="font-size:12px;color:var(--ivory-dim);text-align:center;margin-top:8px;"></p>
+        <button class="btn btn-primary" id="dhikrRoomCreateBtn" style="width:100%;margin-top:14px;">Создать комнату</button>
+      </div>
+      <div id="dhikrRoomActive" style="display:none;text-align:center;">
+        <div class="dhikr-ar" id="dhikrRoomAr" style="text-align:center;"></div>
+        <div class="dhikr-tr" id="dhikrRoomTr" style="text-align:center;margin-bottom:6px;"></div>
+        <div class="counter-circle" id="dhikrRoomCircle"><span class="counter-num" id="dhikrRoomNum">0</span></div>
+        <p class="counter-hint">Общий счёт комнаты</p>
+        <div id="dhikrRoomParticipants" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:6px 0 14px;"></div>
+        <button class="btn btn-ghost" id="dhikrRoomInviteMoreBtn" style="width:100%;">Пригласить ещё</button>
+        <button class="btn btn-ghost" id="dhikrRoomLeaveBtn" style="width:100%;margin-top:8px;color:var(--rose);border-color:var(--rose);">Покинуть комнату</button>
+      </div>
     </div>
   </div>
 
@@ -2276,6 +2349,117 @@ function renderMiscFavorites(){
   renderMiscCards(document.getElementById('favoritesList'), document.getElementById('favoritesEmpty'), (item, src, idx)=>miscFavorites.has(src.key+':'+idx));
 }
 
+/* =====================================================
+   ЗАДАНИЕ НЕДЕЛИ: салават всей уммой (общий счёт, Firebase RTDB)
+   Магриб — точное время намаза по геолокации не считается нигде в
+   приложении, поэтому здесь используется фиксированный час (см.
+   WEEKLY_MAGHRIB_HOUR) как условное время магриба для всех пользователей.
+===================================================== */
+const WEEKLY_MAGHRIB_HOUR = 18;
+const WEEKLY_CHALLENGE_TARGET = 100000;
+
+function weeklyChallengeThisThursday(now){
+  const d = new Date(now);
+  d.setDate(d.getDate() + (4 - d.getDay()));
+  d.setHours(WEEKLY_MAGHRIB_HOUR, 0, 0, 0);
+  return d;
+}
+function weeklyChallengeWindow(now){
+  now = now || new Date();
+  let start = weeklyChallengeThisThursday(now);
+  let end = new Date(start); end.setDate(end.getDate()+1);
+  if(now >= end){
+    start = new Date(start); start.setDate(start.getDate()+7);
+    end = new Date(start); end.setDate(end.getDate()+1);
+  }
+  return { start, end, active: now>=start && now<end };
+}
+function weeklyChallengeId(start){
+  const y=start.getFullYear(), m=String(start.getMonth()+1).padStart(2,'0'), d=String(start.getDate()).padStart(2,'0');
+  return `${y}-${m}-${d}`;
+}
+function formatWeeklyCountdown(ms){
+  if(ms<=0) return '0м';
+  const totalMin = Math.floor(ms/60000);
+  const h = Math.floor(totalMin/60), m = totalMin%60;
+  return h>0 ? `${h}ч ${m}м` : `${m}м`;
+}
+
+let weeklyChallengeWeekId = null;
+let weeklyChallengeRef = null;
+let weeklyChallengeCount = 0;
+let weeklyChallengeMyCount = 0;
+
+async function attachWeeklyChallengeListener(weekId){
+  if(weeklyChallengeRef){ try{ weeklyChallengeRef.off('value'); }catch(e){} }
+  await fbAuthReady;
+  if(!fbDb || weekId !== weeklyChallengeWeekId) return;
+  weeklyChallengeRef = fbDb.ref('weeklyChallenge/'+weekId+'/count');
+  weeklyChallengeRef.on('value', snap=>{
+    weeklyChallengeCount = snap.val() || 0;
+    updateWeeklyChallengeProgress();
+  });
+}
+function updateWeeklyChallengeProgress(){
+  const pct = Math.min(100, Math.round(weeklyChallengeCount/WEEKLY_CHALLENGE_TARGET*100));
+  document.querySelectorAll('.weekly-challenge-fill-target').forEach(el=>{ el.style.width = pct+'%'; });
+  document.querySelectorAll('.weekly-challenge-count-label').forEach(el=>{
+    el.textContent = weeklyChallengeCount.toLocaleString('ru-RU') + ' / ' + WEEKLY_CHALLENGE_TARGET.toLocaleString('ru-RU');
+  });
+  const num = document.getElementById('weeklyChallengeNum');
+  if(num) num.textContent = weeklyChallengeCount.toLocaleString('ru-RU');
+}
+
+function refreshWeeklyChallengeState(){
+  const card = document.getElementById('weeklyChallengeCard');
+  if(!card) return;
+  const {start, end, active} = weeklyChallengeWindow();
+  card.style.display = 'block';
+  const badge = document.getElementById('weeklyChallengeBadge');
+  const timer = document.getElementById('weeklyChallengeTimer');
+  const sheetTimer = document.getElementById('weeklyChallengeSheetTimer');
+  if(active){
+    badge.textContent = 'Задание недели · идёт';
+    timer.textContent = 'Осталось ' + formatWeeklyCountdown(end-new Date());
+    if(sheetTimer) sheetTimer.textContent = 'До конца задания: ' + formatWeeklyCountdown(end-new Date());
+  } else {
+    badge.textContent = 'Задание недели · скоро';
+    timer.textContent = 'Начало через ' + formatWeeklyCountdown(start-new Date());
+    if(sheetTimer) sheetTimer.textContent = 'Задание начнётся через ' + formatWeeklyCountdown(start-new Date());
+  }
+  const weekId = weeklyChallengeId(start);
+  if(weekId !== weeklyChallengeWeekId){
+    weeklyChallengeWeekId = weekId;
+    attachWeeklyChallengeListener(weekId);
+  }
+}
+refreshWeeklyChallengeState();
+setInterval(refreshWeeklyChallengeState, 30000);
+
+function openWeeklyChallengeSheet(){
+  refreshWeeklyChallengeState();
+  updateWeeklyChallengeProgress();
+  document.getElementById('weeklyChallengeMyCount').textContent = weeklyChallengeMyCount;
+  document.getElementById('weeklyChallengeSheet').classList.add('show');
+  document.getElementById('weeklyChallengeBackdrop').classList.add('show');
+}
+function closeWeeklyChallengeSheet(){
+  document.getElementById('weeklyChallengeSheet').classList.remove('show');
+  document.getElementById('weeklyChallengeBackdrop').classList.remove('show');
+}
+document.getElementById('weeklyChallengeCard').addEventListener('click', openWeeklyChallengeSheet);
+document.getElementById('weeklyChallengeClose').addEventListener('click', closeWeeklyChallengeSheet);
+document.getElementById('weeklyChallengeBackdrop').addEventListener('click', closeWeeklyChallengeSheet);
+document.getElementById('weeklyChallengeCircle').addEventListener('click', ()=>{
+  const {active} = weeklyChallengeWindow();
+  if(!active){ showToast('Задание ещё не началось'); return; }
+  if(!fbDb || !weeklyChallengeWeekId) return;
+  fbDb.ref('weeklyChallenge/'+weeklyChallengeWeekId+'/count').set(firebase.database.ServerValue.increment(1));
+  weeklyChallengeMyCount++;
+  document.getElementById('weeklyChallengeMyCount').textContent = weeklyChallengeMyCount;
+  if(navigator.vibrate) navigator.vibrate(10);
+});
+
 miscSearchInput.addEventListener('input', ()=>{
   const q = miscSearchInput.value.trim();
   if(!q){
@@ -3115,6 +3299,7 @@ state.friendsList = [];        // [{uid, name}]
 state.incomingRequests = [];   // [{uid, name}]
 state.duelInvites = [];        // [{roomId, fromUid, fromName, len, timerSeconds, direction, orderMode}]
 state.challengeInvites = [];   // [{id, fromUid, fromName, score, total, seed, direction}]
+state.dhikrInvites = [];       // [{roomId, fromUid, fromName, zikrTr}]
 
 /* ---------------- avatars ---------------- */
 const AVATAR_EMOJIS = ['🌙','⭐','📿','🕌','🤲','📖','🌸','🦋','🍃','⚡','💎','🌊','🏔️','🦅','🐪','✨'];
@@ -3612,6 +3797,12 @@ async function listenFriendsRealtime(){
     renderInvitesArea();
     updateFriendsBadge();
   });
+  fbDb.ref('users/'+fbKey(state.profile.username)+'/dhikrInvites').on('value', snap=>{
+    const val = snap.val() || {};
+    state.dhikrInvites = Object.keys(val).map(roomId=>({ roomId, ...val[roomId] }));
+    renderInvitesArea();
+    updateFriendsBadge();
+  });
   setupPresence();
 }
 
@@ -3719,7 +3910,7 @@ function notifyFriend(targetUid, title, body, tag, link){
 }
 
 function updateFriendsBadge(){
-  const has = state.incomingRequests.length>0 || state.duelInvites.length>0 || state.challengeInvites.length>0;
+  const has = state.incomingRequests.length>0 || state.duelInvites.length>0 || state.challengeInvites.length>0 || state.dhikrInvites.length>0;
   document.getElementById('friendsBadge').style.display = has ? 'block' : 'none';
 }
 
@@ -3992,6 +4183,16 @@ function renderInvitesArea(){
         </div>
       </div>`;
   });
+  state.dhikrInvites.forEach(inv=>{
+    html += `
+      <div class="invite-banner">
+        <p><b>${escapeHtml(inv.fromName||'Друг')}</b> приглашает вас читать зикр «${escapeHtml(inv.zikrTr||'')}» вместе — общий счёт для всех участников.</p>
+        <div class="invite-actions">
+          <button class="btn btn-primary" data-join-dhikr="${escapeHtml(inv.roomId)}">Присоединиться</button>
+          <button class="btn btn-ghost" data-decline-dhikr="${escapeHtml(inv.roomId)}">Отклонить</button>
+        </div>
+      </div>`;
+  });
   area.innerHTML = html;
 }
 
@@ -4000,10 +4201,14 @@ document.getElementById('friendInvitesArea').addEventListener('click', e=>{
   const declineDuel = e.target.closest('[data-decline-duel]');
   const acceptChallenge = e.target.closest('[data-accept-challenge]');
   const declineChallenge = e.target.closest('[data-decline-challenge]');
+  const joinDhikr = e.target.closest('[data-join-dhikr]');
+  const declineDhikr = e.target.closest('[data-decline-dhikr]');
   if(joinDuel) acceptDuelInvite(joinDuel.dataset.joinDuel);
   else if(declineDuel) declineDuelInvite(declineDuel.dataset.declineDuel);
   else if(acceptChallenge) acceptChallengeInvite(acceptChallenge.dataset.acceptChallenge);
   else if(declineChallenge) declineChallengeInvite(declineChallenge.dataset.declineChallenge);
+  else if(joinDhikr) acceptDhikrRoomInvite(joinDhikr.dataset.joinDhikr);
+  else if(declineDhikr) declineDhikrRoomInvite(declineDhikr.dataset.declineDhikr);
 });
 
 function acceptDuelInvite(roomId){
@@ -4014,6 +4219,15 @@ function acceptDuelInvite(roomId){
 function declineDuelInvite(roomId){
   if(!fbDb || !state.profile) return;
   fbDb.ref('users/'+fbKey(state.profile.username)+'/duelInvites/'+roomId).remove();
+}
+function acceptDhikrRoomInvite(roomId){
+  if(!fbDb || !state.profile) return;
+  fbDb.ref('users/'+fbKey(state.profile.username)+'/dhikrInvites/'+roomId).remove();
+  joinDhikrRoomAsGuest(roomId, state.profile.username || 'Друг');
+}
+function declineDhikrRoomInvite(roomId){
+  if(!fbDb || !state.profile) return;
+  fbDb.ref('users/'+fbKey(state.profile.username)+'/dhikrInvites/'+roomId).remove();
 }
 function acceptChallengeInvite(id){
   if(!fbDb || !state.profile) return;
@@ -4048,6 +4262,196 @@ function sendChallengeToFriend(friendUid, q){
     at: firebase.database.ServerValue.TIMESTAMP
   });
 }
+
+/* =====================================================
+   ЗИКР С ДРУЗЬЯМИ (общая комната, общий счёт — Firebase RTDB)
+===================================================== */
+const dhikrRoom = {
+  isHost:false, roomId:null, myId:null, myName:'',
+  zikr:null, roomRef:null, players:{}, count:0
+};
+let dhikrRoomPickedFriends = [];
+let dhikrRoomSelectedZikrIdx = 0;
+
+function dhikrRoomMakeId(){
+  return Math.random().toString(36).slice(2,8).toUpperCase();
+}
+
+function renderDhikrRoomZikrChoice(){
+  const wrap = document.getElementById('dhikrRoomZikrChoice');
+  wrap.innerHTML = ZIKR.map((z,i)=>
+    `<div class="len-chip${i===dhikrRoomSelectedZikrIdx?' active':''}" data-zikr-idx="${i}">${escapeHtml(z.tr)}</div>`
+  ).join('');
+}
+document.getElementById('dhikrRoomZikrChoice').addEventListener('click', e=>{
+  const chip = e.target.closest('[data-zikr-idx]');
+  if(!chip) return;
+  dhikrRoomSelectedZikrIdx = parseInt(chip.dataset.zikrIdx);
+  renderDhikrRoomZikrChoice();
+});
+
+function updateDhikrRoomPickSummary(){
+  const el = document.getElementById('dhikrRoomPickSummary');
+  if(!dhikrRoomPickedFriends.length){ el.textContent = ''; return; }
+  const names = dhikrRoomPickedFriends.map(uid=>{
+    const f = state.friendsList.find(x=>x.uid===uid);
+    return f ? f.name : uid;
+  });
+  el.textContent = 'Пригласить: ' + names.join(', ');
+}
+
+function showDhikrRoomSetup(){
+  document.getElementById('dhikrRoomSetup').style.display = 'block';
+  document.getElementById('dhikrRoomActive').style.display = 'none';
+}
+function showDhikrRoomActive(){
+  document.getElementById('dhikrRoomSetup').style.display = 'none';
+  document.getElementById('dhikrRoomActive').style.display = 'block';
+}
+
+function openDhikrRoomSheet(){
+  if(!dhikrRoom.roomId){
+    dhikrRoomSelectedZikrIdx = 0;
+    dhikrRoomPickedFriends = [];
+    updateDhikrRoomPickSummary();
+    renderDhikrRoomZikrChoice();
+    showDhikrRoomSetup();
+  }
+  document.getElementById('dhikrRoomSheet').classList.add('show');
+  document.getElementById('dhikrRoomBackdrop').classList.add('show');
+}
+function closeDhikrRoomSheet(){
+  document.getElementById('dhikrRoomSheet').classList.remove('show');
+  document.getElementById('dhikrRoomBackdrop').classList.remove('show');
+}
+document.getElementById('openDhikrRoomBtn').addEventListener('click', ()=>{
+  if(!fbDb){ showToast('Нет соединения с сервером'); return; }
+  openDhikrRoomSheet();
+});
+document.getElementById('dhikrRoomClose').addEventListener('click', closeDhikrRoomSheet);
+document.getElementById('dhikrRoomBackdrop').addEventListener('click', closeDhikrRoomSheet);
+
+function attachDhikrRoomListener(){
+  if(!fbDb || !dhikrRoom.roomId) return;
+  dhikrRoom.roomRef = fbDb.ref('dhikrRooms/'+dhikrRoom.roomId);
+  dhikrRoom.roomRef.on('value', onDhikrRoomSnapshot);
+}
+function onDhikrRoomSnapshot(snap){
+  const val = snap.val();
+  if(!val) return;
+  dhikrRoom.players = val.players || {};
+  dhikrRoom.count = val.count || 0;
+  if(val.zikr) dhikrRoom.zikr = val.zikr;
+  renderDhikrRoomActive();
+}
+function renderDhikrRoomActive(){
+  document.getElementById('dhikrRoomAr').textContent = dhikrRoom.zikr ? dhikrRoom.zikr.ar : '';
+  document.getElementById('dhikrRoomTr').textContent = dhikrRoom.zikr ? dhikrRoom.zikr.tr : '';
+  document.getElementById('dhikrRoomNum').textContent = dhikrRoom.count;
+  const ids = Object.keys(dhikrRoom.players);
+  document.getElementById('dhikrRoomParticipants').innerHTML = ids.map(id=>{
+    const p = dhikrRoom.players[id];
+    const cls = 'duel-participant-chip' + (id===dhikrRoom.myId ? ' me' : '');
+    return `<div class="${cls}">${escapeHtml(p.name||'Игрок')} · ${p.count||0}</div>`;
+  }).join('');
+}
+
+document.getElementById('dhikrRoomCreateBtn').addEventListener('click', ()=>{
+  if(!fbDb){ showToast('Нет соединения с сервером'); return; }
+  const zikr = ZIKR[dhikrRoomSelectedZikrIdx];
+  const name = (state.profile && state.profile.username) || 'Друг';
+  dhikrRoom.roomId = dhikrRoomMakeId();
+  dhikrRoom.isHost = true;
+  dhikrRoom.myName = name;
+  dhikrRoom.zikr = { ar: zikr.ar, tr: zikr.tr, m: zikr.m };
+  const roomRef = fbDb.ref('dhikrRooms/'+dhikrRoom.roomId);
+  const myRef = roomRef.child('players').push();
+  dhikrRoom.myId = myRef.key;
+  roomRef.set({
+    hostId: dhikrRoom.myId,
+    zikr: dhikrRoom.zikr,
+    count: 0,
+    createdAt: firebase.database.ServerValue.TIMESTAMP,
+    players: { [dhikrRoom.myId]: { name, count:0 } }
+  });
+  attachDhikrRoomListener();
+  dhikrRoomPickedFriends.forEach(uid=>sendDhikrRoomInvite(uid));
+  dhikrRoomPickedFriends = [];
+  updateDhikrRoomPickSummary();
+  showDhikrRoomActive();
+});
+
+document.getElementById('dhikrRoomInviteBtn').addEventListener('click', ()=>{
+  if(!fbDb || !state.profile || !state.profile.username){ showToast('Нет соединения с сервером'); return; }
+  openFriendPicker('Пригласить на зикр', selected=>{
+    dhikrRoomPickedFriends = selected;
+    updateDhikrRoomPickSummary();
+  }, dhikrRoomPickedFriends);
+});
+document.getElementById('dhikrRoomInviteMoreBtn').addEventListener('click', ()=>{
+  if(!fbDb || !state.profile || !state.profile.username){ showToast('Нет соединения с сервером'); return; }
+  openFriendPicker('Пригласить на зикр', selectedUids=>{
+    if(!selectedUids.length) return;
+    selectedUids.forEach(uid=>sendDhikrRoomInvite(uid));
+    showToast(selectedUids.length>1 ? 'Приглашения отправлены!' : 'Приглашение отправлено!');
+  });
+});
+
+document.getElementById('dhikrRoomCircle').addEventListener('click', ()=>{
+  if(!fbDb || !dhikrRoom.roomId || !dhikrRoom.myId) return;
+  fbDb.ref('dhikrRooms/'+dhikrRoom.roomId+'/count').set(firebase.database.ServerValue.increment(1));
+  fbDb.ref('dhikrRooms/'+dhikrRoom.roomId+'/players/'+dhikrRoom.myId+'/count').set(firebase.database.ServerValue.increment(1));
+  if(navigator.vibrate) navigator.vibrate(10);
+});
+
+function resetDhikrRoom(){
+  if(dhikrRoom.roomRef){ try{ dhikrRoom.roomRef.off('value', onDhikrRoomSnapshot); }catch(e){} }
+  Object.assign(dhikrRoom, { isHost:false, roomId:null, myId:null, myName:'', zikr:null, roomRef:null, players:{}, count:0 });
+  showDhikrRoomSetup();
+}
+document.getElementById('dhikrRoomLeaveBtn').addEventListener('click', ()=>{
+  if(fbDb && dhikrRoom.roomId && dhikrRoom.myId){ fbDb.ref('dhikrRooms/'+dhikrRoom.roomId+'/players/'+dhikrRoom.myId).remove(); }
+  resetDhikrRoom();
+  closeDhikrRoomSheet();
+});
+
+function joinDhikrRoomAsGuest(roomId, name){
+  dhikrRoom.roomId = roomId;
+  dhikrRoom.myName = name || 'Друг';
+  dhikrRoom.isHost = false;
+  const roomRef = fbDb.ref('dhikrRooms/'+roomId);
+  const myRef = roomRef.child('players').push();
+  dhikrRoom.myId = myRef.key;
+  myRef.set({ name: dhikrRoom.myName, count:0 });
+  attachDhikrRoomListener();
+  showDhikrRoomActive();
+  openDhikrRoomSheet();
+}
+
+function sendDhikrRoomInvite(friendUid){
+  if(!fbDb || !state.profile || !dhikrRoom.roomId) return;
+  const fromName = dhikrRoom.myName || state.profile.username || 'Друг';
+  fbDb.ref('users/'+fbKey(friendUid)+'/dhikrInvites/'+dhikrRoom.roomId).set({
+    fromUid: state.profile.username,
+    fromName,
+    zikrTr: dhikrRoom.zikr ? dhikrRoom.zikr.tr : '',
+    at: firebase.database.ServerValue.TIMESTAMP
+  });
+  notifyFriend(friendUid, '99 имён Аллаха', fromName+' приглашает вас читать зикр вместе', 'dhikr-invite', baseUrl()+'?zroom='+dhikrRoom.roomId);
+}
+
+/* read ?zroom= dhikr-room-invite param on load — same async-Firebase race as
+   ?room= above, so this waits on fbAuthReady the same way. */
+(async function readZikrRoomParam(){
+  const params = new URLSearchParams(location.search);
+  const zroom = params.get('zroom');
+  if(!zroom) return;
+  history.replaceState({}, '', baseUrl());
+  await fbAuthReady;
+  if(!fbDb){ showToast('Недоступно: нет соединения с сервером'); return; }
+  const name = (state.profile && state.profile.username) || 'Друг';
+  joinDhikrRoomAsGuest(zroom, name);
+})();
 
 /* ---------- friend-picker sheet (reusable) ---------- */
 const friendPickerSheet = document.getElementById('friendPickerSheet');
