@@ -299,6 +299,14 @@ body{
   pointer-events:none;
 }
 .sheet.show{ transform:translateY(0); pointer-events:auto; }
+/* The friend picker can be opened from inside another already-open sheet
+   (e.g. "Зикр с друзьями" → "Выбрать друзей") — at the shared z-index:21
+   every other .sheet has, whichever one comes later in the DOM paints on
+   top, so the picker's list rendered but sat invisible behind it. Bump it
+   above every other sheet so it always shows regardless of which one it
+   was launched from. */
+#friendPickerBackdrop{ z-index:30; }
+#friendPickerSheet{ z-index:31; }
 .sheet-handle{ width:40px; height:4px; border-radius:3px; background:var(--line); margin:2px auto 14px; }
 .sheet-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;}
 .sheet-idx{ font-family:var(--font-num); font-size:13px; color:var(--jade); }
