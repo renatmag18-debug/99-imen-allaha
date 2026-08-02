@@ -3797,7 +3797,7 @@ async function listenFriendsRealtime(){
     renderInvitesArea();
     updateFriendsBadge();
   });
-  fbDb.ref('users/'+fbKey(state.profile.username)+'/dhikrInvites').on('value', snap=>{
+  fbDb.ref('dhikrInvites/'+fbKey(state.profile.username)).on('value', snap=>{
     const val = snap.val() || {};
     state.dhikrInvites = Object.keys(val).map(roomId=>({ roomId, ...val[roomId] }));
     renderInvitesArea();
@@ -4222,12 +4222,12 @@ function declineDuelInvite(roomId){
 }
 function acceptDhikrRoomInvite(roomId){
   if(!fbDb || !state.profile) return;
-  fbDb.ref('users/'+fbKey(state.profile.username)+'/dhikrInvites/'+roomId).remove();
+  fbDb.ref('dhikrInvites/'+fbKey(state.profile.username)+'/'+roomId).remove();
   joinDhikrRoomAsGuest(roomId, state.profile.username || 'Друг');
 }
 function declineDhikrRoomInvite(roomId){
   if(!fbDb || !state.profile) return;
-  fbDb.ref('users/'+fbKey(state.profile.username)+'/dhikrInvites/'+roomId).remove();
+  fbDb.ref('dhikrInvites/'+fbKey(state.profile.username)+'/'+roomId).remove();
 }
 function acceptChallengeInvite(id){
   if(!fbDb || !state.profile) return;
@@ -4431,7 +4431,7 @@ function joinDhikrRoomAsGuest(roomId, name){
 function sendDhikrRoomInvite(friendUid){
   if(!fbDb || !state.profile || !dhikrRoom.roomId) return;
   const fromName = dhikrRoom.myName || state.profile.username || 'Друг';
-  fbDb.ref('users/'+fbKey(friendUid)+'/dhikrInvites/'+dhikrRoom.roomId).set({
+  fbDb.ref('dhikrInvites/'+fbKey(friendUid)+'/'+dhikrRoom.roomId).set({
     fromUid: state.profile.username,
     fromName,
     zikrTr: dhikrRoom.zikr ? dhikrRoom.zikr.tr : '',
