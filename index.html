@@ -478,6 +478,13 @@ body{
 }
 .dhikr-play-btn:active{ transform:scale(.9); }
 .dhikr-play-btn.playing{ border-color:var(--jade); color:var(--jade); background:rgba(46,138,114,0.12); }
+.dhikr-fav-btn{
+  flex-shrink:0; width:30px; height:30px; border-radius:10px; border:1px solid var(--line);
+  background:rgba(255,255,255,0.03); color:var(--ivory-dim); display:flex; align-items:center; justify-content:center;
+  cursor:pointer; font-size:15px; transition:all .2s var(--ease);
+}
+.dhikr-fav-btn:active{ transform:scale(.9); }
+.dhikr-fav-btn.active{ border-color:var(--gold); color:var(--gold-soft); background:rgba(203,161,53,0.12); }
 .dhikr-ar{ font-family:var(--font-ar); font-size:23px; color:var(--gold-soft); direction:rtl; line-height:1.85; margin-bottom:12px; text-align:right; }
 .dhikr-tr{ font-size:13.5px; color:var(--ivory); font-weight:700; margin-bottom:6px; line-height:1.5; }
 .dhikr-m{ font-size:13px; color:var(--ivory-dim); line-height:1.6; }
@@ -543,6 +550,10 @@ body{
   display:flex; align-items:center; gap:12px; padding:11px 0;
 }
 .friend-row + .friend-row{ border-top:1px solid rgba(255,255,255,0.06); }
+#friendsList .friend-row{ flex-direction:column; align-items:stretch; gap:8px; }
+.friend-row-top{ display:flex; align-items:center; gap:12px; }
+.friend-identity{ display:flex; align-items:center; gap:12px; flex:1; min-width:0; cursor:pointer; }
+.friend-row .duel-invite{ margin-left:48px; }
 .friend-avatar{
   flex-shrink:0; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center;
   background:linear-gradient(145deg, var(--gold-soft), var(--gold)); color:#1a1204; font-family:var(--font-display); font-size:15px; font-weight:700;
@@ -966,6 +977,7 @@ body{
           <button class="seg-btn" data-misc="azkar">Азкары</button>
           <button class="seg-btn" data-misc="dua">Дуа</button>
           <button class="seg-btn" data-misc="namaz">Намаз</button>
+          <button class="seg-btn" data-misc="favorites">★ Избранное</button>
         </div>
       </div>
 
@@ -1003,6 +1015,15 @@ body{
           <div class="section-title">Слова намаза</div>
           <p class="misc-intro">Что говорится во время обязательной молитвы — от азана до завершающих азкаров.</p>
           <div class="dhikr-list" id="namazList"></div>
+        </div>
+      </div>
+
+      <div id="miscFavoritesWrap" style="display:none">
+        <div class="scroll">
+          <div class="section-title">Избранное</div>
+          <p class="misc-intro">Зикры, азкары, дуа и слова намаза, которые вы отметили звёздочкой.</p>
+          <div class="dhikr-list" id="favoritesList"></div>
+          <p class="misc-intro" id="favoritesEmpty" style="display:none;">Пока пусто — нажмите ☆ на карточке, чтобы добавить сюда.</p>
         </div>
       </div>
 
@@ -1971,13 +1992,23 @@ const NAMAZ = [
 {title:"После утренней молитвы", audio:["http://www.hisnmuslim.com/audio/ar/73.mp3"], ar:"اللَّهُمَّ إِنِّي أَسْأَلُكَ عِلْمًا نَافِعًا وَرِزْقًا طَيِّبًا وَعَمَلًا مُتَقَبَّلًا", tr:"Аллахумма инни ас'алюкя 'ильман нафи'ан, ва ризкан таййибан, ва 'амалян мутакаббаля", m:"«О Аллах, поистине, я прошу у Тебя полезного знания, благого удела и принятого деяния» — после молитвы Фаджр"},
 ];
 
-function dhikrCardHTML(item, tappable){
+function loadMiscFavorites(){
+  try{ return new Set(JSON.parse(localStorage.getItem('miscFavorites')||'[]')); }catch(e){ return new Set(); }
+}
+function saveMiscFavorites(){
+  try{ localStorage.setItem('miscFavorites', JSON.stringify(Array.from(miscFavorites))); }catch(e){}
+}
+let miscFavorites = loadMiscFavorites();
+
+function dhikrCardHTML(item, tappable, favId){
   const playBtn = item.audio ? `<button class="dhikr-play-btn" data-audio='${JSON.stringify(item.audio)}' title="Слушать">🔊</button>` : '';
+  const favBtn = favId ? `<button class="dhikr-fav-btn${miscFavorites.has(favId)?' active':''}" data-fav-id="${favId}" title="В избранное">${miscFavorites.has(favId)?'★':'☆'}</button>` : '';
   return `<div class="dhikr-card${tappable?' tappable':''}">
       <div class="dhikr-top">
         <span class="dhikr-title">${item.title||''}</span>
         <span class="dhikr-top-right">
           ${item.count?`<span class="dhikr-count">${item.count}</span>`:''}
+          ${favBtn}
           ${playBtn}
         </span>
       </div>
@@ -1991,6 +2022,20 @@ function dhikrCardHTML(item, tappable){
 function attachDhikrCounterHandlers(container, items){
   container.querySelectorAll('.dhikr-card.tappable').forEach((card,i)=>{
     card.addEventListener('click', ()=>openDhikrCounter(items[i]));
+  });
+}
+
+function attachFavHandlers(container){
+  container.querySelectorAll('.dhikr-fav-btn').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.stopPropagation();
+      const id = btn.dataset.favId;
+      if(miscFavorites.has(id)){ miscFavorites.delete(id); btn.classList.remove('active'); btn.textContent='☆'; }
+      else { miscFavorites.add(id); btn.classList.add('active'); btn.textContent='★'; }
+      saveMiscFavorites();
+      const activeTab = document.querySelector('#miscSegment .seg-btn.active');
+      if(activeTab && activeTab.dataset.misc==='favorites') renderMiscFavorites();
+    });
   });
 }
 
@@ -2037,17 +2082,20 @@ inlineAudioEl.addEventListener('ended', ()=>{
   }
 });
 
-document.getElementById('zikrList').innerHTML = ZIKR.map(i=>dhikrCardHTML(i,true)).join('');
+document.getElementById('zikrList').innerHTML = ZIKR.map((i,idx)=>dhikrCardHTML(i,true,'zikr:'+idx)).join('');
 attachDhikrCounterHandlers(document.getElementById('zikrList'), ZIKR);
 attachInlineAudioHandlers(document.getElementById('zikrList'));
+attachFavHandlers(document.getElementById('zikrList'));
 
 const azkarListEl = document.getElementById('azkarList');
 const azkarIntroEl = document.getElementById('azkarIntro');
 function renderAzkar(period){
+  const catKey = period==='evening' ? 'azkar_evening' : 'azkar_morning';
   const list = period==='evening' ? AZKAR_EVENING : AZKAR_MORNING;
-  azkarListEl.innerHTML = list.map(i=>dhikrCardHTML(i,true)).join('');
+  azkarListEl.innerHTML = list.map((i,idx)=>dhikrCardHTML(i,true,catKey+':'+idx)).join('');
   attachDhikrCounterHandlers(azkarListEl, list);
   attachInlineAudioHandlers(azkarListEl);
+  attachFavHandlers(azkarListEl);
   azkarIntroEl.textContent = period==='evening'
     ? 'Читаются после послеполуденной молитвы до захода солнца.'
     : 'Читаются после утренней молитвы до восхода солнца.';
@@ -2062,8 +2110,9 @@ document.querySelectorAll('#azkarPeriodChoice .len-chip').forEach(chip=>{
   });
 });
 
-document.getElementById('duaList').innerHTML = DUA.map(i=>dhikrCardHTML(i,false)).join('');
+document.getElementById('duaList').innerHTML = DUA.map((i,idx)=>dhikrCardHTML(i,false,'dua:'+idx)).join('');
 attachInlineAudioHandlers(document.getElementById('duaList'));
+attachFavHandlers(document.getElementById('duaList'));
 
 /* =====================================================
    DHIKR COUNTER (тасбих-счётчик для зикров и азкаров)
@@ -2160,15 +2209,17 @@ dhikrCounterPlayBtn.addEventListener('click', ()=>{
 document.getElementById('dhikrCounterClose').addEventListener('click', closeDhikrCounter);
 dhikrCounterBackdrop.addEventListener('click', closeDhikrCounter);
 
-document.getElementById('namazList').innerHTML = NAMAZ.map(i=>dhikrCardHTML(i,true)).join('');
+document.getElementById('namazList').innerHTML = NAMAZ.map((i,idx)=>dhikrCardHTML(i,true,'namaz:'+idx)).join('');
 attachDhikrCounterHandlers(document.getElementById('namazList'), NAMAZ);
 attachInlineAudioHandlers(document.getElementById('namazList'));
+attachFavHandlers(document.getElementById('namazList'));
 
 const miscWraps = {
   zikr: document.getElementById('miscZikrWrap'),
   azkar: document.getElementById('miscAzkarWrap'),
   dua: document.getElementById('miscDuaWrap'),
   namaz: document.getElementById('miscNamazWrap'),
+  favorites: document.getElementById('miscFavoritesWrap'),
 };
 document.querySelectorAll('#miscSegment .seg-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
@@ -2177,16 +2228,17 @@ document.querySelectorAll('#miscSegment .seg-btn').forEach(btn=>{
     Object.entries(miscWraps).forEach(([key, el])=>{
       el.style.display = key===btn.dataset.misc ? 'contents' : 'none';
     });
+    if(btn.dataset.misc==='favorites') renderMiscFavorites();
   });
 });
 
 /* --- поиск по зикрам/азкарам/дуа/намазу --- */
 const MISC_SEARCH_SOURCES = [
-  {label:'Зикры', items:ZIKR, tappable:true},
-  {label:'Азкары (утренние)', items:AZKAR_MORNING, tappable:true},
-  {label:'Азкары (вечерние)', items:AZKAR_EVENING, tappable:true},
-  {label:'Дуа', items:DUA, tappable:false},
-  {label:'Намаз', items:NAMAZ, tappable:true},
+  {key:'zikr', label:'Зикры', items:ZIKR, tappable:true},
+  {key:'azkar_morning', label:'Азкары (утренние)', items:AZKAR_MORNING, tappable:true},
+  {key:'azkar_evening', label:'Азкары (вечерние)', items:AZKAR_EVENING, tappable:true},
+  {key:'dua', label:'Дуа', items:DUA, tappable:false},
+  {key:'namaz', label:'Намаз', items:NAMAZ, tappable:true},
 ];
 function miscItemMatches(item, q){
   return [item.title, item.tr, item.m, item.note, item.ar].some(f => f && f.toLowerCase().includes(q));
@@ -2198,23 +2250,30 @@ const miscSearchResultsEl = document.getElementById('miscSearchResults');
 const miscSearchEmptyEl = document.getElementById('miscSearchEmpty');
 let miscSearchPrevKey = 'zikr';
 
-function renderMiscSearch(query){
-  const q = query.trim().toLowerCase();
+function renderMiscCards(targetEl, emptyEl, predicate){
   let html = '';
   const tappableItems = [];
   MISC_SEARCH_SOURCES.forEach(src=>{
-    const matched = src.items.filter(item=>miscItemMatches(item, q));
-    if(!matched.length) return;
-    html += `<div class="search-group-label">${src.label}</div>`;
-    matched.forEach(item=>{
-      html += dhikrCardHTML(item, src.tappable);
+    let groupHtml = '';
+    src.items.forEach((item, idx)=>{
+      if(!predicate(item, src, idx)) return;
+      groupHtml += dhikrCardHTML(item, src.tappable, src.key+':'+idx);
       if(src.tappable) tappableItems.push(item);
     });
+    if(groupHtml) html += `<div class="search-group-label">${src.label}</div>` + groupHtml;
   });
-  miscSearchResultsEl.innerHTML = html;
-  miscSearchEmptyEl.style.display = html ? 'none' : 'block';
-  attachDhikrCounterHandlers(miscSearchResultsEl, tappableItems);
-  attachInlineAudioHandlers(miscSearchResultsEl);
+  targetEl.innerHTML = html;
+  if(emptyEl) emptyEl.style.display = html ? 'none' : 'block';
+  attachDhikrCounterHandlers(targetEl, tappableItems);
+  attachInlineAudioHandlers(targetEl);
+  attachFavHandlers(targetEl);
+}
+function renderMiscSearch(query){
+  const q = query.trim().toLowerCase();
+  renderMiscCards(miscSearchResultsEl, miscSearchEmptyEl, item=>miscItemMatches(item, q));
+}
+function renderMiscFavorites(){
+  renderMiscCards(document.getElementById('favoritesList'), document.getElementById('favoritesEmpty'), (item, src, idx)=>miscFavorites.has(src.key+':'+idx));
 }
 
 miscSearchInput.addEventListener('input', ()=>{
@@ -3697,15 +3756,14 @@ function renderFriendsScreen(){
     emptyHint.style.display = 'none';
     list.innerHTML = state.friendsList.map(f => `
       <div class="friend-row">
-        <div class="friend-identity" data-view-profile="${escapeHtml(f.uid)}" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;cursor:pointer;">
-          <div class="avatar-wrap static">
-            <div class="friend-avatar" id="friendAvatar-${escapeHtml(f.uid)}"></div>
-            <div class="presence-dot" id="friendPresence-${escapeHtml(f.uid)}"></div>
+        <div class="friend-row-top">
+          <div class="friend-identity" data-view-profile="${escapeHtml(f.uid)}">
+            <div class="avatar-wrap static">
+              <div class="friend-avatar" id="friendAvatar-${escapeHtml(f.uid)}"></div>
+              <div class="presence-dot" id="friendPresence-${escapeHtml(f.uid)}"></div>
+            </div>
+            <div class="friend-name">${escapeHtml(f.name)}</div>
           </div>
-          <div class="friend-name">${escapeHtml(f.name)}</div>
-        </div>
-        <div class="friend-actions">
-          <button class="friend-action-btn duel-invite" data-duel-friend="${escapeHtml(f.uid)}">Пригласить на дуэль</button>
           <div class="friend-menu-wrap">
             <button class="friend-action-btn menu" data-friend-menu="${escapeHtml(f.uid)}" title="Ещё">⋮</button>
             <div class="friend-menu" data-friend-menu-panel="${escapeHtml(f.uid)}">
@@ -3713,6 +3771,7 @@ function renderFriendsScreen(){
             </div>
           </div>
         </div>
+        <button class="friend-action-btn duel-invite" data-duel-friend="${escapeHtml(f.uid)}">Пригласить на дуэль</button>
       </div>`).join('');
 
     state.friendsList.forEach(f => {
