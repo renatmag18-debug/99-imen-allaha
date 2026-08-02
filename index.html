@@ -4385,11 +4385,19 @@ function fbKey(username){
 
 function notifyFriend(targetUid, title, body, tag, link){
   if(!targetUid) return;
+  // This used to swallow every possible failure (network error AND non-2xx
+  // responses, since fetch only rejects on the former) with a bare .catch(()=>{}) —
+  // so a push that never went out looked identical, on both ends, to one that
+  // arrived. Logging here doesn't fix a flaky network on the sender's side,
+  // but it's the difference between "silently vanished" and "at least
+  // shows up in devtools if someone goes looking".
   fetch(PUSH_RELAY_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ targetUid: fbKey(targetUid), title, body, tag, link, secret: PUSH_RELAY_SECRET })
-  }).catch(()=>{});
+  }).then(res=>{
+    if(!res.ok) res.text().then(t=>console.warn('notifyFriend: push relay returned', res.status, t));
+  }).catch(e=>console.warn('notifyFriend: push relay request failed:', e));
 }
 
 function updateFriendsBadge(){
