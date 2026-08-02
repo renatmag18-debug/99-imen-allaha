@@ -12,6 +12,8 @@
  *   POST /api/accept-friend-request — Accept a pending request (makes both friends)
  *   POST /api/decline-friend-request — Decline/withdraw a pending request
  *   POST /api/remove-friend  — Remove an existing friend (both directions)
+ *   POST /api/update-avatar  — Set avatar {emoji, color} from the preset picker
+ *   POST /api/track-time     — Add elapsed seconds to stats.totalTimeSeconds
  *   GET /api/leaderboard     — Get leaderboard
  *   POST /api/admin/user-count — Total registered users (single admin account only)
  *   POST /push                — Send a push notification (used by notifyFriend()
@@ -139,6 +141,16 @@ async function handleAPI(request, env, url) {
     return handleRegisterPushToken(body, env);
   }
 
+  // POST /api/update-avatar
+  if (request.method === 'POST' && path === 'update-avatar') {
+    return handleUpdateAvatar(body, env);
+  }
+
+  // POST /api/track-time
+  if (request.method === 'POST' && path === 'track-time') {
+    return handleTrackTime(body, env);
+  }
+
   // GET /api/leaderboard[?username=x] — scoped to that user + their friends when given
   if (request.method === 'GET' && path === 'leaderboard') {
     return handleLeaderboard(env, url.searchParams.get('username'));
@@ -203,11 +215,15 @@ async function handleRegister(body, env) {
     password: btoa(password),
     securityQuestion: securityQuestion || 'default',
     securityAnswer: (securityAnswer || '').toLowerCase(),
+    joinedAt: new Date().toISOString(),
     friends: {},
     quizProgress: {},
     stats: {
       totalStudied: 0,
       correctAnswers: 0,
+      bestPercent: 0,
+      quizzesCompleted: 0,
+      totalTimeSeconds: 0,
       lastActive: new Date().toISOString()
     }
   };
@@ -247,7 +263,7 @@ async function handleLogin(body, env) {
 }
 
 async function handleSyncProgress(body, env) {
-  const { username, password, quizProgress, stats } = body || {};
+  const { username, password, quizProgress, stats, incrementQuizzesCompleted } = body || {};
 
   if (!username || !password) {
     return corsResponse(jsonResponse({ error: 'missing auth' }, 401));
@@ -264,8 +280,17 @@ async function handleSyncProgress(body, env) {
   // Update progress
   const updateData = {};
   if (quizProgress) updateData.quizProgress = quizProgress;
-  if (stats) {
-    updateData.stats = { ...user.stats, ...stats, lastActive: new Date().toISOString() };
+  if (stats || incrementQuizzesCompleted) {
+    const mergedStats = { ...user.stats, ...stats, lastActive: new Date().toISOString() };
+    // bestPercent is a high-water mark, not a plain overwrite — a worse
+    // score this round shouldn't erase a better one from before.
+    if (stats && typeof stats.bestPercent === 'number') {
+      mergedStats.bestPercent = Math.max((user.stats && user.stats.bestPercent) || 0, stats.bestPercent);
+    }
+    if (incrementQuizzesCompleted) {
+      mergedStats.quizzesCompleted = ((user.stats && user.stats.quizzesCompleted) || 0) + 1;
+    }
+    updateData.stats = mergedStats;
   }
 
   await rtdbFetch(`/users/${encodeURIComponent(userKey(username))}.json`, env, {
@@ -287,6 +312,8 @@ async function handleGetProfile(username, env) {
 
   return corsResponse(jsonResponse({
     username: user.username || username,
+    avatar: user.avatar || null,
+    joinedAt: user.joinedAt || null,
     stats: user.stats || {},
     friendsCount: Object.keys(user.friends || {}).length
   }));
@@ -300,8 +327,17 @@ async function handleGetFriends(username, env) {
     return corsResponse(jsonResponse({ error: 'user not found' }, 404));
   }
 
-  // Friends are stored as {lowercaseKey: displayName} — return the display names.
-  const friends = Object.values(user.friends || {});
+  // Friends are stored as {lowercaseKey: displayName}. Look each one up so the
+  // list can show avatars/online status without a separate request per friend.
+  const friendKeys = Object.keys(user.friends || {});
+  const friends = await Promise.all(friendKeys.map(async (fk) => {
+    const fRes = await rtdbFetch(`/users/${encodeURIComponent(fk)}.json`, env);
+    const fUser = await fRes.json();
+    return {
+      username: (fUser && fUser.username) || user.friends[fk],
+      avatar: (fUser && fUser.avatar) || null
+    };
+  }));
   return corsResponse(jsonResponse({ friends }));
 }
 
@@ -487,6 +523,61 @@ async function handleRegisterPushToken(body, env) {
   return corsResponse(jsonResponse({ ok: true }));
 }
 
+async function handleUpdateAvatar(body, env) {
+  const { username, password, emoji, color } = body || {};
+
+  if (!username || !password || !emoji || !color) {
+    return corsResponse(jsonResponse({ error: 'missing data' }, 400));
+  }
+  if (typeof emoji !== 'string' || emoji.length > 8 || typeof color !== 'string' || color.length > 20) {
+    return corsResponse(jsonResponse({ error: 'invalid avatar' }, 400));
+  }
+
+  const key = userKey(username);
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
+  const user = await userRes.json();
+
+  if (!user || user.password !== btoa(password)) {
+    return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
+  }
+
+  await rtdbFetch(`/users/${encodeURIComponent(key)}/avatar.json`, env, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ emoji, color })
+  });
+
+  return corsResponse(jsonResponse({ ok: true }));
+}
+
+async function handleTrackTime(body, env) {
+  const { username, password, seconds } = body || {};
+
+  if (!username || !password || !(seconds > 0)) {
+    return corsResponse(jsonResponse({ error: 'missing data' }, 400));
+  }
+  // Client sends small periodic heartbeats (a couple minutes at a time) —
+  // cap a single call so a stray/replayed request can't inflate the total.
+  const delta = Math.min(seconds, 600);
+
+  const key = userKey(username);
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
+  const user = await userRes.json();
+
+  if (!user || user.password !== btoa(password)) {
+    return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
+  }
+
+  const current = (user.stats && user.stats.totalTimeSeconds) || 0;
+  await rtdbFetch(`/users/${encodeURIComponent(key)}/stats/totalTimeSeconds.json`, env, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(current + delta)
+  });
+
+  return corsResponse(jsonResponse({ ok: true, totalTimeSeconds: current + delta }));
+}
+
 async function handleLeaderboard(env, scopeUsername) {
   // Fetch everyone rather than orderBy+limitToLast: a friends-scoped view needs
   // to find friends regardless of where they rank globally, not just the top slice.
@@ -508,6 +599,7 @@ async function handleLeaderboard(env, scopeUsername) {
     .filter(([key, user]) => user.stats && (!allowed || allowed.has(key)))
     .map(([key, user]) => ({
       username: user.username || key,
+      avatar: user.avatar || null,
       totalStudied: user.stats.totalStudied || 0,
       correctAnswers: user.stats.correctAnswers || 0,
       friendsCount: Object.keys(user.friends || {}).length,

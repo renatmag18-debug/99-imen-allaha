@@ -83,7 +83,7 @@ async function apiLogin(username, password) {
 }
 
 // Sync progress to backend
-async function apiSyncProgress(quizProgress, stats) {
+async function apiSyncProgress(quizProgress, stats, incrementQuizzesCompleted) {
   const auth = getAuthCredentials();
   if (!auth) return { error: 'Not authenticated' };
 
@@ -95,7 +95,8 @@ async function apiSyncProgress(quizProgress, stats) {
         username: auth.username,
         password: auth.password,
         quizProgress,
-        stats
+        stats,
+        incrementQuizzesCompleted
       })
     });
 
@@ -218,6 +219,42 @@ async function apiRemoveFriend(friendUsername) {
     const data = await res.json();
     if (!res.ok) return { error: data.error || 'Failed to remove friend' };
     return { ok: true };
+  } catch (e) {
+    return { error: 'Network error' };
+  }
+}
+
+async function apiUpdateAvatar(emoji, color) {
+  const auth = getAuthCredentials();
+  if (!auth) return { error: 'Not authenticated' };
+
+  try {
+    const res = await fetch(`${API_BASE}/api/update-avatar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: auth.username, password: auth.password, emoji, color })
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Failed to update avatar' };
+    return { ok: true };
+  } catch (e) {
+    return { error: 'Network error' };
+  }
+}
+
+async function apiTrackTime(seconds) {
+  const auth = getAuthCredentials();
+  if (!auth) return { error: 'Not authenticated' };
+
+  try {
+    const res = await fetch(`${API_BASE}/api/track-time`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: auth.username, password: auth.password, seconds })
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Failed to track time' };
+    return data;
   } catch (e) {
     return { error: 'Network error' };
   }
