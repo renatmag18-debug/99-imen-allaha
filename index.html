@@ -4468,7 +4468,8 @@ document.getElementById('dhikrRoomCreateBtn').addEventListener('click', ()=>{
 });
 
 document.getElementById('dhikrRoomInviteBtn').addEventListener('click', ()=>{
-  if(!fbDb || !state.profile || !state.profile.username){ showToast('Нет соединения с сервером'); return; }
+  if(!fbDb){ showToast('Нет соединения с сервером'); return; }
+  if(!state.profile || !state.profile.username){ showToast('Сначала войдите в аккаунт, чтобы пригласить друзей'); return; }
   openFriendPicker('Пригласить на зикр', selected=>{
     dhikrRoomPickedFriends = selected;
     updateDhikrRoomPickSummary();
