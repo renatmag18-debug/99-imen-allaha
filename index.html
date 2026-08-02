@@ -2776,6 +2776,7 @@ function attachRoomListener(){
 function onRoomSnapshot(snap){
   const val = snap.val();
   if(!val) return;
+  duel.isHost = !!(duel.myId && val.hostId===duel.myId);
   duel.players = val.players || {};
   duel.len = val.len || duel.len;
   duel.timerSeconds = val.timerSeconds || 0;
@@ -2934,8 +2935,10 @@ document.getElementById('createDuelBtn').addEventListener('click', ()=>{
 });
 
 document.getElementById('duelStartBtn').addEventListener('click', ()=>{
-  if(!fbDb || !duel.roomId) return;
-  fbDb.ref('duels/'+duel.roomId+'/status').set('active');
+  if(!fbDb || !duel.roomId){ showToast('Нет соединения с сервером дуэли'); return; }
+  if(!duel.isHost) return; // only the room creator (first player, hostId) may start the game for everyone
+  fbDb.ref('duels/'+duel.roomId+'/status').set('active')
+    .catch(e=>{ console.warn('Не удалось начать дуэль:', e); showToast('Не удалось начать игру — проверьте соединение'); });
 });
 
 document.getElementById('duelInviteMoreBtn').addEventListener('click', ()=>{
