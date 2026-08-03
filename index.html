@@ -2323,17 +2323,11 @@ async function generateDhikrShareImage(data){
     p.arcTo(x,y+h,x,y,r); p.arcTo(x,y,x+w,y,r); p.closePath();
     return p;
   }
-  const bgGrad = ctx.createLinearGradient(0,0,W*0.25,H);
-  bgGrad.addColorStop(0,'#123a46'); bgGrad.addColorStop(0.46,'#0f313c'); bgGrad.addColorStop(1,'#0a2129');
-  ctx.fillStyle = bgGrad;
+  // Flat fill, no gradient — a gradient (even a subtle one) has nowhere to
+  // band once a messaging app recompresses the shared PNG to JPEG. A flat
+  // colour has nothing to band, full stop.
+  ctx.fillStyle = '#0a2129';
   ctx.fill(roundRectPath(0,0,W,H,60));
-
-  const glow1 = ctx.createRadialGradient(W*0.5,-H*0.05,10,W*0.5,-H*0.05,W*0.6);
-  glow1.addColorStop(0,'rgba(203,161,53,0.16)'); glow1.addColorStop(1,'rgba(203,161,53,0)');
-  ctx.fillStyle = glow1; ctx.fillRect(0,0,W,H);
-  const glow2 = ctx.createRadialGradient(W*0.9,H*1.06,10,W*0.9,H*1.06,W*0.55);
-  glow2.addColorStop(0,'rgba(46,138,114,0.14)'); glow2.addColorStop(1,'rgba(46,138,114,0)');
-  ctx.fillStyle = glow2; ctx.fillRect(0,0,W,H);
 
   ctx.strokeStyle = 'rgba(228,200,120,0.28)';
   ctx.lineWidth = 2;
@@ -2364,11 +2358,8 @@ async function generateDhikrShareImage(data){
   ctx.direction = 'rtl';
   ctx.textAlign = 'center';
   ctx.fillStyle = '#e4c878';
-  ctx.shadowColor = 'rgba(228,200,120,0.22)';
-  ctx.shadowBlur = 10;
   ctx.font = `400 ${arFontSize}px "KFGQPC Uthmanic Script HAFS", "Amiri", serif`;
   arLines.forEach(line=>{ ctx.fillText(line, W/2, y + arFontSize*0.78); y += arLineHeight; });
-  ctx.shadowBlur = 0;
   y += 26;
 
   // ---- divider ----
