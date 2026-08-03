@@ -2176,10 +2176,20 @@ function saveMiscFavorites(){
 }
 let miscFavorites = loadMiscFavorites();
 
+const DHIKR_CATEGORY_LABELS = {
+  zikr: 'Зикр',
+  azkar_morning: 'Азкары · утренние',
+  azkar_evening: 'Азкары · вечерние',
+  dua: 'Дуа',
+  namaz: 'Намаз'
+};
 function dhikrCardHTML(item, tappable, favId){
   const playBtn = item.audio ? `<button class="dhikr-play-btn" data-audio='${JSON.stringify(item.audio)}' title="Слушать">🔊</button>` : '';
   const favBtn = favId ? `<button class="dhikr-fav-btn${miscFavorites.has(favId)?' active':''}" data-fav-id="${favId}" title="В избранное">${miscFavorites.has(favId)?'★':'☆'}</button>` : '';
-  const shareData = encodeURIComponent(JSON.stringify({ title:item.title||'', ar:item.ar, tr:item.tr, m:item.m, note:item.note||'' }));
+  const catKey = favId ? favId.split(':')[0] : '';
+  const category = DHIKR_CATEGORY_LABELS[catKey] || '';
+  const heading = category + (item.title ? (category?' · ':'') + item.title : '');
+  const shareData = encodeURIComponent(JSON.stringify({ heading, ar:item.ar, tr:item.tr, m:item.m, note:item.note||'' }));
   const shareBtn = `<button class="dhikr-share-btn" data-share="${shareData}" title="Сохранить как картинку">🖼️</button>`;
   return `<div class="dhikr-card${tappable?' tappable':''}">
       <div class="dhikr-top">
@@ -2299,11 +2309,16 @@ async function generateDhikrShareImage(data){
     document.fonts.load(`400 ${arFontSize}px "KFGQPC Uthmanic Script HAFS"`),
     document.fonts.load('italic 600 30px "Cormorant Garamond"'),
     document.fonts.load('italic 500 33px "Cormorant Garamond"'),
+    document.fonts.load('700 23px "Manrope"'),
     document.fonts.load('500 26px "Manrope"'),
     document.fonts.load('500 21px "Manrope"')
   ]).catch(()=>{});
 
-  // ---- measure pass (mirrors the approved mockup: icon, wordmark, ar, divider, tr, m, note) ----
+  // ---- measure pass (mirrors the approved mockup: icon, wordmark, heading, ar, divider, tr, m, note) ----
+  ctx.font = '700 23px "Manrope", sans-serif';
+  if('letterSpacing' in ctx) ctx.letterSpacing = '1.5px';
+  const headingLines = data.heading ? wrapCanvasText(ctx, data.heading.toUpperCase(), W - 260) : [];
+  if('letterSpacing' in ctx) ctx.letterSpacing = '0px';
   ctx.font = `400 ${arFontSize}px "KFGQPC Uthmanic Script HAFS", "Amiri", serif`;
   const arLines = wrapCanvasText(ctx, data.ar, W - 220);
   ctx.font = 'italic 500 33px "Cormorant Garamond", serif';
@@ -2313,8 +2328,10 @@ async function generateDhikrShareImage(data){
   ctx.font = '500 21px "Manrope", sans-serif';
   const noteLines = data.note ? wrapCanvasText(ctx, data.note, W - 300) : [];
 
-  const topZone = 300; // icon + wordmark
-  let contentHeight = arLines.length*arLineHeight + 60 /* divider gap */
+  const topZone = 250; // icon + wordmark
+  let contentHeight = 0;
+  if(headingLines.length) contentHeight += headingLines.length*30 + 26;
+  contentHeight += arLines.length*arLineHeight + 60 /* divider gap */
     + trLines.length*40 + 20
     + mLines.length*36;
   if(noteLines.length) contentHeight += 30 + 30 + noteLines.length*30;
@@ -2360,8 +2377,20 @@ async function generateDhikrShareImage(data){
   ctx.font = 'italic 600 30px "Cormorant Garamond", serif';
   ctx.fillText('99ism.ru', W/2, 210);
 
-  // ---- arabic (rtl) ----
+  // ---- heading: category + specific occasion, e.g. "ДУА · ВЫХОДЯ ИЗ ТУАЛЕТА" ----
   let y = startY;
+  if(headingLines.length){
+    ctx.direction = 'ltr';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#2e8a72';
+    ctx.font = '700 23px "Manrope", sans-serif';
+    if('letterSpacing' in ctx) ctx.letterSpacing = '1.5px';
+    headingLines.forEach(line=>{ ctx.fillText(line, W/2, y); y += 30; });
+    if('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+    y += 26;
+  }
+
+  // ---- arabic (rtl) ----
   ctx.direction = 'rtl';
   ctx.textAlign = 'center';
   ctx.fillStyle = '#e4c878';
@@ -2414,7 +2443,7 @@ async function shareDhikrCard(data, btn){
     if(!blob) throw new Error('canvas produced no image');
     const file = new File([blob], '99ism-' + Date.now() + '.png', { type:'image/png' });
     if(navigator.canShare && navigator.canShare({ files:[file] })){
-      await navigator.share({ files:[file], title: data.title || '99 имён Аллаха' });
+      await navigator.share({ files:[file], title: data.heading || '99 имён Аллаха' });
     } else {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
