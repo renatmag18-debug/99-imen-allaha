@@ -2250,6 +2250,28 @@ function wrapCanvasText(ctx, text, maxWidth){
   return lines;
 }
 
+// Canvas gradients only have 8-bit precision per channel, and this
+// background is a slow, dark, low-saturation transition — exactly the
+// combination that produces visible banding (looks like "pixels" once a
+// messaging app recompresses the image). A faint tiled grain layer breaks
+// the bands up; the eye reads noise as smooth long before it reads a hard
+// step edge as smooth.
+let dhikrNoisePattern = null;
+function getDhikrNoisePattern(ctx){
+  if(dhikrNoisePattern) return dhikrNoisePattern;
+  const size = 160;
+  const n = document.createElement('canvas');
+  n.width = size; n.height = size;
+  const nctx = n.getContext('2d');
+  const imgData = nctx.createImageData(size, size);
+  for(let i=0; i<imgData.data.length; i+=4){
+    const v = 118 + Math.random()*20; // narrow band around neutral grey
+    imgData.data[i] = v; imgData.data[i+1] = v; imgData.data[i+2] = v; imgData.data[i+3] = 255;
+  }
+  nctx.putImageData(imgData, 0, 0);
+  dhikrNoisePattern = ctx.createPattern(n, 'repeat');
+  return dhikrNoisePattern;
+}
 function drawDhikrMark(ctx, cx, cy, size){
   const scale = size/24;
   ctx.save();
@@ -2317,6 +2339,14 @@ async function generateDhikrShareImage(data){
   const glow2 = ctx.createRadialGradient(W*0.9,H*1.06,10,W*0.9,H*1.06,W*0.55);
   glow2.addColorStop(0,'rgba(46,138,114,0.14)'); glow2.addColorStop(1,'rgba(46,138,114,0)');
   ctx.fillStyle = glow2; ctx.fillRect(0,0,W,H);
+
+  // grain to break up gradient banding (see getDhikrNoisePattern)
+  ctx.save();
+  ctx.globalCompositeOperation = 'overlay';
+  ctx.globalAlpha = 0.05;
+  ctx.fillStyle = getDhikrNoisePattern(ctx);
+  ctx.fill(roundRectPath(0,0,W,H,60));
+  ctx.restore();
 
   ctx.strokeStyle = 'rgba(228,200,120,0.28)';
   ctx.lineWidth = 2;
