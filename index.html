@@ -2364,8 +2364,8 @@ async function generateDhikrShareImage(data){
   ctx.direction = 'rtl';
   ctx.textAlign = 'center';
   ctx.fillStyle = '#e4c878';
-  ctx.shadowColor = 'rgba(228,200,120,0.35)';
-  ctx.shadowBlur = 22;
+  ctx.shadowColor = 'rgba(228,200,120,0.22)';
+  ctx.shadowBlur = 10;
   ctx.font = `400 ${arFontSize}px "KFGQPC Uthmanic Script HAFS", "Amiri", serif`;
   arLines.forEach(line=>{ ctx.fillText(line, W/2, y + arFontSize*0.78); y += arLineHeight; });
   ctx.shadowBlur = 0;
