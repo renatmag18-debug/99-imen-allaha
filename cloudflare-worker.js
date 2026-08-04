@@ -644,12 +644,10 @@ async function handleLeaderboard(env, scopeUsername) {
  * Saves reminder time for the user in RTDB at /users/<key>/reminder.
  */
 async function handleSetReminder(body, env) {
-  const { username, password, reminderHourUTC, reminderMinuteUTC } = body || {};
+  const { username, password, frequency } = body || {};
   if (!username || !password) return corsResponse(jsonResponse({ error: 'missing auth' }, 401));
-  const hour = parseInt(reminderHourUTC, 10);
-  const minute = parseInt(reminderMinuteUTC || 0, 10);
-  if (isNaN(hour) || hour < 0 || hour > 23) return corsResponse(jsonResponse({ error: 'invalid hour' }, 400));
-  if (isNaN(minute) || minute < 0 || minute > 59) return corsResponse(jsonResponse({ error: 'invalid minute' }, 400));
+  const freq = parseInt(frequency, 10);
+  if (isNaN(freq) || freq < 1 || freq > 3) return corsResponse(jsonResponse({ error: 'frequency must be 1, 2 or 3' }, 400));
 
   const key = userKey(username);
   const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
@@ -659,7 +657,7 @@ async function handleSetReminder(body, env) {
   await rtdbFetch(`/users/${encodeURIComponent(key)}/reminder.json`, env, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ hourUTC: hour, minuteUTC: minute })
+    body: JSON.stringify({ frequency: freq })
   });
 
   return corsResponse(jsonResponse({ ok: true }));
@@ -686,13 +684,18 @@ async function handleCancelReminder(body, env) {
 
 /**
  * Called by the Cron scheduled handler every hour.
- * Finds all users whose reminder.hourUTC matches the current UTC hour and sends
- * an FCM push to each of their registered tokens.
+ * Frequency → UTC send hours:
+ *   1× per day  → [9]          (12:00 Moscow / 9:00 UTC)
+ *   2× per day  → [7, 17]      (10:00 + 20:00 Moscow)
+ *   3× per day  → [7, 12, 17]  (10:00 + 15:00 + 20:00 Moscow)
  */
 async function sendDailyReminders(env) {
   const nowUtc = new Date();
   const currentHour = nowUtc.getUTCHours();
   const currentMinute = nowUtc.getUTCMinutes();
+
+  // Only fire in the first 10 minutes of each hour (Cron may drift slightly)
+  if (currentMinute > 10) return;
 
   // Load all users
   const allRes = await rtdbFetch('/users.json', env);
@@ -714,14 +717,20 @@ async function sendDailyReminders(env) {
   ];
   const msg = REMINDER_MESSAGES[dayIndex];
 
+  // Frequency → which UTC hours to send
+  const FREQ_HOURS = {
+    1: [9],
+    2: [7, 17],
+    3: [7, 12, 17]
+  };
+
   const sendPromises = [];
 
   for (const [key, user] of Object.entries(users)) {
-    // Only users with reminder set, matching tokens, and matching current hour
     if (!user || !user.reminder || !user.fcmTokens) continue;
-    if (user.reminder.hourUTC !== currentHour) continue;
-    // Only fire in the first 10 minutes of the matching hour (Cron runs each hour)
-    if (currentMinute > 10) continue;
+    const freq = user.reminder.frequency;
+    const sendHours = FREQ_HOURS[freq];
+    if (!sendHours || !sendHours.includes(currentHour)) continue;
 
     const tokens = Object.keys(user.fcmTokens);
     if (!tokens.length) continue;

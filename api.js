@@ -279,9 +279,9 @@ async function apiRegisterPushToken(username, password, token) {
   }
 }
 
-// Set daily reminder time for the logged-in user.
-// reminderHourUTC: 0-23 (UTC hour), reminderMinuteUTC: 0-59 (always 0 for now).
-async function apiSetReminderTime(reminderHourUTC, reminderMinuteUTC = 0) {
+// Set daily reminder frequency for the logged-in user.
+// frequency: 1, 2, or 3 (times per day).
+async function apiSetReminder(frequency) {
   const auth = getAuthCredentials();
   if (!auth) return { error: 'Not authenticated' };
 
@@ -292,8 +292,7 @@ async function apiSetReminderTime(reminderHourUTC, reminderMinuteUTC = 0) {
       body: JSON.stringify({
         username: auth.username,
         password: auth.password,
-        reminderHourUTC,
-        reminderMinuteUTC
+        frequency
       })
     });
     const data = await res.json();

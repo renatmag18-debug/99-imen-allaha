@@ -1276,7 +1276,31 @@ body{
             </div>
             <div style="position:relative;">
               <button id="profileMenuBtn" style="background:none;border:none;color:var(--ivory-dim);cursor:pointer;padding:4px;font-size:20px;">⋮</button>
-              <div id="profileMenu" style="display:none;position:absolute;top:28px;right:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 0;min-width:150px;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:100;">
+              <div id="profileMenu" style="display:none;position:absolute;top:28px;right:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 0;min-width:220px;box-shadow:0 4px 16px rgba(0,0,0,0.4);z-index:100;">
+
+                <!-- Reminder section (shown only when notifications granted) -->
+                <div id="reminderMenuSection" style="display:none;">
+                  <div style="padding:10px 16px 6px;font-size:12px;color:var(--ivory-dim);">⏰ Напоминания об учёбе</div>
+
+                  <!-- Frequency picker -->
+                  <div id="reminderFreqRow" style="display:flex;gap:6px;padding:0 16px 10px;">
+                    <button class="reminder-freq-btn" data-freq="1" style="flex:1;padding:7px 0;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ivory);font-family:var(--font-body);font-size:13px;cursor:pointer;transition:all .2s;">1×</button>
+                    <button class="reminder-freq-btn" data-freq="2" style="flex:1;padding:7px 0;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ivory);font-family:var(--font-body);font-size:13px;cursor:pointer;transition:all .2s;">2×</button>
+                    <button class="reminder-freq-btn" data-freq="3" style="flex:1;padding:7px 0;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ivory);font-family:var(--font-body);font-size:13px;cursor:pointer;transition:all .2s;">3×</button>
+                  </div>
+
+                  <!-- Save / active state -->
+                  <div style="padding:0 16px 10px;display:flex;gap:6px;align-items:center;">
+                    <button id="reminderSaveBtn" style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:var(--gold);color:#1a0f00;font-family:var(--font-body);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;">Сохранить</button>
+                    <button id="reminderOffBtn" style="display:none;padding:7px 10px;border-radius:8px;border:1px solid var(--rose);background:none;color:var(--rose);font-family:var(--font-body);font-size:13px;cursor:pointer;transition:all .2s;">Выключить</button>
+                  </div>
+
+                  <!-- Active label -->
+                  <div id="reminderActiveLabel" style="display:none;padding:0 16px 10px;font-size:12px;color:var(--gold);"></div>
+
+                  <div style="height:1px;background:var(--line);margin:0 0 4px;"></div>
+                </div>
+
                 <button id="logoutBtn" style="display:block;width:100%;text-align:left;padding:10px 16px;background:none;border:none;color:var(--rose);cursor:pointer;font-family:var(--font-body);font-size:13px;transition:background .2s;">
                   Выход
                 </button>
@@ -1286,39 +1310,6 @@ body{
           <button class="btn btn-ghost" id="enableNotifBtn" style="width:100%;margin-top:14px;display:none;">🔔 Включить уведомления</button>
           <p id="notifStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;display:none;"></p>
 
-          <!-- Daily reminder time picker (shown only when notifications are granted) -->
-          <div id="dailyReminderBlock" style="display:none;margin-top:14px;">
-            <div style="font-size:12px;color:var(--ivory-dim);margin-bottom:8px;text-align:center;">⏰ Ежедневное напоминание</div>
-            <div id="reminderSetRow" style="display:flex;gap:8px;align-items:center;">
-              <select id="reminderHourSelect" style="flex:1;padding:8px 10px;border-radius:10px;background:var(--panel);border:1px solid var(--line);color:var(--ivory);font-family:var(--font-body);font-size:13px;cursor:pointer;">
-                <option value="">— Выбрать время —</option>
-                <option value="5">05:00</option>
-                <option value="6">06:00</option>
-                <option value="7">07:00</option>
-                <option value="8">08:00</option>
-                <option value="9">09:00</option>
-                <option value="10">10:00</option>
-                <option value="11">11:00</option>
-                <option value="12">12:00</option>
-                <option value="13">13:00</option>
-                <option value="14">14:00</option>
-                <option value="15">15:00</option>
-                <option value="16">16:00</option>
-                <option value="17">17:00</option>
-                <option value="18">18:00</option>
-                <option value="19">19:00</option>
-                <option value="20">20:00</option>
-                <option value="21">21:00</option>
-                <option value="22">22:00</option>
-                <option value="23">23:00</option>
-              </select>
-              <button class="btn btn-primary" id="reminderSetBtn" style="white-space:nowrap;padding:8px 14px;font-size:13px;">Сохранить</button>
-            </div>
-            <div id="reminderActiveRow" style="display:none;align-items:center;gap:8px;justify-content:space-between;">
-              <span id="reminderActiveLabel" style="font-size:13px;color:var(--gold);"></span>
-              <button class="btn btn-ghost" id="reminderCancelBtn" style="font-size:12px;padding:6px 12px;">✕ Отменить</button>
-            </div>
-          </div>
 
         </div>
 
@@ -4631,86 +4622,119 @@ async function enableNotifications(){
 const enableNotifBtnEl = document.getElementById('enableNotifBtn');
 if(enableNotifBtnEl) enableNotifBtnEl.addEventListener('click', enableNotifications);
 
-/* ---------------- daily reminder UI ---------------- */
+/* ---------------- daily reminder UI (frequency-based) ---------------- */
 
-// localStorage key for caching the active reminder hour (local time).
-const REMINDER_LOCAL_STORAGE_KEY = 'dailyReminderLocalHour';
+const REMINDER_FREQ_KEY = 'dailyReminderFreq'; // 1 | 2 | 3 stored in localStorage
+
+// Which frequency button is currently selected (before saving)
+let reminderSelectedFreq = null;
 
 function updateReminderUI(){
-  const block = document.getElementById('dailyReminderBlock');
-  const setRow = document.getElementById('reminderSetRow');
-  const activeRow = document.getElementById('reminderActiveRow');
-  const activeLabel = document.getElementById('reminderActiveLabel');
-  if(!block) return;
+  const section = document.getElementById('reminderMenuSection');
+  const saveBtn = document.getElementById('reminderSaveBtn');
+  const offBtn  = document.getElementById('reminderOffBtn');
+  const label   = document.getElementById('reminderActiveLabel');
 
-  // Only show the reminder block when push is granted and user is logged in
-  const granted = Notification.permission === 'granted';
+  const granted  = pushSupported() && Notification.permission === 'granted';
   const loggedIn = !!(state.profile && state.profile.authenticated);
-  block.style.display = (granted && loggedIn) ? 'block' : 'none';
+
+  if(section) section.style.display = (granted && loggedIn) ? 'block' : 'none';
   if(!granted || !loggedIn) return;
 
-  const savedHour = localStorage.getItem(REMINDER_LOCAL_STORAGE_KEY);
-  if(savedHour !== null){
-    setRow.style.display = 'none';
-    activeRow.style.display = 'flex';
-    activeLabel.textContent = '🔔 Напоминание в ' + String(savedHour).padStart(2,'0') + ':00 (по вашему времени)';
+  const saved = localStorage.getItem(REMINDER_FREQ_KEY);
+
+  // Highlight the active frequency button
+  document.querySelectorAll('.reminder-freq-btn').forEach(b => {
+    const active = saved && String(b.dataset.freq) === String(saved);
+    b.style.background   = active ? 'var(--gold)'  : 'var(--panel)';
+    b.style.color        = active ? '#1a0f00'       : 'var(--ivory)';
+    b.style.borderColor  = active ? 'var(--gold)'   : 'var(--line)';
+    b.style.fontWeight   = active ? '700'           : '400';
+  });
+
+  if(saved){
+    const freqLabels = { '1':'1 раз в день', '2':'2 раза в день', '3':'3 раза в день' };
+    if(label){ label.textContent = '🔔 ' + (freqLabels[saved] || saved + '× в день'); label.style.display = 'block'; }
+    if(saveBtn) saveBtn.textContent = 'Сохранить';
+    if(offBtn)  offBtn.style.display = 'inline-block';
   } else {
-    setRow.style.display = 'flex';
-    activeRow.style.display = 'none';
+    if(label)   label.style.display = 'none';
+    if(offBtn)  offBtn.style.display = 'none';
+    if(saveBtn) saveBtn.textContent = 'Сохранить';
   }
 }
 
-async function setDailyReminder(){
-  const select = document.getElementById('reminderHourSelect');
-  const localHour = parseInt(select && select.value, 10);
-  if(isNaN(localHour)){ showToast('Выберите время напоминания'); return; }
+// Frequency button clicks — just select, don't save yet
+document.querySelectorAll('.reminder-freq-btn').forEach(btn => {
+  btn.addEventListener('click', e => {
+    reminderSelectedFreq = parseInt(btn.dataset.freq, 10);
+    // Visually highlight selected (before save)
+    document.querySelectorAll('.reminder-freq-btn').forEach(b => {
+      const sel = String(b.dataset.freq) === String(reminderSelectedFreq);
+      b.style.background   = sel ? 'var(--gold)'  : 'var(--panel)';
+      b.style.color        = sel ? '#1a0f00'       : 'var(--ivory)';
+      b.style.borderColor  = sel ? 'var(--gold)'   : 'var(--line)';
+      b.style.fontWeight   = sel ? '700'           : '400';
+    });
+  });
+});
 
-  // Convert local hour → UTC hour (use JS Date for DST-awareness)
-  const now = new Date();
-  const offsetHours = -now.getTimezoneOffset() / 60; // e.g. +3 for Moscow
-  let utcHour = ((localHour - offsetHours) % 24 + 24) % 24;
+// Save button
+const reminderSaveBtnEl = document.getElementById('reminderSaveBtn');
+if(reminderSaveBtnEl) reminderSaveBtnEl.addEventListener('click', async () => {
+  const freq = reminderSelectedFreq || parseInt(localStorage.getItem(REMINDER_FREQ_KEY), 10);
+  if(!freq || freq < 1 || freq > 3){ showToast('Выберите частоту: 1×, 2× или 3× в день'); return; }
 
-  const btn = document.getElementById('reminderSetBtn');
-  if(btn){ btn.disabled = true; btn.textContent = '...'; }
+  reminderSaveBtnEl.disabled = true;
+  reminderSaveBtnEl.textContent = '...';
 
-  const result = await apiSetReminderTime(utcHour, 0);
-
-  if(btn){ btn.disabled = false; btn.textContent = 'Сохранить'; }
+  const result = await apiSetReminder(freq);
 
   if(result && result.ok){
-    localStorage.setItem(REMINDER_LOCAL_STORAGE_KEY, localHour);
-    showToast('✅ Напоминание установлено на ' + String(localHour).padStart(2,'0') + ':00');
-    updateReminderUI();
+    localStorage.setItem(REMINDER_FREQ_KEY, freq);
+    reminderSaveBtnEl.textContent = '✓ Сохранено';
+    reminderSaveBtnEl.style.background = '#2e7d32';
+    reminderSaveBtnEl.style.color = '#fff';
+    setTimeout(() => {
+      reminderSaveBtnEl.disabled = false;
+      reminderSaveBtnEl.textContent = 'Сохранить';
+      reminderSaveBtnEl.style.background = '';
+      reminderSaveBtnEl.style.color = '';
+      updateReminderUI();
+    }, 1800);
+    const labels = { 1:'1 раз в день', 2:'2 раза в день', 3:'3 раза в день' };
+    showToast('✅ Напоминание: ' + labels[freq]);
   } else {
+    reminderSaveBtnEl.disabled = false;
+    reminderSaveBtnEl.textContent = 'Сохранить';
     showToast('Ошибка: ' + (result && result.error || 'попробуйте снова'));
   }
-}
+});
 
-async function cancelDailyReminder(){
-  const btn = document.getElementById('reminderCancelBtn');
-  if(btn){ btn.disabled = true; btn.textContent = '...'; }
+// Off button
+const reminderOffBtnEl = document.getElementById('reminderOffBtn');
+if(reminderOffBtnEl) reminderOffBtnEl.addEventListener('click', async () => {
+  reminderOffBtnEl.disabled = true;
+  reminderOffBtnEl.textContent = '...';
 
   const result = await apiCancelReminder();
 
-  if(btn){ btn.disabled = false; btn.textContent = '✕ Отменить'; }
+  reminderOffBtnEl.disabled = false;
+  reminderOffBtnEl.textContent = 'Выключить';
 
   if(result && result.ok){
-    localStorage.removeItem(REMINDER_LOCAL_STORAGE_KEY);
-    showToast('Напоминание отключено');
+    localStorage.removeItem(REMINDER_FREQ_KEY);
+    reminderSelectedFreq = null;
+    showToast('Напоминания отключены');
     updateReminderUI();
   } else {
     showToast('Ошибка: ' + (result && result.error || 'попробуйте снова'));
   }
-}
+});
 
-const reminderSetBtnEl = document.getElementById('reminderSetBtn');
-if(reminderSetBtnEl) reminderSetBtnEl.addEventListener('click', setDailyReminder);
+// Re-render whenever Firebase resolves
+fbAuthReady.then(() => { if(typeof updateReminderUI === 'function') updateReminderUI(); });
 
-const reminderCancelBtnEl = document.getElementById('reminderCancelBtn');
-if(reminderCancelBtnEl) reminderCancelBtnEl.addEventListener('click', cancelDailyReminder);
-
-// Re-render reminder UI whenever Firebase auth resolves (same timing as notif button)
-fbAuthReady.then(()=>{ if(typeof updateReminderUI === 'function') updateReminderUI(); });
 
 // Usernames are case-insensitive (see cloudflare-worker.js's userKey) but this
 // whole duel-invite/challenge/push subsystem writes straight to Firebase RTDB
