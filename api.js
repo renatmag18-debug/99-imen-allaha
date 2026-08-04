@@ -279,8 +279,53 @@ async function apiRegisterPushToken(username, password, token) {
   }
 }
 
+// Set daily reminder time for the logged-in user.
+// reminderHourUTC: 0-23 (UTC hour), reminderMinuteUTC: 0-59 (always 0 for now).
+async function apiSetReminderTime(reminderHourUTC, reminderMinuteUTC = 0) {
+  const auth = getAuthCredentials();
+  if (!auth) return { error: 'Not authenticated' };
+
+  try {
+    const res = await fetch(`${API_BASE}/api/set-reminder`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: auth.username,
+        password: auth.password,
+        reminderHourUTC,
+        reminderMinuteUTC
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Failed to set reminder' };
+    return { ok: true };
+  } catch (e) {
+    return { error: 'Network error' };
+  }
+}
+
+// Cancel daily reminder for the logged-in user.
+async function apiCancelReminder() {
+  const auth = getAuthCredentials();
+  if (!auth) return { error: 'Not authenticated' };
+
+  try {
+    const res = await fetch(`${API_BASE}/api/cancel-reminder`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: auth.username, password: auth.password })
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Failed to cancel reminder' };
+    return { ok: true };
+  } catch (e) {
+    return { error: 'Network error' };
+  }
+}
+
 // Get total registered user count. Server-gated to a single admin account —
 // returns an error for everyone else, so the caller just hides the stat then.
+
 async function apiGetUserCount(username, password) {
   try {
     const res = await fetch(`${API_BASE}/api/admin/user-count`, {

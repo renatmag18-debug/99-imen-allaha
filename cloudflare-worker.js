@@ -14,6 +14,8 @@
  *   POST /api/remove-friend  — Remove an existing friend (both directions)
  *   POST /api/update-avatar  — Set avatar {emoji, color} from the preset picker
  *   POST /api/track-time     — Add elapsed seconds to stats.totalTimeSeconds
+ *   POST /api/set-reminder   — Save daily reminder time (UTC hour 0-23) for a user
+ *   POST /api/cancel-reminder — Remove daily reminder for a user
  *   GET /api/leaderboard     — Get leaderboard
  *   POST /api/admin/user-count — Total registered users (single admin account only)
  *   POST /push                — Send a push notification (used by notifyFriend()
@@ -29,6 +31,10 @@
  *   FCM_PRIVATE_KEY   full PEM private key for the same service account
  *   FCM_PROJECT_ID    e.g. "ism-friends" — only needed for push notify
  *   SHARED_SECRET     random string for push auth
+ *
+ * Cron Triggers (wrangler.toml):
+ *   0 * * * *  — runs every hour; sends daily reminders to all users whose
+ *                reminderHourUTC matches the current UTC hour.
  */
 
 const RTDB_BASE = 'https://ism-friends-default-rtdb.firebaseio.com';
@@ -70,6 +76,13 @@ export default {
     }
 
     return corsResponse(new Response('Not found', { status: 404 }));
+  },
+
+  // Cron trigger: runs every hour (0 * * * * in wrangler.toml).
+  // Finds all users with a reminderHourUTC matching the current UTC hour
+  // and sends them a push notification to study the Names of Allah.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(sendDailyReminders(env));
   }
 };
 
@@ -149,6 +162,16 @@ async function handleAPI(request, env, url) {
   // POST /api/track-time
   if (request.method === 'POST' && path === 'track-time') {
     return handleTrackTime(body, env);
+  }
+
+  // POST /api/set-reminder — save daily reminder time for a user
+  if (request.method === 'POST' && path === 'set-reminder') {
+    return handleSetReminder(body, env);
+  }
+
+  // POST /api/cancel-reminder — remove daily reminder for a user
+  if (request.method === 'POST' && path === 'cancel-reminder') {
+    return handleCancelReminder(body, env);
   }
 
   // GET /api/leaderboard[?username=x] — scoped to that user + their friends when given
@@ -609,6 +632,143 @@ async function handleLeaderboard(env, scopeUsername) {
     .slice(0, 100);
 
   return corsResponse(jsonResponse({ leaderboard }));
+}
+
+/* =====================================================
+   DAILY REMINDERS
+===================================================== */
+
+/**
+ * POST /api/set-reminder
+ * Body: { username, password, reminderHourUTC: 0-23, reminderMinuteUTC: 0-59 }
+ * Saves reminder time for the user in RTDB at /users/<key>/reminder.
+ */
+async function handleSetReminder(body, env) {
+  const { username, password, reminderHourUTC, reminderMinuteUTC } = body || {};
+  if (!username || !password) return corsResponse(jsonResponse({ error: 'missing auth' }, 401));
+  const hour = parseInt(reminderHourUTC, 10);
+  const minute = parseInt(reminderMinuteUTC || 0, 10);
+  if (isNaN(hour) || hour < 0 || hour > 23) return corsResponse(jsonResponse({ error: 'invalid hour' }, 400));
+  if (isNaN(minute) || minute < 0 || minute > 59) return corsResponse(jsonResponse({ error: 'invalid minute' }, 400));
+
+  const key = userKey(username);
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
+  const user = await userRes.json();
+  if (!user || user.password !== btoa(password)) return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
+
+  await rtdbFetch(`/users/${encodeURIComponent(key)}/reminder.json`, env, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ hourUTC: hour, minuteUTC: minute })
+  });
+
+  return corsResponse(jsonResponse({ ok: true }));
+}
+
+/**
+ * POST /api/cancel-reminder
+ * Body: { username, password }
+ * Deletes the reminder record for the user.
+ */
+async function handleCancelReminder(body, env) {
+  const { username, password } = body || {};
+  if (!username || !password) return corsResponse(jsonResponse({ error: 'missing auth' }, 401));
+
+  const key = userKey(username);
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
+  const user = await userRes.json();
+  if (!user || user.password !== btoa(password)) return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
+
+  await rtdbFetch(`/users/${encodeURIComponent(key)}/reminder.json`, env, { method: 'DELETE' });
+
+  return corsResponse(jsonResponse({ ok: true }));
+}
+
+/**
+ * Called by the Cron scheduled handler every hour.
+ * Finds all users whose reminder.hourUTC matches the current UTC hour and sends
+ * an FCM push to each of their registered tokens.
+ */
+async function sendDailyReminders(env) {
+  const nowUtc = new Date();
+  const currentHour = nowUtc.getUTCHours();
+  const currentMinute = nowUtc.getUTCMinutes();
+
+  // Load all users
+  const allRes = await rtdbFetch('/users.json', env);
+  const users = await allRes.json();
+  if (!users) return;
+
+  const accessToken = await getAccessToken(env, 'https://www.googleapis.com/auth/firebase.messaging');
+
+  // Reminder messages — rotated daily so they don't feel repetitive
+  const dayIndex = nowUtc.getUTCDay(); // 0=Sun..6=Sat
+  const REMINDER_MESSAGES = [
+    { title: '📿 Время учить Имена Аллаха!', body: 'Уделите несколько минут изучению одного из прекрасных имён Аллаха сегодня.' },
+    { title: '✨ Асма-уль-Хусна ждёт вас', body: 'Каждое имя — это путь к познанию Аллаха. Начните прямо сейчас!' },
+    { title: '🌙 Ваше ежедневное напоминание', body: 'Изучите имя Аллаха сегодня — знание, которое останется с вами навсегда.' },
+    { title: '📖 Время для изучения', body: 'Пророк ﷺ сказал: «Аллах имеет 99 имён...» — выучите ещё одно сегодня!' },
+    { title: '⭐ Учите 99 Имён Аллаха', body: 'Ваш ежедневный урок готов. Несколько минут — и новое знание навсегда!' },
+    { title: '🤲 Не забудьте об учёбе', body: 'Сегодня прекрасный день, чтобы узнать больше об именах Аллаха.' },
+    { title: '💎 99 Имён Аллаха', body: 'Каждый день — одно имя, одно значение, одна близость к Аллаху.' }
+  ];
+  const msg = REMINDER_MESSAGES[dayIndex];
+
+  const sendPromises = [];
+
+  for (const [key, user] of Object.entries(users)) {
+    // Only users with reminder set, matching tokens, and matching current hour
+    if (!user || !user.reminder || !user.fcmTokens) continue;
+    if (user.reminder.hourUTC !== currentHour) continue;
+    // Only fire in the first 10 minutes of the matching hour (Cron runs each hour)
+    if (currentMinute > 10) continue;
+
+    const tokens = Object.keys(user.fcmTokens);
+    if (!tokens.length) continue;
+
+    const deadTokens = [];
+    for (const token of tokens) {
+      const fcmRes = await fetch(
+        `https://fcm.googleapis.com/v1/projects/${env.FCM_PROJECT_ID}/messages:send`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: {
+              token,
+              data: {
+                title: msg.title,
+                body: msg.body,
+                tag: 'daily-reminder',
+                link: 'https://99ism.ru/'
+              },
+              webpush: { headers: { Urgency: 'normal' } }
+            }
+          })
+        }
+      );
+      if (!fcmRes.ok) {
+        const errText = await fcmRes.text();
+        if (fcmRes.status === 404 || errText.includes('UNREGISTERED') || errText.includes('NOT_FOUND')) {
+          deadTokens.push(token);
+        }
+      }
+    }
+
+    // Clean up dead tokens
+    if (deadTokens.length) {
+      sendPromises.push(
+        Promise.all(deadTokens.map(t =>
+          rtdbFetch(`/users/${encodeURIComponent(key)}/fcmTokens/${encodeURIComponent(t)}.json`, env, { method: 'DELETE' })
+        ))
+      );
+    }
+  }
+
+  await Promise.all(sendPromises);
 }
 
 async function handlePush(request, env) {
