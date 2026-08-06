@@ -816,7 +816,7 @@ body{
       <div id="browseWrap" style="display:contents">
         <div class="search-wrap">
           <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-          <input id="searchInput" type="text" placeholder="Поиск по имени или номеру…" autocomplete="off">
+          <input id="searchInput" type="search" inputmode="search" placeholder="Поиск по имени или номеру…" autocomplete="off">
         </div>
         <div class="scroll">
           <div class="section-title">99 имён</div>
@@ -1081,7 +1081,7 @@ body{
     <section class="screen" data-screen="misc">
       <div class="search-wrap">
         <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-        <input id="miscSearchInput" type="text" placeholder="Поиск по зикрам, азкарам, дуа, намазу…" autocomplete="off">
+        <input id="miscSearchInput" type="search" inputmode="search" placeholder="Поиск по зикрам, азкарам, дуа, намазу…" autocomplete="off">
       </div>
       <div id="weeklyChallengeCard" class="weekly-challenge-card" style="display:none">
         <div class="weekly-challenge-top">
@@ -1603,6 +1603,42 @@ let fbAuthReady = (async () => {
 fbAuthReady.then(()=>{ if(typeof updateNotifUI === 'function') updateNotifUI(); });
 </script>
 <script>
+
+/* =====================================================
+   SHEET HISTORY MANAGER
+===================================================== */
+let isSheetOpenState = false;
+let isClosingFromPopstate = false;
+
+function pushSheetHistory() {
+  if (!isSheetOpenState) {
+    history.pushState({ isSheet: true }, '');
+    isSheetOpenState = true;
+  }
+}
+
+function popSheetHistory() {
+  if (isSheetOpenState && !isClosingFromPopstate) {
+    isSheetOpenState = false;
+    history.back();
+  }
+}
+
+window.addEventListener('popstate', (e) => {
+  if (isSheetOpenState) {
+    isSheetOpenState = false;
+    isClosingFromPopstate = true;
+    try { closeDhikrCounter(); } catch(e){}
+    try { closeWeeklyChallengeSheet(); } catch(e){}
+    try { closeSheet(); } catch(e){}
+    try { closeAvatarPicker(); } catch(e){}
+    try { closeProfileView(); } catch(e){}
+    try { closeDhikrRoomSheet(); } catch(e){}
+    try { closeFriendPicker(); } catch(e){}
+    setTimeout(() => { isClosingFromPopstate = false; }, 50);
+  }
+});
+
 /* =====================================================
    ДАННЫЕ: 99 прекрасных имён Аллаха
    Толкования приведены в сжатом пересказе по книге
@@ -2561,6 +2597,7 @@ function updateDhikrCounterUI(){
   }
 }
 function openDhikrCounter(item){
+  pushSheetHistory();
   dhikrCounterValue = 0;
   dhikrCounterTarget = parseDhikrTarget(item.count);
   document.getElementById('dhikrCounterTitle').textContent = item.title || '';
@@ -2576,6 +2613,7 @@ function openDhikrCounter(item){
   dhikrCounterBackdrop.classList.add('show');
 }
 function closeDhikrCounter(){
+  popSheetHistory();
   dhikrCounterSheet.classList.remove('show');
   dhikrCounterBackdrop.classList.remove('show');
   stopDhikrAudio();
@@ -2898,6 +2936,7 @@ refreshWeeklyChallengeState();
 setInterval(refreshWeeklyChallengeState, 30000);
 
 function openWeeklyChallengeSheet(){
+  pushSheetHistory();
   refreshWeeklyChallengeState();
   if(weeklyChallengeWeekId){
     loadWeeklyChallengeLocalState(weeklyChallengeWeekId);
@@ -2910,6 +2949,7 @@ function openWeeklyChallengeSheet(){
   document.getElementById('weeklyChallengeBackdrop').classList.add('show');
 }
 function closeWeeklyChallengeSheet(){
+  popSheetHistory();
   document.getElementById('weeklyChallengeSheet').classList.remove('show');
   document.getElementById('weeklyChallengeBackdrop').classList.remove('show');
 }
@@ -2999,12 +3039,14 @@ miscSearchInput.addEventListener('input', ()=>{
 const sheet = document.getElementById('sheet');
 const sheetBackdrop = document.getElementById('sheetBackdrop');
 function openSheet(i){
+  pushSheetHistory();
   state.sheetIndex = i;
   renderSheet();
   sheet.classList.add('show');
   sheetBackdrop.classList.add('show');
 }
 function closeSheet(){
+  popSheetHistory();
   sheet.classList.remove('show');
   sheetBackdrop.classList.remove('show');
 }
@@ -5036,6 +5078,7 @@ function renderAvatarPickerGrids(){
   renderAvatarInto(document.getElementById('avatarPreview'), avatarPickerState, state.profile && state.profile.username);
 }
 function openAvatarPicker(){
+  pushSheetHistory();
   const current = (state.profile && state.profile.avatar) || {};
   avatarPickerState.emoji = current.emoji || AVATAR_EMOJIS[0];
   avatarPickerState.color = current.color || Object.keys(AVATAR_COLORS)[0];
@@ -5044,6 +5087,7 @@ function openAvatarPicker(){
   avatarPickerBackdrop.classList.add('show');
 }
 function closeAvatarPicker(){
+  popSheetHistory();
   avatarPickerSheet.classList.remove('show');
   avatarPickerBackdrop.classList.remove('show');
 }
@@ -5102,6 +5146,7 @@ let profileViewPresenceUnsub = null;
 const profileViewSheet = document.getElementById('profileViewSheet');
 const profileViewBackdrop = document.getElementById('profileViewBackdrop');
 async function openProfileView(username){
+  pushSheetHistory();
   if(!username) return;
   profileViewSheet.classList.add('show');
   profileViewBackdrop.classList.add('show');
@@ -5140,6 +5185,7 @@ async function openProfileView(username){
   });
 }
 function closeProfileView(){
+  popSheetHistory();
   profileViewSheet.classList.remove('show');
   profileViewBackdrop.classList.remove('show');
   if(profileViewPresenceUnsub){ profileViewPresenceUnsub(); profileViewPresenceUnsub = null; }
@@ -5322,6 +5368,7 @@ function showDhikrRoomActive(){
 }
 
 function openDhikrRoomSheet(){
+  pushSheetHistory();
   if(!dhikrRoom.roomId){
     dhikrRoomSelectedZikrIdx = 0;
     dhikrRoomPickedFriends = [];
@@ -5333,6 +5380,7 @@ function openDhikrRoomSheet(){
   document.getElementById('dhikrRoomBackdrop').classList.add('show');
 }
 function closeDhikrRoomSheet(){
+  popSheetHistory();
   document.getElementById('dhikrRoomSheet').classList.remove('show');
   document.getElementById('dhikrRoomBackdrop').classList.remove('show');
 }
@@ -5482,6 +5530,7 @@ function sendDhikrRoomInvite(friendUid){
 const friendPickerSheet = document.getElementById('friendPickerSheet');
 const friendPickerBackdrop = document.getElementById('friendPickerBackdrop');
 function openFriendPicker(title, onConfirm, preselected){
+  pushSheetHistory();
   document.getElementById('friendPickerTitle').textContent = title || 'Выбрать друзей';
   friendPickerOnConfirm = onConfirm;
   friendPickerSelection = new Set(preselected || []);
@@ -5490,6 +5539,7 @@ function openFriendPicker(title, onConfirm, preselected){
   friendPickerBackdrop.classList.add('show');
 }
 function closeFriendPicker(){
+  popSheetHistory();
   friendPickerSheet.classList.remove('show');
   friendPickerBackdrop.classList.remove('show');
 }
