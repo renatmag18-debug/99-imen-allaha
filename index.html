@@ -1494,6 +1494,12 @@ body{
       <div class="weekly-progress-bar"><div class="weekly-progress-fill weekly-challenge-fill-target"></div></div>
       <div class="weekly-challenge-count-label"></div>
       <p style="font-size:12px;color:var(--ivory-dim);margin-top:14px;">Ваш вклад: <b id="weeklyChallengeMyCount" style="color:var(--gold-soft);">0</b></p>
+      <div style="margin-top:18px;text-align:left;border-top:1px solid rgba(255,255,255,0.08);padding-top:14px;">
+        <div style="font-size:12px;font-weight:700;color:var(--ivory-dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;text-align:center;">Участники задания</div>
+        <div class="duel-participants" id="weeklyChallengeParticipants" style="max-height:160px;overflow-y:auto;padding:2px 0;">
+          <div style="font-size:12px;color:var(--ivory-dim);width:100%;text-align:center;">Загрузка участников...</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -2742,20 +2748,85 @@ function formatWeeklyCountdown(ms){
 }
 
 let weeklyChallengeWeekId = null;
+let weeklyChallengeListenerAttachedId = null;
 let weeklyChallengeRef = null;
+let weeklyChallengeUsersRef = null;
 let weeklyChallengeCount = 0;
 let weeklyChallengeMyCount = 0;
+let weeklyChallengeParticipants = {};
+
+function getWeeklyChallengeUserKey(){
+  if(typeof state !== 'undefined' && state.profile && state.profile.username){
+    return fbKey(state.profile.username);
+  }
+  let localId = null;
+  try{ localId = localStorage.getItem('weeklyChallengeUserId'); }catch(e){}
+  if(!localId){
+    localId = 'u_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+    try{ localStorage.setItem('weeklyChallengeUserId', localId); }catch(e){}
+  }
+  return localId;
+}
+
+function getWeeklyChallengeUserName(){
+  if(typeof state !== 'undefined' && state.profile && state.profile.username){
+    return state.profile.username;
+  }
+  let localName = null;
+  try{ localName = localStorage.getItem('weeklyChallengeUserName'); }catch(e){}
+  return localName || 'Участник';
+}
+
+function loadWeeklyChallengeLocalState(weekId){
+  if(!weekId) return;
+  try{
+    const saved = localStorage.getItem('weeklyChallengeMyCount_' + weekId);
+    if(saved !== null){
+      weeklyChallengeMyCount = parseInt(saved, 10) || 0;
+    }
+  }catch(e){}
+}
+
+function saveWeeklyChallengeLocalState(weekId){
+  if(!weekId) return;
+  try{
+    localStorage.setItem('weeklyChallengeMyCount_' + weekId, String(weeklyChallengeMyCount));
+  }catch(e){}
+}
 
 async function attachWeeklyChallengeListener(weekId){
-  if(weeklyChallengeRef){ try{ weeklyChallengeRef.off('value'); }catch(e){} }
+  if(!weekId) return;
+
+  loadWeeklyChallengeLocalState(weekId);
+  const myEl = document.getElementById('weeklyChallengeMyCount');
+  if(myEl) myEl.textContent = weeklyChallengeMyCount.toLocaleString('ru-RU');
+
   await fbAuthReady;
-  if(!fbDb || weekId !== weeklyChallengeWeekId) return;
+  if(!fbDb) return;
+  if(weeklyChallengeListenerAttachedId === weekId) return;
+
+  if(weeklyChallengeRef){ try{ weeklyChallengeRef.off('value'); }catch(e){} }
+  if(weeklyChallengeUsersRef){ try{ weeklyChallengeUsersRef.off('value'); }catch(e){} }
+
+  weeklyChallengeListenerAttachedId = weekId;
+
   weeklyChallengeRef = fbDb.ref('weeklyChallenge/'+weekId+'/count');
   weeklyChallengeRef.on('value', snap=>{
-    weeklyChallengeCount = snap.val() || 0;
+    const val = snap.val();
+    if(val !== null && val !== undefined){
+      weeklyChallengeCount = Math.max(weeklyChallengeCount, val);
+    }
     updateWeeklyChallengeProgress();
   });
+
+  weeklyChallengeUsersRef = fbDb.ref('weeklyChallenge/'+weekId+'/users');
+  weeklyChallengeUsersRef.on('value', snap=>{
+    const users = snap.val() || {};
+    weeklyChallengeParticipants = users;
+    renderWeeklyChallengeParticipants();
+  });
 }
+
 function updateWeeklyChallengeProgress(){
   const pct = Math.min(100, Math.round(weeklyChallengeCount/WEEKLY_CHALLENGE_TARGET*100));
   document.querySelectorAll('.weekly-challenge-fill-target').forEach(el=>{ el.style.width = pct+'%'; });
@@ -2764,6 +2835,39 @@ function updateWeeklyChallengeProgress(){
   });
   const num = document.getElementById('weeklyChallengeNum');
   if(num) num.textContent = weeklyChallengeCount.toLocaleString('ru-RU');
+}
+
+function renderWeeklyChallengeParticipants(){
+  const listEl = document.getElementById('weeklyChallengeParticipants');
+  if(!listEl) return;
+
+  const myKey = getWeeklyChallengeUserKey();
+  const entries = Object.entries(weeklyChallengeParticipants);
+
+  if(myKey && weeklyChallengeParticipants[myKey]){
+    const sCount = weeklyChallengeParticipants[myKey].count || 0;
+    if(sCount > weeklyChallengeMyCount){
+      weeklyChallengeMyCount = sCount;
+      saveWeeklyChallengeLocalState(weeklyChallengeWeekId);
+      const myEl = document.getElementById('weeklyChallengeMyCount');
+      if(myEl) myEl.textContent = weeklyChallengeMyCount.toLocaleString('ru-RU');
+    }
+  }
+
+  if(entries.length === 0){
+    listEl.innerHTML = '<div style="font-size:12px;color:var(--ivory-dim);width:100%;text-align:center;padding:8px 0;">Будьте первым, кто прочитает зикр!</div>';
+    return;
+  }
+
+  entries.sort((a, b) => (b[1].count || 0) - (a[1].count || 0));
+
+  listEl.innerHTML = entries.map(([key, user]) => {
+    const isMe = (key === myKey);
+    const name = escapeHtml(user.name || (isMe ? 'Вы' : 'Участник'));
+    const count = (user.count || 0).toLocaleString('ru-RU');
+    const cls = 'duel-participant-chip' + (isMe ? ' me' : '');
+    return `<div class="${cls}"><b>${name}</b> · ${count}</div>`;
+  }).join('');
 }
 
 function refreshWeeklyChallengeState(){
@@ -2784,8 +2888,9 @@ function refreshWeeklyChallengeState(){
     if(sheetTimer) sheetTimer.textContent = 'Задание начнётся через ' + formatWeeklyCountdown(start-new Date());
   }
   const weekId = weeklyChallengeId(start);
-  if(weekId !== weeklyChallengeWeekId){
-    weeklyChallengeWeekId = weekId;
+  weeklyChallengeWeekId = weekId;
+
+  if(weeklyChallengeListenerAttachedId !== weekId){
     attachWeeklyChallengeListener(weekId);
   }
 }
@@ -2794,8 +2899,13 @@ setInterval(refreshWeeklyChallengeState, 30000);
 
 function openWeeklyChallengeSheet(){
   refreshWeeklyChallengeState();
+  if(weeklyChallengeWeekId){
+    loadWeeklyChallengeLocalState(weeklyChallengeWeekId);
+  }
   updateWeeklyChallengeProgress();
-  document.getElementById('weeklyChallengeMyCount').textContent = weeklyChallengeMyCount;
+  renderWeeklyChallengeParticipants();
+  const myEl = document.getElementById('weeklyChallengeMyCount');
+  if(myEl) myEl.textContent = weeklyChallengeMyCount.toLocaleString('ru-RU');
   document.getElementById('weeklyChallengeSheet').classList.add('show');
   document.getElementById('weeklyChallengeBackdrop').classList.add('show');
 }
@@ -2806,14 +2916,59 @@ function closeWeeklyChallengeSheet(){
 document.getElementById('weeklyChallengeCard').addEventListener('click', openWeeklyChallengeSheet);
 document.getElementById('weeklyChallengeClose').addEventListener('click', closeWeeklyChallengeSheet);
 document.getElementById('weeklyChallengeBackdrop').addEventListener('click', closeWeeklyChallengeSheet);
+
+let weeklyChallengeClickTimer = null;
+let weeklyChallengePendingClicks = 0;
+
+function flushWeeklyChallengeClicks(){
+  if(weeklyChallengePendingClicks <= 0) return;
+  const delta = weeklyChallengePendingClicks;
+  weeklyChallengePendingClicks = 0;
+  const weekId = weeklyChallengeWeekId;
+  if(!weekId) return;
+
+  saveWeeklyChallengeLocalState(weekId);
+
+  if(fbDb){
+    const userKey = getWeeklyChallengeUserKey();
+    const userName = getWeeklyChallengeUserName();
+    fbDb.ref('weeklyChallenge/'+weekId+'/count').set(firebase.database.ServerValue.increment(delta));
+    fbDb.ref('weeklyChallenge/'+weekId+'/users/'+userKey+'/count').set(firebase.database.ServerValue.increment(delta));
+    fbDb.ref('weeklyChallenge/'+weekId+'/users/'+userKey+'/name').set(userName);
+    fbDb.ref('weeklyChallenge/'+weekId+'/users/'+userKey+'/updatedAt').set(firebase.database.ServerValue.TIMESTAMP);
+  }
+}
+
 document.getElementById('weeklyChallengeCircle').addEventListener('click', ()=>{
   const {active} = weeklyChallengeWindow();
   if(!active){ showToast('Задание ещё не началось'); return; }
-  if(!fbDb || !weeklyChallengeWeekId) return;
-  fbDb.ref('weeklyChallenge/'+weeklyChallengeWeekId+'/count').set(firebase.database.ServerValue.increment(1));
+  
   weeklyChallengeMyCount++;
-  document.getElementById('weeklyChallengeMyCount').textContent = weeklyChallengeMyCount;
+  weeklyChallengeCount++;
+  weeklyChallengePendingClicks++;
+
+  const weekId = weeklyChallengeWeekId;
+  if(weekId){
+    saveWeeklyChallengeLocalState(weekId);
+    
+    const myKey = getWeeklyChallengeUserKey();
+    const myName = getWeeklyChallengeUserName();
+    if(!weeklyChallengeParticipants[myKey]){
+      weeklyChallengeParticipants[myKey] = { name: myName, count: 0 };
+    }
+    weeklyChallengeParticipants[myKey].count = weeklyChallengeMyCount;
+    weeklyChallengeParticipants[myKey].name = myName;
+  }
+
+  const myEl = document.getElementById('weeklyChallengeMyCount');
+  if(myEl) myEl.textContent = weeklyChallengeMyCount.toLocaleString('ru-RU');
+  updateWeeklyChallengeProgress();
+  renderWeeklyChallengeParticipants();
+
   if(navigator.vibrate) navigator.vibrate(10);
+
+  if(weeklyChallengeClickTimer) clearTimeout(weeklyChallengeClickTimer);
+  weeklyChallengeClickTimer = setTimeout(flushWeeklyChallengeClicks, 300);
 });
 
 miscSearchInput.addEventListener('input', ()=>{
