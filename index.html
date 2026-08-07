@@ -747,10 +747,6 @@ body{
     <!-- HOME -->
     <section class="screen active" data-screen="home">
       <div class="scroll">
-        <a href="/99ism.apk" class="android-app-banner" id="androidAppBanner" download>
-          <svg viewBox="0 0 24 24" fill="none"><path d="M6 18c0 .55.45 1 1 1h1v3.25a1.25 1.25 0 002.5 0V19h3v3.25a1.25 1.25 0 002.5 0V19h1c.55 0 1-.45 1-1V8H6v10z" fill="currentColor"/><path d="M3.5 8a1.25 1.25 0 00-1.25 1.25v6.5a1.25 1.25 0 002.5 0v-6.5A1.25 1.25 0 003.5 8zM20.5 8a1.25 1.25 0 00-1.25 1.25v6.5a1.25 1.25 0 002.5 0v-6.5A1.25 1.25 0 0020.5 8z" fill="currentColor"/><path d="M15.53 2.16l1.02-1.77a.35.35 0 00-.6-.35l-1.06 1.84a6.9 6.9 0 00-5.78 0L8.05.04a.35.35 0 10-.6.35l1.02 1.77C6.4 3.2 4.8 5.3 4.5 7.8h15c-.3-2.5-1.9-4.6-3.97-5.64zM9 5.5a.75.75 0 11.001-1.501A.75.75 0 019 5.5zm6 0a.75.75 0 11.001-1.501A.75.75 0 0115 5.5z" fill="currentColor"/></svg>
-          Скачать приложение для Android
-        </a>
         <div class="ios-app-banner" id="iosAppBanner">
           <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12M12 3l4 4M12 3L8 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 13v6a2 2 0 002 2h10a2 2 0 002-2v-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span>Установите как приложение: нажмите <b>«Поделиться»</b> внизу экрана в Safari, затем <b>«На экран Домой»</b></span>
@@ -1299,6 +1295,17 @@ body{
                   <div id="reminderActiveLabel" style="display:none;padding:0 16px 10px;font-size:12px;color:var(--gold);"></div>
 
                   <div style="height:1px;background:var(--line);margin:0 0 4px;"></div>
+                  
+                  <div style="padding:10px 16px 6px;font-size:12px;color:var(--ivory-dim);">📅 Зикр недели</div>
+                  <div style="padding:0 16px 10px;display:flex;align-items:center;justify-content:space-between;">
+                    <div style="font-size:13px;color:var(--ivory);">Уведомлять о начале</div>
+                    <label style="position:relative;display:inline-block;width:40px;height:24px;">
+                      <input type="checkbox" id="weeklyNotifToggle" style="opacity:0;width:0;height:0;" checked>
+                      <span class="slider" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:rgba(255,255,255,0.1);transition:.4s;border-radius:24px;border:1px solid var(--line);"></span>
+                      <span class="slider-knob" style="position:absolute;content:'';height:18px;width:18px;left:2px;bottom:2px;background-color:var(--ivory);transition:.4s;border-radius:50%;"></span>
+                    </label>
+                  </div>
+                  <div style="height:1px;background:var(--line);margin:0 0 4px;"></div>
                 </div>
 
                 <button id="logoutBtn" style="display:block;width:100%;text-align:left;padding:10px 16px;background:none;border:none;color:var(--rose);cursor:pointer;font-family:var(--font-body);font-size:13px;transition:background .2s;">
@@ -1754,16 +1761,44 @@ console.assert(NAMES.length===99, "Ожидается 99 имён, найден�
    STATE
 ===================================================== */
 function loadLearned(){
-  try{ return new Set(JSON.parse(localStorage.getItem('learnedNames')||'[]')); }catch(e){ return new Set(); }
+  try {
+    let local = localStorage.getItem('learnedNames');
+    if ((!local || local === '[]') && window.AndroidApp && window.AndroidApp.loadData) {
+      const androidData = window.AndroidApp.loadData('learnedNames');
+      if (androidData) {
+        local = androidData;
+        localStorage.setItem('learnedNames', androidData);
+      }
+    }
+    return new Set(JSON.parse(local || '[]'));
+  } catch(e) { return new Set(); }
 }
 function saveLearned(){
-  try{ localStorage.setItem('learnedNames', JSON.stringify(Array.from(state.learned))); }catch(e){}
+  try {
+    const val = JSON.stringify(Array.from(state.learned));
+    localStorage.setItem('learnedNames', val);
+    if(window.AndroidApp && window.AndroidApp.saveData) window.AndroidApp.saveData('learnedNames', val);
+  } catch(e) {}
 }
 function loadBestScore(){
-  try{ return JSON.parse(localStorage.getItem('bestScore')||'null'); }catch(e){ return null; }
+  try {
+    let local = localStorage.getItem('bestScore');
+    if (!local && window.AndroidApp && window.AndroidApp.loadData) {
+      const androidData = window.AndroidApp.loadData('bestScore');
+      if (androidData) {
+        local = androidData;
+        localStorage.setItem('bestScore', androidData);
+      }
+    }
+    return JSON.parse(local || 'null');
+  } catch(e) { return null; }
 }
 function saveBestScore(){
-  try{ localStorage.setItem('bestScore', JSON.stringify(state.bestScore)); }catch(e){}
+  try {
+    const val = JSON.stringify(state.bestScore);
+    localStorage.setItem('bestScore', val);
+    if(window.AndroidApp && window.AndroidApp.saveData) window.AndroidApp.saveData('bestScore', val);
+  } catch(e) {}
 }
 // "totalStudied" on the leaderboard means learned-names count (matches the
 // "изучено" label there) — not quiz length, which is what used to be sent.
@@ -1818,7 +1853,8 @@ const screens = {};
 document.querySelectorAll('.screen').forEach(s=>screens[s.dataset.screen]=s);
 const tabs = document.querySelectorAll('.tab');
 
-function go(name){
+let isPopping = false;
+function go(name, replace = false){
   if(!screens[name]) return;
   const doSwitch = ()=>{
     Object.values(screens).forEach(s=>s.classList.remove('active'));
@@ -1828,9 +1864,24 @@ function go(name){
     window.scrollTo(0,0);
     const sc = screens[name].querySelector('.scroll'); if(sc) sc.scrollTop = 0;
   };
+  
+  if(!isPopping) {
+    if(replace) history.replaceState({screen: name}, '', '#' + name);
+    else history.pushState({screen: name}, '', '#' + name);
+  }
+
   if(document.startViewTransition){ document.startViewTransition(doSwitch); }
   else { doSwitch(); }
 }
+
+window.addEventListener('popstate', (e) => {
+  if(e.state && e.state.screen) {
+    isPopping = true;
+    go(e.state.screen);
+    isPopping = false;
+  }
+});
+history.replaceState({screen: 'home'}, '', '#home');
 document.querySelectorAll('[data-nav]').forEach(el=>{
   el.addEventListener('click', ()=>go(el.dataset.nav));
 });
@@ -4758,6 +4809,7 @@ function watchPresence(username, cb){
 
 /* ---------------- push notifications (FCM) ---------------- */
 function pushSupported(){
+  if(window.AndroidApp) return true;
   return 'Notification' in window && 'serviceWorker' in navigator && !!(window.firebase && firebase.messaging);
 }
 let pushTokenRefreshedThisSession = false;
@@ -4766,7 +4818,7 @@ function updateNotifUI(){
   const status = document.getElementById('notifStatus');
   if(!btn || !status) return;
   if(!pushSupported()){ btn.style.display='none'; status.style.display='none'; return; }
-  if(Notification.permission === 'granted'){
+  if((window.Notification && Notification.permission === 'granted') || window.androidFCMEnabled || localStorage.getItem('androidFCMActive') === 'true'){
     btn.style.display='none';
     status.textContent = '🔔 Уведомления включены';
     status.style.display='block';
@@ -4782,7 +4834,7 @@ function updateNotifUI(){
       pushTokenRefreshedThisSession = true;
       registerPushToken();
     }
-  } else if(Notification.permission === 'denied'){
+  } else if(window.Notification && Notification.permission === 'denied'){
     btn.style.display='none';
     status.textContent = 'Уведомления заблокированы в настройках браузера';
     status.style.display='block';
@@ -4805,6 +4857,12 @@ async function registerPushToken(){
   }catch(e){ console.warn('FCM token registration failed:', e); }
 }
 async function enableNotifications(){
+  if(window.AndroidApp) {
+    if(!state.profile || !state.profile.authenticated || !getAuthCredentials()){ showToast('Нет соединения с сервером'); return; }
+    window.AndroidApp.requestNotificationPermission();
+    return;
+  }
+  
   if(!pushSupported()){ showToast('Уведомления не поддерживаются в этом браузере'); return; }
   if(!state.profile || !state.profile.authenticated || !getAuthCredentials()){ showToast('Нет соединения с сервером'); return; }
   const perm = await Notification.requestPermission();
@@ -4816,6 +4874,25 @@ async function enableNotifications(){
   }
   updateNotifUI();
 }
+
+window.onAndroidFCMToken = async function(token) {
+  if(!state.profile || !state.profile.authenticated) return;
+  const auth = getAuthCredentials && getAuthCredentials();
+  if(!auth) return;
+  try {
+    await apiRegisterPushToken(auth.username, auth.password, token);
+    const previouslyEnabled = localStorage.getItem('androidFCMActive');
+    window.androidFCMEnabled = true;
+    localStorage.setItem('androidFCMActive', 'true');
+    if (!previouslyEnabled) {
+      showToast('Уведомления включены!');
+    }
+    updateNotifUI();
+    if(typeof updateReminderUI === 'function') updateReminderUI();
+  } catch(e) {
+    console.warn('Android FCM registration failed:', e);
+  }
+};
 const enableNotifBtnEl = document.getElementById('enableNotifBtn');
 if(enableNotifBtnEl) enableNotifBtnEl.addEventListener('click', enableNotifications);
 
@@ -4832,7 +4909,7 @@ function updateReminderUI(){
   const offBtn  = document.getElementById('reminderOffBtn');
   const label   = document.getElementById('reminderActiveLabel');
 
-  const granted  = pushSupported() && Notification.permission === 'granted';
+  const granted  = pushSupported() && ((window.Notification && Notification.permission === 'granted') || window.androidFCMEnabled || localStorage.getItem('androidFCMActive') === 'true');
   const loggedIn = !!(state.profile && state.profile.authenticated);
 
   if(section) section.style.display = (granted && loggedIn) ? 'block' : 'none';
@@ -4896,7 +4973,6 @@ if(reminderSaveBtnEl) reminderSaveBtnEl.addEventListener('click', async () => {
       reminderSaveBtnEl.disabled = false;
       reminderSaveBtnEl.textContent = 'Сохранить';
       reminderSaveBtnEl.style.background = '';
-      reminderSaveBtnEl.style.color = '';
       updateReminderUI();
     }, 1800);
     const labels = { 1:'1 раз в день', 2:'2 раза в день', 3:'3 раза в день' };
@@ -4904,10 +4980,41 @@ if(reminderSaveBtnEl) reminderSaveBtnEl.addEventListener('click', async () => {
   } else {
     reminderSaveBtnEl.disabled = false;
     reminderSaveBtnEl.textContent = 'Сохранить';
-    showToast('Ошибка: ' + (result && result.error || 'попробуйте снова'));
+    showToast('❌ Ошибка сохранения');
   }
 });
 
+/* ---------------- toggle styling for weekly dhikr ---------------- */
+const weeklyToggle = document.getElementById('weeklyNotifToggle');
+if (weeklyToggle) {
+  const knob = weeklyToggle.parentElement.querySelector('.slider-knob');
+  const bg = weeklyToggle.parentElement.querySelector('.slider');
+  
+  // Load saved state
+  const savedWeekly = localStorage.getItem('weeklyNotifEnabled');
+  if (savedWeekly === 'false') weeklyToggle.checked = false;
+  
+  const updateToggleStyle = () => {
+    if (weeklyToggle.checked) {
+      bg.style.backgroundColor = 'var(--gold)';
+      bg.style.borderColor = 'var(--gold)';
+      knob.style.transform = 'translateX(16px)';
+      knob.style.backgroundColor = '#1a0f00';
+    } else {
+      bg.style.backgroundColor = 'rgba(255,255,255,0.1)';
+      bg.style.borderColor = 'var(--line)';
+      knob.style.transform = 'translateX(0)';
+      knob.style.backgroundColor = 'var(--ivory)';
+    }
+  };
+  
+  updateToggleStyle();
+  weeklyToggle.addEventListener('change', () => {
+    updateToggleStyle();
+    localStorage.setItem('weeklyNotifEnabled', weeklyToggle.checked);
+    // Here we can also call an API to subscribe/unsubscribe from FCM topic 'weekly'
+  });
+}
 // Off button
 const reminderOffBtnEl = document.getElementById('reminderOffBtn');
 if(reminderOffBtnEl) reminderOffBtnEl.addEventListener('click', async () => {
@@ -5649,6 +5756,67 @@ updateHomeStats();
   setTimeout(apply, 500);
   setTimeout(apply, 1500);
 })();
+
+/* =====================================================
+   SWIPE TO CLOSE SHEETS
+===================================================== */
+let sheetDragStartY = 0;
+let sheetDragCurrentY = 0;
+let isDraggingSheet = false;
+let activeDragSheet = null;
+let activeDragScrollArea = null;
+
+document.addEventListener('touchstart', (e) => {
+  const sheet = e.target.closest('.sheet.show');
+  if (!sheet) return;
+  const scrollArea = e.target.closest('.scroll, .sheet-d');
+  if (scrollArea && scrollArea.scrollTop > 0) return;
+  
+  sheetDragStartY = e.touches[0].clientY;
+  sheetDragCurrentY = sheetDragStartY;
+  isDraggingSheet = true;
+  activeDragSheet = sheet;
+  activeDragScrollArea = scrollArea;
+  sheet.style.transition = 'none';
+}, {passive: true});
+
+document.addEventListener('touchmove', (e) => {
+  if (!isDraggingSheet || !activeDragSheet) return;
+  const y = e.touches[0].clientY;
+  const delta = y - sheetDragStartY;
+  
+  if (activeDragScrollArea && activeDragScrollArea.scrollTop > 0) {
+    isDraggingSheet = false;
+    activeDragSheet.style.transform = '';
+    return;
+  }
+
+  if (delta > 0) {
+    sheetDragCurrentY = y;
+    activeDragSheet.style.transform = `translateY(${delta}px)`;
+  }
+}, {passive: true});
+
+document.addEventListener('touchend', (e) => {
+  if (!isDraggingSheet || !activeDragSheet) return;
+  isDraggingSheet = false;
+  
+  const delta = sheetDragCurrentY - sheetDragStartY;
+  if (delta > 120) {
+    activeDragSheet.style.transition = 'transform 0.25s ease-out';
+    activeDragSheet.style.transform = 'translateY(100%)';
+    const sheetToClose = activeDragSheet;
+    setTimeout(() => {
+      sheetToClose.classList.remove('show');
+      sheetToClose.style.transform = '';
+      document.querySelectorAll('.sheet-backdrop, .backdrop').forEach(b => b.classList.remove('show'));
+      popSheetHistory();
+    }, 250);
+  } else {
+    activeDragSheet.style.transition = 'transform 0.2s ease-out';
+    activeDragSheet.style.transform = '';
+  }
+});
 
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
