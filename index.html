@@ -1089,25 +1089,14 @@ body{
         <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
         <input id="miscSearchInput" type="search" inputmode="search" placeholder="Поиск по зикрам, азкарам, дуа, намазу…" autocomplete="off">
       </div>
-      <div id="weeklyChallengeCarousel" class="weekly-challenge-carousel" style="display:flex; overflow-x:auto; scroll-snap-type: x mandatory; margin: 0 16px 14px; gap:10px; scrollbar-width: none;">
-        <div class="weekly-challenge-card" onclick="openWeeklyChallengeSheet(0)" style="flex: 0 0 100%; scroll-snap-align: start; margin:0; cursor:pointer;">
-          <div class="weekly-challenge-top">
-            <span class="weekly-challenge-badge">Задание недели</span>
-            <span class="weekly-challenge-timer" id="weeklyChallengeTimer_0"></span>
-          </div>
-          <div class="weekly-challenge-title">📿 Салават на Пророка ﷺ</div>
-          <div class="weekly-progress-bar"><div class="weekly-progress-fill" id="weeklyChallengeFill_0"></div></div>
-          <div class="weekly-challenge-count-label" id="weeklyChallengeLabel_0">Загрузка...</div>
+      <div id="weeklyChallengeCard" class="weekly-challenge-card" style="display:none">
+        <div class="weekly-challenge-top">
+          <span class="weekly-challenge-badge" id="weeklyChallengeBadge">Задание недели</span>
+          <span class="weekly-challenge-timer" id="weeklyChallengeTimer"></span>
         </div>
-        <div class="weekly-challenge-card" onclick="openWeeklyChallengeSheet(1)" style="flex: 0 0 100%; scroll-snap-align: start; margin:0; cursor:pointer;">
-          <div class="weekly-challenge-top">
-            <span class="weekly-challenge-badge">Задание недели</span>
-            <span class="weekly-challenge-timer" id="weeklyChallengeTimer_1"></span>
-          </div>
-          <div class="weekly-challenge-title">📿 Истигфар — просим прощения</div>
-          <div class="weekly-progress-bar"><div class="weekly-progress-fill" id="weeklyChallengeFill_1"></div></div>
-          <div class="weekly-challenge-count-label" id="weeklyChallengeLabel_1">Загрузка...</div>
-        </div>
+        <div class="weekly-challenge-title">📿 Салават на Пророка ﷺ — читаем всей уммой</div>
+        <div class="weekly-progress-bar"><div class="weekly-progress-fill weekly-challenge-fill-target"></div></div>
+        <div class="weekly-challenge-count-label"></div>
       </div>
       <button class="btn btn-ghost" id="openDhikrRoomBtn" style="max-width:280px;margin:0 auto 14px;flex:none;">👥 Зикр с друзьями</button>
       <div class="segmented-wrap" id="miscSegmentWrap">
@@ -1528,25 +1517,19 @@ body{
       <div class="dhikr-m" style="text-align:center;margin-bottom:6px;">О Аллах, благослови Мухаммада и его род</div>
       <div class="counter-circle" id="weeklyChallengeCircle"><span class="counter-num" id="weeklyChallengeNum">0</span></div>
       <p class="counter-hint">Общий счёт всех участников — нажимайте вместе</p>
-      <button class="btn-float-dhikr" id="weeklyFloatBtn" onclick="toggleFloatingCounter('weekly', this)" style="display:none;">📿 Плавающий счётчик</button>
+      <button class="btn-float-dhikr" id="weeklyFloatBtn" onclick="toggleFloatingCounter('weekly_' + currentWeeklyChallengeIndex, this)" style="display:none;">📿 Плавающий счётчик</button>
       <div class="weekly-progress-bar"><div class="weekly-progress-fill weekly-challenge-fill-target"></div></div>
       <div class="weekly-challenge-count-label"></div>
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 20px;">
-        <button class="btn btn-ghost" onclick="prevWeeklyChallenge()" style="padding:10px; flex:none; font-size:18px;">❮</button>
-        <div id="wcSwipeArea" style="flex:1; overflow:hidden; touch-action: pan-y;">
-          <div class="dhikr-ar" id="wcSheetAr" style="text-align:center;font-size:26px;">اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَعَلَى آلِ مُحَمَّدٍ</div>
-          <div class="dhikr-tr" id="wcSheetTr" style="text-align:center;">Аллахумма салли аля Мухаммад ва аля али Мухаммад</div>
-          <div class="dhikr-m" id="wcSheetM" style="text-align:center;margin-bottom:6px;">О Аллах, благослови Мухаммада и его род</div>
-        </div>
-        <button class="btn btn-ghost" onclick="nextWeeklyChallenge()" style="padding:10px; flex:none; font-size:18px;">❯</button>
-      </div>
-        <div class="duel-participants" id="weeklyChallengeParticipants" style="max-height:160px;overflow-y:auto;padding:2px 0;">
+      <p style="font-size:12px;color:var(--ivory-dim);margin-top:14px;">Ваш вклад: <b id="weeklyChallengeMyCount" style="color:var(--gold-soft);">0</b></p>
+      <div style="display:none; margin-top:18px;text-align:left;border-top:1px solid rgba(255,255,255,0.08);padding-top:14px;">
+        <div style="font-size:12px;font-weight:700;color:var(--ivory-dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;text-align:center;">Участники задания</div>
+        <div class="duel-participants" id="weeklyChallengeParticipants" style="display:none; max-height:160px;overflow-y:auto;padding:2px 0;">
           <div style="font-size:12px;color:var(--ivory-dim);width:100%;text-align:center;">Загрузка участников...</div>
         </div>
       </div>
-      <button class="btn-float-dhikr" id="weeklyFloatBtn" onclick="toggleFloatingCounter('weekly_' + currentWeeklyChallengeIndex, this)" style="display:none;">📿 Плавающий счётчик</button>
-      <div class="weekly-progress-bar"><div class="weekly-progress-fill" id="wcSheetFill"></div></div>
-      <div class="weekly-challenge-count-label" id="wcSheetLabel"></div>
+    </div>
+  </div>
+
   <div class="sheet-backdrop" id="dhikrRoomBackdrop"></div>
   <div class="sheet" id="dhikrRoomSheet">
     <div class="sheet-handle"></div>
@@ -2851,7 +2834,7 @@ document.querySelectorAll('#miscSegment .seg-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     document.querySelectorAll('#miscSegment .seg-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
-const weeklyChallengeCardEl = document.getElementById('weeklyChallengeCarousel');
+    Object.entries(miscWraps).forEach(([key, el])=>{
       el.style.display = key===btn.dataset.misc ? 'contents' : 'none';
     });
     moveWeeklyChallengeCardInto(miscWraps[btn.dataset.misc]);
@@ -2940,17 +2923,6 @@ function formatWeeklyCountdown(ms){
   return h>0 ? `${h}ч ${m}м` : `${m}м`;
 }
 
-let weeklyChallengeWeekId = null;
-let weeklyChallengeListenerAttachedId = null;
-let weeklyChallengeRef = null;
-let weeklyChallengeUsersRef = null;
-let weeklyChallengeCount = 0;
-let weeklyChallengeMyCount = 0;
-let weeklyChallengeParticipants = {};
-let prevParticipantsUpdatedAt = {};
-
-function getWeeklyChallengeUserKey(){
-  if(typeof state !== 'undefined' && state.profile && state.profile.username){
 const WEEKLY_CHALLENGES = [
   {
     id: "salavat",
@@ -2967,13 +2939,32 @@ const WEEKLY_CHALLENGES = [
     m: "Прошу прощения у Аллаха"
   }
 ];
+
 let currentWeeklyChallengeIndex = 0;
 let weeklyChallengeWeekId = null;
-let weeklyChallengeState = WEEKLY_CHALLENGES.map(() => ({
-  count: 0, myCount: 0, ref: null, usersRef: null, pendingClicks: 0
+let weeklyChallengeClickTimer = null;
+let weeklyChallengeCount = 0;
+let weeklyChallengeMyCount = 0;
+const WEEKLY_CHALLENGE_TARGET = 100000;
+
+const weeklyChallengeState = WEEKLY_CHALLENGES.map(() => ({
+  count: 0,
+  myCount: 0,
+  pendingClicks: 0
 }));
+
 let weeklyChallengeParticipants = {};
-let prevParticipantsUpdatedAt = {};
+
+function getWeeklyChallengeUserKey(){
+  if(typeof state !== 'undefined' && state.profile && state.profile.username){
+    return fbKey(state.profile.username);
+  }
+  let localId = null;
+  try{ localId = localStorage.getItem('weeklyChallengeUserId'); }catch(e){}
+  if(!localId){
+    localId = 'u_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+    try{ localStorage.setItem('weeklyChallengeUserId', localId); }catch(e){}
+  }
   return localId;
 }
 
@@ -2988,132 +2979,77 @@ function getWeeklyChallengeUserName(){
   return localName || 'Участник';
 }
 
-function loadWeeklyChallengeLocalState(weekId){
+function loadWeeklyChallengeLocalState() {
+  const weekId = weeklyChallengeWeekId;
   if(!weekId) return;
-  try{
-    const saved = localStorage.getItem('weeklyChallengeMyCount_' + weekId);
-    if(saved !== null){
-      weeklyChallengeMyCount = parseInt(saved, 10) || 0;
-    }
-  }catch(e){}
+  WEEKLY_CHALLENGES.forEach((ch, idx) => {
+    try {
+      const saved = localStorage.getItem('wc_mycount_' + ch.id + '_' + weekId);
+      if(saved) weeklyChallengeState[idx].myCount = parseInt(saved, 10)||0;
+      else weeklyChallengeState[idx].myCount = 0;
+    } catch(e){}
+  });
 }
 
-function saveWeeklyChallengeLocalState(weekId){
-  if(!weekId) return;
-  try{
-    localStorage.setItem('weeklyChallengeMyCount_' + weekId, String(weeklyChallengeMyCount));
-  }catch(e){}
+function saveWeeklyChallengeLocalState(weekId, idx) {
+  try {
+    const ch = WEEKLY_CHALLENGES[idx];
+    localStorage.setItem('wc_mycount_' + ch.id + '_' + weekId, weeklyChallengeState[idx].myCount);
+  } catch(e){}
+}
+
+function setWeeklyChallengeUI(idx) {
+  currentWeeklyChallengeIndex = idx;
+  const ch = WEEKLY_CHALLENGES[idx];
+  document.getElementById('wcSheetAr').textContent = ch.ar;
+  document.getElementById('wcSheetTr').textContent = ch.tr;
+  document.getElementById('wcSheetM').textContent = ch.m;
+  updateWeeklyChallengeProgress(idx);
+  
+  const myEl = document.getElementById('weeklyChallengeMyCount');
+  if(myEl) myEl.textContent = weeklyChallengeState[idx].myCount.toLocaleString('ru-RU');
+}
+
+function nextWeeklyChallenge() {
+  setWeeklyChallengeUI((currentWeeklyChallengeIndex + 1) % WEEKLY_CHALLENGES.length);
+}
+
+function prevWeeklyChallenge() {
+  setWeeklyChallengeUI((currentWeeklyChallengeIndex - 1 + WEEKLY_CHALLENGES.length) % WEEKLY_CHALLENGES.length);
 }
 
 async function attachWeeklyChallengeListener(weekId){
-function loadWeeklyChallengeLocalState(weekId, index){
   if(!weekId) return;
-  try{
-    const saved = localStorage.getItem('weeklyChallengeMyCount_' + weekId + '_' + index);
-    const legacySaved = localStorage.getItem('weeklyChallengeMyCount_' + weekId);
-    if(saved !== null){
-      weeklyChallengeState[index].myCount = parseInt(saved, 10) || 0;
-    } else if (index === 0 && legacySaved !== null) {
-      weeklyChallengeState[index].myCount = parseInt(legacySaved, 10) || 0;
-    }
-  }catch(e){}
-}
 
-function saveWeeklyChallengeLocalState(weekId, index){
-  if(!weekId) return;
-  try{
-    localStorage.setItem('weeklyChallengeMyCount_' + weekId + '_' + index, String(weeklyChallengeState[index].myCount));
-    if (index === 0) {
-      localStorage.setItem('weeklyChallengeMyCount_' + weekId, String(weeklyChallengeState[index].myCount));
-    }
-  }catch(e){}
-}
-
-  if(weeklyChallengeRef){ try{ weeklyChallengeRef.off('value'); }catch(e){} }
-  if(weeklyChallengeUsersRef){ try{ weeklyChallengeUsersRef.off('value'); }catch(e){} }
-
-  weeklyChallengeListenerAttachedId = weekId;
-
-  weeklyChallengeRef = fbDb.ref('weeklyChallenge/'+weekId+'/count');
-  weeklyChallengeRef.on('value', snap=>{
-    const val = snap.val();
-    if(val !== null && val !== undefined){
-      const isRemoteIncrease = val > weeklyChallengeCount + weeklyChallengePendingClicks;
-      weeklyChallengeCount = Math.max(weeklyChallengeCount, val);
-      // Pulse animation when someone else clicked
-      if(isRemoteIncrease){
-        const circle = document.getElementById('weeklyChallengeCircle');
-        if(circle){ circle.classList.remove('remote-pop'); void circle.offsetWidth; circle.classList.add('remote-pop'); setTimeout(()=>circle.classList.remove('remote-pop'), 500); }
-async function attachWeeklyChallengeListener(weekId){
-  if(!weekId) return;
-  if(weeklyChallengeWeekId !== weekId){
-     weeklyChallengeWeekId = weekId;
-  }
-
-  WEEKLY_CHALLENGES.forEach((challenge, index) => {
-    loadWeeklyChallengeLocalState(weekId, index);
-  });
-  updateWeeklyChallengeSheetUI();
-
-  WEEKLY_CHALLENGES.forEach((challenge, index) => {
-    const cachedCount = localStorage.getItem('weeklyChallengeCount_' + weekId + '_' + index);
-    const legacyCount = localStorage.getItem('weeklyChallengeCount_' + weekId);
-    if(cachedCount) {
-      weeklyChallengeState[index].count = parseInt(cachedCount, 10) || 0;
-    } else if (index === 0 && legacyCount) {
-      weeklyChallengeState[index].count = parseInt(legacyCount, 10) || 0;
-    }
-    updateWeeklyChallengeProgress(index);
-  });
+  loadWeeklyChallengeLocalState();
+  const myEl = document.getElementById('weeklyChallengeMyCount');
+  if(myEl) myEl.textContent = weeklyChallengeState[currentWeeklyChallengeIndex].myCount.toLocaleString('ru-RU');
 
   await fbAuthReady;
   if(!fbDb) return;
-
-  WEEKLY_CHALLENGES.forEach((challenge, index) => {
-    if(weeklyChallengeState[index].ref) return;
-    
-    weeklyChallengeState[index].ref = fbDb.ref(challenge.node + '/' + weekId + '/count');
-    weeklyChallengeState[index].ref.on('value', snap=>{
-      const val = snap.val();
-      if(val !== null && val !== undefined){
-        const isRemoteIncrease = val > weeklyChallengeState[index].count + weeklyChallengeState[index].pendingClicks;
-        weeklyChallengeState[index].count = Math.max(weeklyChallengeState[index].count, val);
-        if(isRemoteIncrease && index === currentWeeklyChallengeIndex){
-          const circle = document.getElementById('weeklyChallengeCircle');
-          if(circle){ circle.classList.remove('remote-pop'); void circle.offsetWidth; circle.classList.add('remote-pop'); setTimeout(()=>circle.classList.remove('remote-pop'), 500); }
-        }
-      }
-      try{ localStorage.setItem('weeklyChallengeCount_' + weekId + '_' + index, String(weeklyChallengeState[index].count)); }catch(e){}
-      updateWeeklyChallengeProgress(index);
+  
+  WEEKLY_CHALLENGES.forEach((ch, idx) => {
+    fbDb.ref(ch.node+'/'+weekId+'/count').on('value', snap=>{
+      weeklyChallengeState[idx].count = snap.val() || 0;
+      updateWeeklyChallengeProgress(idx);
     });
   });
 }
-      if(myEl) myEl.textContent = weeklyChallengeMyCount.toLocaleString('ru-RU');
-    }
-  }
 
-  if(entries.length === 0){
-    listEl.innerHTML = '<div style="font-size:12px;color:var(--ivory-dim);width:100%;text-align:center;padding:8px 0;">Будьте первым, кто прочитает зикр!</div>';
-    return;
-  }
+function updateWeeklyChallengeProgress(idx){
+  if (idx === undefined) idx = currentWeeklyChallengeIndex;
+  const count = weeklyChallengeState[idx].count;
+  const pct = Math.min(100, Math.round(count/WEEKLY_CHALLENGE_TARGET*100));
+  document.querySelectorAll('.weekly-challenge-fill-target').forEach(el=>{ el.style.width = pct+'%'; });
+  document.querySelectorAll('.weekly-challenge-count-label').forEach(el=>{
+    el.textContent = count.toLocaleString('ru-RU') + ' / ' + WEEKLY_CHALLENGE_TARGET.toLocaleString('ru-RU');
+  });
+  const num = document.getElementById('weeklyChallengeNum');
+  if(num) num.textContent = count.toLocaleString('ru-RU');
+}
 
-  entries.sort((a, b) => (b[1].count || 0) - (a[1].count || 0));
-
-  listEl.innerHTML = entries.map(([key, user]) => {
-    const isMe = (key === myKey);
-    const name = escapeHtml(user.name || (isMe ? 'Вы' : 'Участник'));
-    // For me show accurate count (server + pending); for others show server count
-    const displayCount = isMe ? weeklyChallengeMyCount : (user.count || 0);
-    const count = displayCount.toLocaleString('ru-RU');
-    const cls = 'duel-participant-chip' + (isMe ? ' me' : '');
-    // Detect recently-active other participants
-    const prevAt = prevParticipantsUpdatedAt[key] || 0;
-    const at = user.updatedAt || 0;
-    const isLive = !isMe && at && at !== prevAt && (now - at < LIVE_MS);
-    prevParticipantsUpdatedAt[key] = at;
-    const liveIcon = isLive ? ' <span style="color:var(--jade);font-size:9px;vertical-align:middle;">●</span>' : '';
-    return `<div class="${cls}${isLive ? ' live-now' : ''}"><b>${name}</b> · ${count}${liveIcon}</div>`;
-  }).join('');
+function renderWeeklyChallengeParticipants(){
+  // Participants hidden
 }
 
 function refreshWeeklyChallengeState(){
@@ -3145,60 +3081,13 @@ setInterval(refreshWeeklyChallengeState, 30000);
 
 function openWeeklyChallengeSheet(){
   pushSheetHistory();
-function updateWeeklyChallengeProgress(idx){
-  if(idx === undefined) idx = currentWeeklyChallengeIndex;
-  const pct = Math.min(100, Math.round(weeklyChallengeState[idx].count/WEEKLY_CHALLENGE_TARGET*100));
-  const t = weeklyChallengeState[idx].count.toLocaleString('ru-RU') + ' / ' + WEEKLY_CHALLENGE_TARGET.toLocaleString('ru-RU');
-  
-  const fillEl = document.getElementById('weeklyChallengeFill_' + idx);
-  if(fillEl) fillEl.style.width = pct + '%';
-  const labelEl = document.getElementById('weeklyChallengeLabel_' + idx);
-  if(labelEl) labelEl.textContent = t;
-
-  if (idx === currentWeeklyChallengeIndex) {
-    const sheetFill = document.getElementById('wcSheetFill');
-    if(sheetFill) sheetFill.style.width = pct + '%';
-    const sheetLabel = document.getElementById('wcSheetLabel');
-    if(sheetLabel) sheetLabel.textContent = t;
-    
-    const numEl = document.getElementById('weeklyChallengeNum');
-    if(numEl) numEl.textContent = weeklyChallengeState[idx].count.toLocaleString('ru-RU');
-    
-    const myEl = document.getElementById('weeklyChallengeMyCount');
-    if(myEl) myEl.textContent = weeklyChallengeState[idx].myCount.toLocaleString('ru-RU');
+  refreshWeeklyChallengeState();
+  if(weeklyChallengeWeekId){
+    loadWeeklyChallengeLocalState();
   }
-}
-
-function prevWeeklyChallenge() {
-  currentWeeklyChallengeIndex = (currentWeeklyChallengeIndex - 1 + WEEKLY_CHALLENGES.length) % WEEKLY_CHALLENGES.length;
-  updateWeeklyChallengeSheetUI();
-}
-function nextWeeklyChallenge() {
-  currentWeeklyChallengeIndex = (currentWeeklyChallengeIndex + 1) % WEEKLY_CHALLENGES.length;
-  updateWeeklyChallengeSheetUI();
-}
-
-function updateWeeklyChallengeSheetUI() {
-  let idx = currentWeeklyChallengeIndex;
-  let ch = WEEKLY_CHALLENGES[idx];
-  
-  document.getElementById('wcSheetAr').textContent = ch.ar;
-  document.getElementById('wcSheetTr').textContent = ch.tr;
-  document.getElementById('wcSheetM').textContent = ch.m;
-  
-  const fbtn = document.getElementById('weeklyFloatBtn');
-  if(fbtn) {
-    fbtn.setAttribute('onclick', 'toggleFloatingCounter("weekly_' + idx + '", this)');
-    if(fbtn.dataset.active === 'true' && fbtn.dataset.targetId === 'weekly_' + idx) {
-        fbtn.innerHTML = '📿 Плавающий счётчик (Активен)';
-        fbtn.classList.add('active');
-    } else {
-        fbtn.innerHTML = '📿 Плавающий счётчик';
-        fbtn.classList.remove('active');
-    }
-  }
-  
-  updateWeeklyChallengeProgress(idx);
+  setWeeklyChallengeUI(0);
+  document.getElementById('weeklyChallengeSheet').classList.add('show');
+  document.getElementById('weeklyChallengeBackdrop').classList.add('show');
 }
 function closeWeeklyChallengeSheet(){
   popSheetHistory();
@@ -3212,76 +3101,64 @@ document.getElementById('weeklyChallengeBackdrop').addEventListener('click', clo
 let weeklyChallengeClickTimer = null;
 let weeklyChallengePendingClicks = 0;
 
-function flushWeeklyChallengeClicks(){
-  if(weeklyChallengePendingClicks <= 0) return;
-  const delta = weeklyChallengePendingClicks;
-  weeklyChallengePendingClicks = 0;
+function flushWeeklyChallengeClicks() {
   const weekId = weeklyChallengeWeekId;
   if(!weekId) return;
-
-  saveWeeklyChallengeLocalState(weekId);
-
-  if(fbDb){
-    const userKey = getWeeklyChallengeUserKey();
-    const userName = getWeeklyChallengeUserName();
-    fbDb.ref('weeklyChallenge/'+weekId+'/count').set(firebase.database.ServerValue.increment(delta));
-    fbDb.ref('weeklyChallenge/'+weekId+'/users/'+userKey+'/count').set(firebase.database.ServerValue.increment(delta));
-    fbDb.ref('weeklyChallenge/'+weekId+'/users/'+userKey+'/name').set(userName);
-    fbDb.ref('weeklyChallenge/'+weekId+'/users/'+userKey+'/updatedAt').set(firebase.database.ServerValue.TIMESTAMP);
-  }
+  WEEKLY_CHALLENGES.forEach((ch, idx) => {
+    const delta = weeklyChallengeState[idx].pendingClicks;
+    if(delta <= 0) return;
+    weeklyChallengeState[idx].pendingClicks = 0;
+    saveWeeklyChallengeLocalState(weekId, idx);
+    
+    if(fbDb){
+      fbDb.ref(ch.node+'/'+weekId+'/count').set(firebase.database.ServerValue.increment(delta));
+    }
+  });
 }
 
 document.getElementById('weeklyChallengeCircle').addEventListener('click', ()=>{
   const {active} = weeklyChallengeWindow();
   if(!active){ showToast('Задание ещё не началось'); return; }
   
-  weeklyChallengeMyCount++;
-  weeklyChallengeCount++;
-  weeklyChallengePendingClicks++;
+  let idx = currentWeeklyChallengeIndex;
+  weeklyChallengeState[idx].myCount++;
+  weeklyChallengeState[idx].count++;
+  weeklyChallengeState[idx].pendingClicks++;
 
   const weekId = weeklyChallengeWeekId;
   if(weekId){
-    saveWeeklyChallengeLocalState(weekId);
-    
-    const myKey = getWeeklyChallengeUserKey();
-    const myName = getWeeklyChallengeUserName();
-    if(!weeklyChallengeParticipants[myKey]){
-      weeklyChallengeParticipants[myKey] = { name: myName, count: 0 };
-    }
-    // Don't update .count here — render reads weeklyChallengeMyCount directly for "me"
-    weeklyChallengeParticipants[myKey].name = myName;
+    saveWeeklyChallengeLocalState(weekId, idx);
   }
 
   const myEl = document.getElementById('weeklyChallengeMyCount');
-  if(myEl) myEl.textContent = weeklyChallengeMyCount.toLocaleString('ru-RU');
-  updateWeeklyChallengeProgress();
-  renderWeeklyChallengeParticipants();
-
-  if(navigator.vibrate) navigator.vibrate(10);
-
-function refreshWeeklyChallengeState(){
-  const card = document.getElementById('weeklyChallengeCarousel');
-  if(!card) return;
-  const {start, end, active} = weeklyChallengeWindow();
-  card.style.display = active ? 'flex' : 'none';
+  if(myEl) myEl.textContent = weeklyChallengeState[idx].myCount.toLocaleString('ru-RU');
   
-  const timer0 = document.getElementById('weeklyChallengeTimer_0');
-  const timer1 = document.getElementById('weeklyChallengeTimer_1');
-  const sheetTimer = document.getElementById('weeklyChallengeSheetTimer');
-  if(active){
-    const left = formatWeeklyCountdown(end-new Date());
-    if(timer0) timer0.textContent = 'Осталось: ' + left;
-    if(timer1) timer1.textContent = 'Осталось: ' + left;
-    if(sheetTimer) sheetTimer.textContent = 'До конца задания: ' + left;
-  }
-  
-  const weekId = weeklyChallengeId(start);
-  weeklyChallengeWeekId = weekId;
+  updateWeeklyChallengeProgress(idx);
 
-  if(weeklyChallengeListenerAttachedId !== weekId){
-    attachWeeklyChallengeListener(weekId);
+  if(navigator.vibrate) try{ navigator.vibrate(10); }catch(e){}
+
+  if(weeklyChallengeClickTimer) clearTimeout(weeklyChallengeClickTimer);
+  weeklyChallengeClickTimer = setTimeout(flushWeeklyChallengeClicks, 300);
+});
+
+miscSearchInput.addEventListener('input', ()=>{
+  const q = miscSearchInput.value.trim();
+  if(!q){
+    miscSearchWrap.style.display = 'none';
+    miscSegmentWrap.style.display = '';
+    Object.entries(miscWraps).forEach(([key, el])=>{
+      el.style.display = key===miscSearchPrevKey ? 'contents' : 'none';
+    });
+    moveWeeklyChallengeCardInto(miscWraps[miscSearchPrevKey]);
+    return;
   }
-}
+  if(miscSearchWrap.style.display !== 'contents'){
+    const activeBtn = document.querySelector('#miscSegment .seg-btn.active');
+    miscSearchPrevKey = activeBtn ? activeBtn.dataset.misc : 'zikr';
+  }
+  miscSegmentWrap.style.display = 'none';
+  Object.values(miscWraps).forEach(el=>el.style.display='none');
+  miscSearchWrap.style.display = 'contents';
   renderMiscSearch(q);
   moveWeeklyChallengeCardInto(miscSearchWrap);
 });
@@ -3308,29 +3185,27 @@ function renderSheet(){
   const n = NAMES[i];
   document.getElementById('sheetIdx').textContent = (i+1)+' / 99';
   document.getElementById('sheetAr').textContent = n.ar;
-function openWeeklyChallengeSheet(idx){
-  if(idx !== undefined) {
-    currentWeeklyChallengeIndex = idx;
-    updateWeeklyChallengeSheetUI();
-  }
-  pushSheetHistory();
-  refreshWeeklyChallengeState();
-  if(weeklyChallengeWeekId){
-    loadWeeklyChallengeLocalState(weeklyChallengeWeekId, currentWeeklyChallengeIndex);
-  }
-  updateWeeklyChallengeProgress();
-  // We skip participant rendering because it's hidden now
-  document.getElementById('weeklyChallengeSheet').classList.add('show');
-  document.getElementById('weeklyChallengeBackdrop').classList.add('show');
+  document.getElementById('sheetTr').textContent = n.tr;
+  document.getElementById('sheetM').textContent = n.m;
+  document.getElementById('sheetD').textContent = n.d;
+  const btn = document.getElementById('learnedBtn');
+  btn.textContent = state.learned.has(i) ? '✓ Изучено' : 'Отметить как изученное';
 }
-function closeWeeklyChallengeSheet(){
-  popSheetHistory();
-  document.getElementById('weeklyChallengeSheet').classList.remove('show');
-  document.getElementById('weeklyChallengeBackdrop').classList.remove('show');
-}
-// Removed the old card click listener since each card has inline onclick
-document.getElementById('weeklyChallengeClose').addEventListener('click', closeWeeklyChallengeSheet);
-document.getElementById('weeklyChallengeBackdrop').addEventListener('click', closeWeeklyChallengeSheet);
+document.getElementById('sheetClose').addEventListener('click', closeSheet);
+sheetBackdrop.addEventListener('click', closeSheet);
+document.getElementById('sheetPrev').addEventListener('click', ()=>{
+  state.sheetIndex = (state.sheetIndex-1+NAMES.length)%NAMES.length; renderSheet();
+});
+document.getElementById('sheetNext').addEventListener('click', ()=>{
+  state.sheetIndex = (state.sheetIndex+1)%NAMES.length; renderSheet();
+});
+document.getElementById('learnedBtn').addEventListener('click', ()=>{
+  const i = state.sheetIndex;
+  if(state.learned.has(i)) state.learned.delete(i); else state.learned.add(i);
+  saveLearned();
+  syncStats();
+  renderSheet(); renderGrid(); updateHomeStats();
+});
 // swipe on sheet body
 (function(){
   let sx=0, sy=0;
@@ -3388,29 +3263,24 @@ let duelSelectedDirection = 'n2m';
 document.querySelectorAll('#duelDirectionChoice .len-chip').forEach(chip=>{
   chip.addEventListener('click', ()=>{
     document.querySelectorAll('#duelDirectionChoice .len-chip').forEach(c=>c.classList.remove('active'));
-function flushWeeklyChallengeClicks(){
-  const weekId = weeklyChallengeWeekId;
-  if(!weekId) return;
-
-  WEEKLY_CHALLENGES.forEach((ch, idx) => {
-    let delta = weeklyChallengeState[idx].pendingClicks;
-    if(delta <= 0) return;
-    weeklyChallengeState[idx].pendingClicks = 0;
-    saveWeeklyChallengeLocalState(weekId, idx);
-    
-    if(fbDb){
-      fbDb.ref(ch.node+'/'+weekId+'/count').set(firebase.database.ServerValue.increment(delta));
-      
-      const userKey = getWeeklyChallengeUserKey();
-      const userName = getWeeklyChallengeUserName();
-      if(userKey && userName) {
-        fbDb.ref(ch.node+'/'+weekId+'/users/'+userKey+'/count').set(firebase.database.ServerValue.increment(delta));
-        fbDb.ref(ch.node+'/'+weekId+'/users/'+userKey+'/name').set(userName);
-        fbDb.ref(ch.node+'/'+weekId+'/users/'+userKey+'/updatedAt').set(firebase.database.ServerValue.TIMESTAMP);
-      }
-    }
+    chip.classList.add('active');
+    duelSelectedDirection = chip.dataset.dir;
   });
-}
+});
+let selectedOrder = 'random';
+document.querySelectorAll('#orderChoice .len-chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    document.querySelectorAll('#orderChoice .len-chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    selectedOrder = chip.dataset.order;
+  });
+});
+let duelSelectedOrder = 'random';
+document.querySelectorAll('#duelOrderChoice .len-chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    document.querySelectorAll('#duelOrderChoice .len-chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    duelSelectedOrder = chip.dataset.order;
   });
 });
 function buildOrderedSequence(mode){
@@ -3429,31 +3299,37 @@ function resetQuizView(){
   qCard.style.display='none';
   resultWrap.style.display='none';
   quizHead.style.display='none';
-document.getElementById('weeklyChallengeCircle').addEventListener('click', ()=>{
-  const {active} = weeklyChallengeWindow();
-  if(!active){ showToast('Задание ещё не началось'); return; }
-  
-  let idx = currentWeeklyChallengeIndex;
-  weeklyChallengeState[idx].myCount++;
-  weeklyChallengeState[idx].count++;
-  weeklyChallengeState[idx].pendingClicks++;
+  challengeIntro.style.display = (state.challenge && !state.pendingRoomId) ? 'block' : 'none';
+  document.getElementById('quizScroll').scrollTop = 0;
+}
+resetQuizView();
 
-  const weekId = weeklyChallengeWeekId;
-  if(weekId){
-    saveWeeklyChallengeLocalState(weekId, idx);
+let recentQuizIdx = [];
+try{ recentQuizIdx = JSON.parse(localStorage.getItem('quizRecentIdx')||'[]'); }catch(e){ recentQuizIdx=[]; }
+function rememberQuizIdx(order){
+  recentQuizIdx = Array.from(new Set(recentQuizIdx.concat(order)));
+  if(recentQuizIdx.length >= NAMES.length) recentQuizIdx = [];
+  try{ localStorage.setItem('quizRecentIdx', JSON.stringify(recentQuizIdx)); }catch(e){}
+}
+
+function startQuiz(len, seedStr, direction, excludeIdx, orderMode, orderPos){
+  const seed = seedFromString(seedStr || ('quiz-'+Date.now()+'-'+Math.random()));
+  const targetLen = Math.min(len, NAMES.length);
+  let order, newPos = null;
+  if(orderMode==='sequential' || orderMode==='alternate'){
+    const seq = buildOrderedSequence(orderMode);
+    const start = ((orderPos||0) % seq.length + seq.length) % seq.length;
+    order = [];
+    for(let i=0;i<targetLen;i++) order.push(seq[(start+i)%seq.length]);
+    newPos = (start+targetLen) % seq.length;
+  } else {
+    const rng = mulberry32(seed);
+    const exclude = new Set(excludeIdx||[]);
+    let pool = NAMES.map((n,i)=>i).filter(i=>!exclude.has(i));
+    if(pool.length < targetLen) pool = NAMES.map((n,i)=>i);
+    order = shuffleSeeded(pool, rng).slice(0, targetLen);
   }
-
-  const myEl = document.getElementById('weeklyChallengeMyCount');
-  if(myEl) myEl.textContent = weeklyChallengeState[idx].myCount.toLocaleString('ru-RU');
-  
-  updateWeeklyChallengeProgress(idx);
-  if(typeof renderWeeklyChallengeParticipants === 'function') renderWeeklyChallengeParticipants();
-
-  if(navigator.vibrate) try{ navigator.vibrate(10); }catch(e){}
-
-  if(weeklyChallengeClickTimer) clearTimeout(weeklyChallengeClickTimer);
-  weeklyChallengeClickTimer = setTimeout(flushWeeklyChallengeClicks, 300);
-});
+  state.quiz = { order, qIndex:0, score:0, len: order.length, seedStr: seedStr || ('quiz-'+seed), answered:false, direction: direction || 'n2m', mistakes:[] };
   document.getElementById('mistakesBoard').style.display='none';
   quizIntro.style.display='none';
   resultWrap.style.display='none';
@@ -6051,6 +5927,45 @@ if('serviceWorker' in navigator){
   const dhikrBtn = document.getElementById('dhikrFloatBtn');
   const weeklyBtn = document.getElementById('weeklyFloatBtn');
   if(dhikrBtn) dhikrBtn.style.display = 'flex';
+  if(weeklyBtn) weeklyBtn.style.display = 'flex';
+
+  // Update button state on open
+  function refreshFloatBtnState(type){
+    const btn = type === 'dhikr' ? dhikrBtn : weeklyBtn;
+    if(!btn) return;
+    try{
+      const active = window.AndroidApp.isFloatingActive();
+      const androidType = window.AndroidApp.getFloatingType ? window.AndroidApp.getFloatingType() : '';
+      if(active && androidType && (androidType === type || androidType.startsWith(type))){
+        btn.textContent = '⏹ Остановить плавающий счётчик';
+        btn.style.borderColor = 'var(--jade)';
+        btn.style.color = 'var(--jade)';
+      } else {
+        btn.innerHTML = '📿 Плавающий счётчик';
+        btn.style.borderColor = '';
+        btn.style.color = '';
+      }
+    }catch(e){}
+  }
+
+  // Expose refresh for sheet open events
+  window.refreshFloatBtnState = refreshFloatBtnState;
+})();
+
+window.toggleFloatingCounter = function(type, btn){
+  if(typeof window.AndroidApp === 'undefined') return;
+  try{
+    const active = window.AndroidApp.isFloatingActive();
+    if(active){
+      window.AndroidApp.stopFloatingCounter();
+      if(btn){ btn.innerHTML = '📿 Плавающий счётчик'; btn.style.borderColor=''; btn.style.color=''; }
+    } else {
+      window.AndroidApp.startFloatingCounter(type);
+      if(btn){ btn.textContent='⏹ Остановить плавающий счётчик'; btn.style.borderColor='var(--jade)'; btn.style.color='var(--jade)'; }
+    }
+  }catch(e){ console.error(e); }
+};
+
 // Called from Android onResume when floating counter has accumulated taps
 window.onFloatingCountSync = function(count, type){
   if(count <= 0) return;
@@ -6081,67 +5996,34 @@ window.onFloatingCountSync = function(count, type){
       const cur = parseInt(numEl.textContent.replace(/\s/g,''), 10) || 0;
       numEl.textContent = (cur + count).toLocaleString('ru-RU');
     }
+    // Reset button state
     const btn = document.getElementById('dhikrFloatBtn');
     if(btn){ btn.innerHTML='📿 Плавающий счётчик'; btn.style.borderColor=''; btn.style.color=''; btn.dataset.active='false'; }
     showToast('+' + count.toLocaleString('ru-RU') + ' добавлено к счётчику зикра ✓');
   }
 };
-      window.AndroidApp.stopFloatingCounter();
-      if(btn){ btn.innerHTML = '📿 Плавающий счётчик'; btn.style.borderColor=''; btn.style.color=''; }
-    } else {
-      window.AndroidApp.startFloatingCounter(type);
-      if(btn){ btn.textContent='⏹ Остановить плавающий счётчик'; btn.style.borderColor='var(--jade)'; btn.style.color='var(--jade)'; }
+
+// --- Global Edge Swipe to Go Back ---
+let edgeSwipeStartX = 0;
+let edgeSwipeStartY = 0;
+document.addEventListener('touchstart', (e) => {
+  edgeSwipeStartX = e.changedTouches[0].clientX;
+  edgeSwipeStartY = e.changedTouches[0].clientY;
+}, {passive:true});
+
+document.addEventListener('touchend', (e) => {
+  if (edgeSwipeStartX < 40) { // started near left edge
+    const endX = e.changedTouches[0].clientX;
+    const endY = e.changedTouches[0].clientY;
+    // ensure it's a horizontal swipe, not vertical scrolling
+    if (endX - edgeSwipeStartX > 60 && Math.abs(endY - edgeSwipeStartY) < 60) {
+      if (isSheetOpenState || location.hash) {
+        history.back();
+      }
     }
-  }catch(e){ console.error(e); }
-};
-
-// Called from Android onResume when floating counter has accumulated taps
-window.onFloatingCountSync = function(count, type){
-  if(count <= 0) return;
-  if(type === 'weekly'){
-    // Add to weekly challenge
-    weeklyChallengeMyCount += count;
-    weeklyChallengeCount += count;
-    weeklyChallengePendingClicks += count;
-    updateWeeklyChallengeProgress();
-    const myEl = document.getElementById('weeklyChallengeMyCount');
-    if(myEl) myEl.textContent = weeklyChallengeMyCount.toLocaleString('ru-RU');
-    flushWeeklyChallengeClicks();
-    // Reset button state
-    const btn = document.getElementById('weeklyFloatBtn');
-    if(btn){ btn.innerHTML='📿 Плавающий счётчик'; btn.style.borderColor=''; btn.style.color=''; }
-    showToast('+' + count.toLocaleString('ru-RU') + ' добавлено к заданию недели ✓');
-  } else {
-    // Add to dhikr counter (general counter)
-    const numEl = document.getElementById('dhikrCounterNum');
-    if(numEl){
-      const cur = parseInt(numEl.textContent.replace(/\s/g,''), 10) || 0;
-      numEl.textContent = (cur + count).toLocaleString('ru-RU');
-    }
-    // Reset button state
-    const btn = document.getElementById('dhikrFloatBtn');
-    if(btn){ btn.innerHTML='📿 Плавающий счётчик'; btn.style.borderColor=''; btn.style.color=''; }
-    showToast('+' + count.toLocaleString('ru-RU') + ' добавлено к счётчику зикра ✓');
   }
-};
+}, {passive:true});
 
-
-// --- Swipe logic for Weekly Challenge Sheet ---
-let wcTouchStartX = 0;
-let wcTouchEndX = 0;
-document.addEventListener('DOMContentLoaded', () => {
-  const wcArea = document.getElementById('wcSwipeArea');
-  if(wcArea) {
-    wcArea.addEventListener('touchstart', e => {
-      wcTouchStartX = e.changedTouches[0].screenX;
-    }, {passive:true});
-    wcArea.addEventListener('touchend', e => {
-      wcTouchEndX = e.changedTouches[0].screenX;
-      if (wcTouchEndX < wcTouchStartX - 40) nextWeeklyChallenge();
-      if (wcTouchEndX > wcTouchStartX + 40) prevWeeklyChallenge();
-    }, {passive:true});
-  }
-});
 </script>
 </body>
 </html>
