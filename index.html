@@ -2999,7 +2999,8 @@ async function wcAttachListener(chId, weekId){
   await fbAuthReady;
   if(!fbDb) return;
   fbDb.ref(WC[chId].node+'/'+weekId+'/count').on('value', snap=>{
-    WC[chId].count = snap.val()||0;
+    let serverCount = snap.val()||0;
+    WC[chId].count = Math.max(serverCount, WC[chId].myCount);
     wcUpdateCard(chId, weekId);
     if(document.getElementById(chId+'WeeklyCircle')){
       const numEl = document.getElementById(chId==='salavat'?'weeklyChallengeNum':'istighfarWeeklyNum');
