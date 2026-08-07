@@ -1296,6 +1296,14 @@ body{
 
                   <div style="height:1px;background:var(--line);margin:0 0 4px;"></div>
                   
+                  <div style="padding:10px 16px 6px;font-size:12px;color:var(--ivory-dim);">💾 Данные приложения</div>
+                  <div style="padding:0 16px 10px;display:flex;gap:6px;align-items:center;">
+                    <button id="exportBackupBtn" style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:var(--gold);color:#1a0f00;font-family:var(--font-body);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;">Сохранить (Бэкап)</button>
+                    <button id="importBackupBtn" style="flex:1;padding:7px 10px;border-radius:8px;border:1px solid var(--gold);background:none;color:var(--gold);font-family:var(--font-body);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;">Восстановить</button>
+                  </div>
+
+                  <div style="height:1px;background:var(--line);margin:0 0 4px;"></div>
+                  
                   <div style="padding:10px 16px 6px;font-size:12px;color:var(--ivory-dim);">📅 Зикр недели</div>
                   <div style="padding:0 16px 10px;display:flex;align-items:center;justify-content:space-between;">
                     <div style="font-size:13px;color:var(--ivory);">Уведомлять о начале</div>
@@ -1543,6 +1551,62 @@ body{
 </div>
 
 <script>
+/* =====================================================
+   BACKUP / RESTORE
+===================================================== */
+document.getElementById('exportBackupBtn').addEventListener('click', ()=>{
+  if(window.AndroidApp && window.AndroidApp.exportBackup){
+    window.AndroidApp.exportBackup(JSON.stringify(state));
+  } else {
+    // Fallback for non-Android wrapper
+    const blob = new Blob([JSON.stringify(state)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '99ism_backup_' + Date.now() + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Резервная копия сохранена');
+  }
+});
+
+document.getElementById('importBackupBtn').addEventListener('click', ()=>{
+  if(window.AndroidApp && window.AndroidApp.importBackup){
+    window.AndroidApp.importBackup();
+  } else {
+    // Fallback for non-Android wrapper
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json';
+    input.onchange = e => {
+      const file = e.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = () => window.onBackupRestored(reader.result);
+      reader.readAsText(file);
+    };
+    input.click();
+  }
+});
+
+window.onBackupRestored = function(jsonString) {
+  try {
+    const newState = JSON.parse(jsonString);
+    if(newState && newState.learned) {
+      state = Object.assign(state, newState);
+      saveState();
+      renderCards();
+      renderStats();
+      showToast('Прогресс успешно восстановлен!');
+      document.getElementById('profileMenu').style.display = 'none';
+    } else {
+      showToast('Неверный формат резервной копии');
+    }
+  } catch(e) {
+    showToast('Ошибка чтения файла');
+  }
+};
+
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDk_VEd7etsz22k3M41kSObWYhv9SfeGkw",
   authDomain: "ism-friends.firebaseapp.com",
