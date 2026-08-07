@@ -2521,6 +2521,17 @@ async function shareDhikrCard(data, btn){
   try{
     const blob = await generateDhikrShareImage(data);
     if(!blob) throw new Error('canvas produced no image');
+    
+    if(window.AndroidApp && window.AndroidApp.shareImage) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64data = reader.result;
+        window.AndroidApp.shareImage(base64data.split(',')[1]);
+      };
+      reader.readAsDataURL(blob);
+      return;
+    }
+
     const file = new File([blob], '99ism-' + Date.now() + '.png', { type:'image/png' });
     if(navigator.canShare && navigator.canShare({ files:[file] })){
       await navigator.share({ files:[file], title: data.heading || '99 имён Аллаха' });
