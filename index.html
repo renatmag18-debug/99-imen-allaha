@@ -1089,14 +1089,28 @@ body{
         <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
         <input id="miscSearchInput" type="search" inputmode="search" placeholder="Поиск по зикрам, азкарам, дуа, намазу…" autocomplete="off">
       </div>
-      <div id="weeklyChallengeCard" class="weekly-challenge-card" style="display:none">
-        <div class="weekly-challenge-top">
-          <span class="weekly-challenge-badge" id="weeklyChallengeBadge">Задание недели</span>
-          <span class="weekly-challenge-timer" id="weeklyChallengeTimer"></span>
+      <!-- Two weekly challenge cards side by side -->
+      <div id="weeklyChallengeCardsRow" style="display:none;flex-direction:row;gap:10px;margin:0 auto 14px;max-width:90%;width:100%;">
+        <!-- SALAWAT card (Thu 20:00 - Fri 20:00) -->
+        <div id="salavat_weeklyCard" class="weekly-challenge-card" style="flex:1;min-width:0;cursor:pointer;" onclick="openWeeklyChallengeSheet('salavat')">
+          <div class="weekly-challenge-top">
+            <span class="weekly-challenge-badge" id="salavat_weeklyBadge">Зикр недели</span>
+          </div>
+          <div class="weekly-challenge-title" style="font-size:13px;">📿 Салават</div>
+          <div style="font-size:11px;color:var(--ivory-dim);margin-bottom:6px;" id="salavat_weeklyTimer"></div>
+          <div class="weekly-progress-bar"><div class="weekly-progress-fill" id="salavat_weeklyFill"></div></div>
+          <div class="weekly-challenge-count-label" id="salavat_weeklyLabel"></div>
         </div>
-        <div class="weekly-challenge-title">📿 Салават на Пророка ﷺ — читаем всей уммой</div>
-        <div class="weekly-progress-bar"><div class="weekly-progress-fill weekly-challenge-fill-target"></div></div>
-        <div class="weekly-challenge-count-label"></div>
+        <!-- ISTIGHFAR card (Fri 20:00 - next Fri 20:00) -->
+        <div id="istighfar_weeklyCard" class="weekly-challenge-card" style="flex:1;min-width:0;cursor:pointer;border-color:var(--jade);background:linear-gradient(160deg,rgba(46,138,114,0.14),rgba(46,138,114,0.02));" onclick="openWeeklyChallengeSheet('istighfar')">
+          <div class="weekly-challenge-top">
+            <span class="weekly-challenge-badge" style="color:var(--jade);" id="istighfar_weeklyBadge">Зикр недели</span>
+          </div>
+          <div class="weekly-challenge-title" style="font-size:13px;">🤲 Истигфар</div>
+          <div style="font-size:11px;color:var(--ivory-dim);margin-bottom:6px;" id="istighfar_weeklyTimer"></div>
+          <div class="weekly-progress-bar"><div class="weekly-progress-fill" style="background:linear-gradient(90deg,var(--jade),#5efad0);" id="istighfar_weeklyFill"></div></div>
+          <div class="weekly-challenge-count-label" id="istighfar_weeklyLabel"></div>
+        </div>
       </div>
       <button class="btn btn-ghost" id="openDhikrRoomBtn" style="max-width:280px;margin:0 auto 14px;flex:none;">👥 Зикр с друзьями</button>
       <div class="segmented-wrap" id="miscSegmentWrap">
@@ -1527,6 +1541,31 @@ body{
       <div class="weekly-progress-bar"><div class="weekly-progress-fill weekly-challenge-fill-target"></div></div>
       <div class="weekly-challenge-count-label"></div>
       <p style="font-size:12px;color:var(--ivory-dim);margin-top:14px;">Ваш вклад: <b id="weeklyChallengeMyCount" style="color:var(--gold-soft);">0</b></p>
+    </div>
+  </div>
+
+
+  <!-- ISTIGHFAR sheet -->
+  <div class="sheet-backdrop" id="istighfarWeeklyBackdrop"></div>
+  <div class="sheet" id="istighfarWeeklySheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-top">
+      <div class="sheet-idx">🤲 Зикр недели — Истигфар</div>
+      <button class="sheet-close" id="istighfarWeeklyClose">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body" style="text-align:center;">
+      <p class="misc-intro" id="istighfar_sheetTimer" style="padding-bottom:6px;"></p>
+      <div class="dhikr-ar" style="text-align:center;font-size:36px;">أَسْتَغْفِرُ اللَّهَ</div>
+      <div class="dhikr-tr" style="text-align:center;">Астагфиру-Ллах</div>
+      <div class="dhikr-m" style="text-align:center;margin-bottom:6px;">Прошу прощения у Аллаха</div>
+      <div class="counter-circle" id="istighfarWeeklyCircle" style="border-color:var(--jade);"><span class="counter-num" id="istighfarWeeklyNum" style="color:var(--jade);">0</span></div>
+      <p class="counter-hint">Общий счёт всех участников — нажимайте вместе</p>
+      <button class="btn-float-dhikr" id="istighfarFloatBtn" onclick="toggleFloatingCounter('weekly_1', this)" style="display:none;border-color:var(--jade);color:var(--jade);">📿 Плавающий счётчик</button>
+      <div class="weekly-progress-bar"><div class="weekly-progress-fill" style="background:linear-gradient(90deg,var(--jade),#5efad0);" id="istighfarWeeklyFillSheet"></div></div>
+      <div class="weekly-challenge-count-label" id="istighfarWeeklyCountLabel"></div>
+      <p style="font-size:12px;color:var(--ivory-dim);margin-top:14px;">Ваш вклад: <b id="istighfarWeeklyMyCount" style="color:var(--jade);">0</b></p>
     </div>
   </div>
 
@@ -2308,19 +2347,6 @@ const DUA = [
 {title:"Посещая могилы", audio:["https://www.hisnmuslim.com/audio/ar/165.mp3"], ar:"السَّلَامُ عَلَيْكُمْ أَهْلَ الدِّيَارِ مِنَ الْمُؤْمِنِينَ وَالْمُسْلِمِينَ وَإِنَّا إِنْ شَاءَ اللَّهُ بِكُمْ لَاحِقُونَ أَسْأَلُ اللَّهَ لَنَا وَلَكُمُ الْعَافِيَةَ", tr:"Ас-саляму 'аляйкум ахля-д-дияр мина-ль-му'минина ва-ль-муслимин, ва инна ин ша'а-Ллаху бикум ляхикун, ас'алю-Ллаха ляна ва лякуму-ль-'афия", m:"«Мир вам, обитатели этих мест, из верующих и мусульман! И мы, если пожелает Аллах, присоединимся к вам. Прошу у Аллаха благополучия для нас и для вас»"},
 {title:"При сильном ветре", audio:["https://www.hisnmuslim.com/audio/ar/167.mp3"], ar:"اللَّهُمَّ إِنِّي أَسْأَلُكَ خَيْرَهَا وَخَيْرَ مَا فِيهَا وَخَيْرَ مَا أُرْسِلَتْ بِهِ وَأَعُوذُ بِكَ مِنْ شَرِّهَا وَشَرِّ مَا فِيهَا وَشَرِّ مَا أُرْسِلَتْ بِهِ", tr:"Аллахумма инни ас'алюкя хайраха, ва хайра ма фиха, ва хайра ма урсилят бих, ва а'узу бикя мин шарриха, ва шарри ма фиха, ва шарри ма урсилят бих", m:"«О Аллах, поистине, я прошу у Тебя её блага и блага того, с чем она послана, и прибегаю к Тебе от её зла и зла того, с чем она послана»"},
 {title:"При звуке грома", audio:["https://www.hisnmuslim.com/audio/ar/168.mp3"], ar:"سُبْحَانَ الَّذِي يُسَبِّحُ الرَّعْدُ بِحَمْدِهِ وَالْمَلَائِكَةُ مِنْ خِيفَتِهِ", tr:"Субхана-ллязи юсаббиху-р-ра'ду би-хамдихи ва-ль-маляикяту мин хифатих", m:"«Пречист Тот, Кого прославляет гром хвалой Ему, и ангелы — от страха пред Ним»"},
-{title:"При начале дождя", audio:["https://www.hisnmuslim.com/audio/ar/172.mp3"], ar:"اللَّهُمَّ صَيِّبًا نَافِعًا", tr:"Аллахумма сайибан нафи'а", m:"«О Аллах, сделай это ливнем полезным»"},
-{title:"После дождя", audio:["https://www.hisnmuslim.com/audio/ar/173.mp3"], ar:"مُطِرْنَا بِفَضْلِ اللَّهِ وَرَحْمَتِهِ", tr:"Мутирна би-фадли-Ллахи ва рахматих", m:"«Дождь дан нам по милости и милосердию Аллаха»"},
-{title:"Прося отвести избыточный дождь", audio:["https://www.hisnmuslim.com/audio/ar/174.mp3"], ar:"اللَّهُمَّ حَوَالَيْنَا وَلَا عَلَيْنَا اللَّهُمَّ عَلَى الْآكَامِ وَالظِّرَابِ وَبُطُونِ الْأَوْدِيَةِ وَمَنَابِتِ الشَّجَرِ", tr:"Аллахумма хавалайна ва ля 'аляйна, Аллахумма 'аля-ль-акями ва-з-зираб, ва бутуни-ль-авдия, ва манабити-ш-шаджар", m:"«О Аллах, вокруг нас, а не на нас; о Аллах, на холмы, возвышенности, дно долин и места произрастания деревьев»"},
-{title:"При виде молодого месяца", audio:["https://www.hisnmuslim.com/audio/ar/175.mp3"], ar:"اللَّهُ أَكْبَرُ اللَّهُمَّ أَهِلَّهُ عَلَيْنَا بِالْأَمْنِ وَالْإِيمَانِ وَالسَّلَامَةِ وَالْإِسْلَامِ وَالتَّوْفِيقِ لِمَا تُحِبُّ رَبَّنَا وَتَرْضَىٰ رَبُّنَا وَرَبُّكَ اللَّهُ", tr:"Аллаху акбар, Аллахумма ахилляху 'аляйна би-ль-амни ва-ль-иман, ва-с-саляма ва-ль-Ислям, ва-т-тауфики лима тухиббу Раббана ва тарда, Раббуна ва Раббукя-Ллах", m:"«Аллах превелик! О Аллах, яви его нам с миром и верой, с благополучием и Исламом, и содействием тому, что любит и чем доволен наш Господь! Господь наш и твой Господь — Аллах»"},
-{title:"При разговении (1)", audio:["https://www.hisnmuslim.com/audio/ar/176.mp3"], ar:"ذَهَبَ الظَّمَأُ وَابْتَلَّتِ الْعُرُوقُ وَثَبَتَ الْأَجْرُ إِنْ شَاءَ اللَّهُ", tr:"Захаба-з-зама'у ва-бталляти-ль-'урук, ва сабата-ль-аджру ин ша'а-Ллах", m:"«Ушла жажда, увлажнились жилы, и утвердилась награда, если пожелает Аллах»"},
-{title:"При разговении (2)", audio:["https://www.hisnmuslim.com/audio/ar/177.mp3"], ar:"اللَّهُمَّ إِنِّي أَسْأَلُكَ بِرَحْمَتِكَ الَّتِي وَسِعَتْ كُلَّ شَيْءٍ أَنْ تَغْفِرَ لِي", tr:"Аллахумма инни ас'алюкя би-рахматика-ллати васи'ат кулля шайин ан тагфира ли", m:"«О Аллах, поистине, я прошу Тебя Твоей милостью, объемлющей всё сущее, простить меня»"},
-{title:"Получив еду или питьё от Аллаха", audio:["https://www.hisnmuslim.com/audio/ar/179.mp3"], ar:"اللَّهُمَّ بَارِكْ لَنَا فِيهِ وَأَطْعِمْنَا خَيْرًا مِنْهُ", tr:"Аллахумма барик ляна фихи ва ат'имна хайран минх", m:"«О Аллах, благослови нам это и накорми (напои) нас лучшим»"},
-{title:"После еды (расширенный вариант)", audio:["https://www.hisnmuslim.com/audio/ar/181.mp3"], ar:"الْحَمْدُ لِلَّهِ حَمْدًا كَثِيرًا طَيِّبًا مُبَارَكًا فِيهِ غَيْرَ مَكْفِيٍّ وَلَا مُوَدَّعٍ وَلَا مُسْتَغْنًى عَنْهُ رَبَّنَا", tr:"Аль-хамду ли-Лляхи хамдан касиран таййибан мубаракан фих, гайра макфиййив-ва ля мувадда'ин ва ля мустагнан 'анху Раббана", m:"«Хвала Аллаху многая, благая, благословенная — которую невозможно отменить, оставить или обойтись без неё, Господь наш»"},
-{title:"Гостя за хозяина дома", audio:["https://www.hisnmuslim.com/audio/ar/182.mp3"], ar:"اللَّهُمَّ بَارِكْ لَهُمْ فِيمَا رَزَقْتَهُمْ وَاغْفِرْ لَهُمْ وَارْحَمْهُمْ", tr:"Аллахумма барик ляхум фима разактахум, ва-гфир ляхум, ва-рхамхум", m:"«О Аллах, благослови им в том, чем Ты их наделил, прости их и помилуй их»"},
-{title:"Косвенная просьба о еде или питье", audio:["https://www.hisnmuslim.com/audio/ar/183.mp3"], ar:"اللَّهُمَّ أَطْعِمْ مَنْ أَطْعَمَنِي وَاسْقِ مَنْ سَقَانِي", tr:"Аллахумма ат'им ман ат'амани, ва-ски ман сакани", m:"«О Аллах, накорми того, кто накормил меня, и напои того, кто напоил меня»"},
-{title:"Разговевшись в гостях", audio:["https://www.hisnmuslim.com/audio/ar/184.mp3"], ar:"أَفْطَرَ عِنْدَكُمُ الصَّائِمُونَ وَأَكَلَ طَعَامَكُمُ الْأَبْرَارُ وَصَلَّتْ عَلَيْكُمُ الْمَلَائِكَةُ", tr:"Афтара 'индакуму-с-саимун, ва акаля та'амакуму-ль-абрар, ва салляат 'аляйкуму-ль-маляика", m:"«Пусть у вас разговляются постящиеся, пусть вашу еду едят благочестивые, и пусть ангелы благословят вас»"},
-{title:"При заклании жертвенного животного", audio:["https://www.hisnmuslim.com/audio/ar/246.mp3"], ar:"بِسْمِ اللَّهِ وَاللَّهُ أَكْبَرُ [اللَّهُمَّ مِنْكَ وَلَكَ] اللَّهُمَّ تَقَبَّلْ مِنِّي", tr:"Бисми-Ллях, ва-Ллаху акбар. Аллахумма минкя ва лякя. Аллахумма такаббаль минни", m:"«Именем Аллаха, Аллах превелик! О Аллах, от Тебя это и Тебе (посвящается). О Аллах, прими от меня»"},
-{title:"Для защиты от козней шайтанов", audio:["https://www.hisnmuslim.com/audio/ar/247.mp3"], ar:"أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ الَّتِي لَا يُجَاوِزُهُنَّ بَرٌّ وَلَا فَاجِرٌ مِنْ شَرِّ مَا خَلَقَ وَبَرَأَ وَذَرَأَ وَمِنْ شَرِّ مَا يَنْزِلُ مِنَ السَّمَاءِ وَمِنْ شَرِّ مَا يَعْرُجُ فِيهَا وَمِنْ شَرِّ مَا ذَرَأَ فِي الْأَرْضِ وَمِنْ شَرِّ مَا يَخْرُجُ مِنْهَا وَمِنْ شَرِّ فِتَنِ اللَّيْلِ وَالنَّهَارِ وَمِنْ شَرِّ كُلِّ طَارِقٍ إِلَّا طَارِقًا يَطْرُقُ بِخَيْرٍ يَا رَحْمَٰنُ", tr:"А'узу би-калимати-Ллахи-т-таммати аллати ля юджавизухунна баррув-ва ля фаджир, мин шарри ма халяка ва бара'а ва зара'а, ва мин шарри ма янзилю мина-с-сама'и, ва мин шарри ма я'руджу фиха, ва мин шарри ма зара'а фи-ль-арды, ва мин шарри ма яхруджу минха, ва мин шарри фитани-ль-ляйли ва-н-нахар, ва мин шарри кулли тарикин илля тарикан ятруку би-хайрин, я Рахман", m:"«Прибегаю к совершенным словам Аллаха, которые не преступит ни праведник, ни грешник, — от зла того, что Он сотворил, создал и рассеял; от зла нисходящего с неба и восходящего к нему; от зла рассеянного по земле и выходящего из неё; от зла искушений ночи и дня; и от зла всякого ночного пришельца, кроме приходящего с добром — о Милостивый!»"},
 ];
 
 const NAMAZ = [
@@ -2888,38 +2914,13 @@ function renderMiscFavorites(){
 }
 
 /* =====================================================
-   ЗАДАНИЕ НЕДЕЛИ: салават всей уммой (общий счёт, Firebase RTDB)
-   Магриб — точное время намаза по геолокации не считается нигде в
-   приложении, поэтому здесь используется фиксированный час (см.
-   WEEKLY_MAGHRIB_HOUR) как условное время магриба для всех пользователей.
+   ЗАДАНИЕ НЕДЕЛИ: Два независимых зикра
+   Салават  — чт 20:00 → пт 20:00
+   Истигфар — пт 20:00 → следующий пт 20:00
 ===================================================== */
-const WEEKLY_MAGHRIB_HOUR = 18;
+const WEEKLY_HOUR = 20; // 20:00
 const WEEKLY_CHALLENGE_TARGET = 100000;
 
-function weeklyChallengeThisFriday(now){
-  const d = new Date(now);
-  // 5 = Friday in JS (0=Sun)
-  const diff = (5 - d.getDay() + 7) % 7;
-  d.setDate(d.getDate() + diff);
-  d.setHours(WEEKLY_MAGHRIB_HOUR, 0, 0, 0);
-  return d;
-}
-function weeklyChallengeWindow(now){
-  now = now || new Date();
-  // Week runs from Friday 18:00 to next Friday 18:00
-  const d = new Date(now);
-  const dayOfWeek = d.getDay(); // 0=Sun, 5=Fri
-  const hourOfDay = d.getHours();
-  // Find the most recent Friday 18:00
-  let daysToLastFriday = (dayOfWeek - 5 + 7) % 7;
-  if(daysToLastFriday === 0 && hourOfDay < WEEKLY_MAGHRIB_HOUR) daysToLastFriday = 7;
-  const start = new Date(d);
-  start.setDate(start.getDate() - daysToLastFriday);
-  start.setHours(WEEKLY_MAGHRIB_HOUR, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 7);
-  return { start, end, active: now >= start && now < end };
-}
 function weeklyChallengeId(start){
   const y=start.getFullYear(), m=String(start.getMonth()+1).padStart(2,'0'), d=String(start.getDate()).padStart(2,'0');
   return `${y}-${m}-${d}`;
@@ -2927,233 +2928,254 @@ function weeklyChallengeId(start){
 function formatWeeklyCountdown(ms){
   if(ms<=0) return '0м';
   const totalMin = Math.floor(ms/60000);
-  const h = Math.floor(totalMin/60), m = totalMin%60;
-  return h>0 ? `${h}ч ${m}м` : `${m}м`;
+  const h = Math.floor(totalMin/60), mm = totalMin%60;
+  return h>0 ? `${h}ч ${mm}м` : `${mm}м`;
 }
 
-const WEEKLY_CHALLENGES = [
-  {
-    id: "salavat",
-    node: "weeklyChallenge",
-    ar: "اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَعَلَى آلِ مُحَمَّدٍ",
-    tr: "Аллахумма салли аля Мухаммад ва аля али Мухаммад",
-    m: "О Аллах, благослови Мухаммада и его род"
+// Салават: от ближайшего прошлого ЧЕТВЕРГА 20:00 до следующего ЧТ+1дня (пятница) 20:00
+function salavatWindow(now){
+  now = now || new Date();
+  const d = new Date(now);
+  // 4 = Thursday in JS (0=Sun)
+  let daysToLastThu = (d.getDay() - 4 + 7) % 7;
+  if(daysToLastThu === 0 && d.getHours() < WEEKLY_HOUR) daysToLastThu = 7;
+  const start = new Date(d);
+  start.setDate(start.getDate() - daysToLastThu);
+  start.setHours(WEEKLY_HOUR, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1); // +1 день = пятница 20:00
+  end.setHours(WEEKLY_HOUR, 0, 0, 0);
+  return { start, end, active: now >= start && now < end };
+}
+
+// Истигфар: от ближайшего прошлого ПЯТНИЦЫ 20:00 до следующей пятницы 20:00
+function istighfarWindow(now){
+  now = now || new Date();
+  const d = new Date(now);
+  // 5 = Friday in JS
+  let daysToLastFri = (d.getDay() - 5 + 7) % 7;
+  if(daysToLastFri === 0 && d.getHours() < WEEKLY_HOUR) daysToLastFri = 7;
+  const start = new Date(d);
+  start.setDate(start.getDate() - daysToLastFri);
+  start.setHours(WEEKLY_HOUR, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 7);
+  end.setHours(WEEKLY_HOUR, 0, 0, 0);
+  return { start, end, active: now >= start && now < end };
+}
+
+// Unified state per challenge
+const WC = {
+  salavat: {
+    idx: 0,
+    node: 'weeklyChallenge',
+    count: 0, myCount: 0, pendingClicks: 0,
+    weekId: null, listenerAttached: null, clickTimer: null
   },
-  {
-    id: "istighfar",
-    node: "weeklyChallenge_istighfar",
-    ar: "أَسْتَغْفِرُ اللَّهَ",
-    tr: "Астагфиру-Ллах",
-    m: "Прошу прощения у Аллаха"
+  istighfar: {
+    idx: 1,
+    node: 'weeklyChallenge_istighfar',
+    count: 0, myCount: 0, pendingClicks: 0,
+    weekId: null, listenerAttached: null, clickTimer: null
   }
-];
-
-let currentWeeklyChallengeIndex = 0;
+};
+// Legacy compat
 let weeklyChallengeWeekId = null;
-let weeklyChallengeListenerAttachedId = null;
-let weeklyChallengeClickTimer = null;
-let weeklyChallengeCount = 0;
-let weeklyChallengeMyCount = 0;
+let currentWeeklyChallengeIndex = 0;
 
-const weeklyChallengeState = WEEKLY_CHALLENGES.map(() => ({
-  count: 0,
-  myCount: 0,
-  pendingClicks: 0
-}));
-
-let weeklyChallengeParticipants = {};
-
-function getWeeklyChallengeUserKey(){
-  if(typeof state !== 'undefined' && state.profile && state.profile.username){
-    return fbKey(state.profile.username);
-  }
-  let localId = null;
-  try{ localId = localStorage.getItem('weeklyChallengeUserId'); }catch(e){}
-  if(!localId){
-    localId = 'u_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
-    try{ localStorage.setItem('weeklyChallengeUserId', localId); }catch(e){}
-  }
-  return localId;
+function wcSaveLocal(chId, weekId){
+  try{ localStorage.setItem('wc_mycount_'+chId+'_'+weekId, WC[chId].myCount); }catch(e){}
+}
+function wcLoadLocal(chId, weekId){
+  try{
+    const s = localStorage.getItem('wc_mycount_'+chId+'_'+weekId);
+    if(s) WC[chId].myCount = parseInt(s,10)||0;
+    else WC[chId].myCount = 0;
+  }catch(e){}
 }
 
-function getWeeklyChallengeUserName(){
-  if(typeof state !== 'undefined' && state.profile && state.profile.username){
-    // Always cache the real username so it's available even before auth loads next time
-    try{ localStorage.setItem('weeklyChallengeUserName', state.profile.username); }catch(e){}
-    return state.profile.username;
-  }
-  let localName = null;
-  try{ localName = localStorage.getItem('weeklyChallengeUserName'); }catch(e){}
-  return localName || 'Участник';
-}
-
-function loadWeeklyChallengeLocalState() {
-  const weekId = weeklyChallengeWeekId;
-  if(!weekId) return;
-  WEEKLY_CHALLENGES.forEach((ch, idx) => {
-    try {
-      const saved = localStorage.getItem('wc_mycount_' + ch.id + '_' + weekId);
-      if(saved) weeklyChallengeState[idx].myCount = parseInt(saved, 10)||0;
-      else weeklyChallengeState[idx].myCount = 0;
-    } catch(e){}
-  });
-}
-
-function saveWeeklyChallengeLocalState(weekId, idx) {
-  try {
-    const ch = WEEKLY_CHALLENGES[idx];
-    localStorage.setItem('wc_mycount_' + ch.id + '_' + weekId, weeklyChallengeState[idx].myCount);
-  } catch(e){}
-}
-
-function setWeeklyChallengeUI(idx) {
-  currentWeeklyChallengeIndex = idx;
-  const ch = WEEKLY_CHALLENGES[idx];
-  // Update Arabic/transliteration/meaning text in the sheet
-  const arEl = document.getElementById('wcSheetAr');
-  const trEl = document.getElementById('wcSheetTr');
-  const mEl  = document.getElementById('wcSheetM');
-  if(arEl) arEl.textContent = ch.ar;
-  if(trEl) trEl.textContent = ch.tr;
-  if(mEl)  mEl.textContent  = ch.m;
-  const indEl = document.getElementById('wcPageIndicator');
-  if(indEl) indEl.textContent = (idx+1) + ' / ' + WEEKLY_CHALLENGES.length;
-  updateWeeklyChallengeProgress(idx);
-  const myEl = document.getElementById('weeklyChallengeMyCount');
-  if(myEl) myEl.textContent = weeklyChallengeState[idx].myCount.toLocaleString('ru-RU');
-}
-
-function nextWeeklyChallenge() {
-  setWeeklyChallengeUI((currentWeeklyChallengeIndex + 1) % WEEKLY_CHALLENGES.length);
-}
-
-function prevWeeklyChallenge() {
-  setWeeklyChallengeUI((currentWeeklyChallengeIndex - 1 + WEEKLY_CHALLENGES.length) % WEEKLY_CHALLENGES.length);
-}
-
-async function attachWeeklyChallengeListener(weekId){
-  if(!weekId) return;
-
-  loadWeeklyChallengeLocalState();
-  const myEl = document.getElementById('weeklyChallengeMyCount');
-  if(myEl) myEl.textContent = weeklyChallengeState[currentWeeklyChallengeIndex].myCount.toLocaleString('ru-RU');
-
+async function wcAttachListener(chId, weekId){
+  WC[chId].listenerAttached = weekId;
   await fbAuthReady;
   if(!fbDb) return;
-  
-  weeklyChallengeListenerAttachedId = weekId;
-  
-  WEEKLY_CHALLENGES.forEach((ch, idx) => {
-    fbDb.ref(ch.node+'/'+weekId+'/count').on('value', snap=>{
-      weeklyChallengeState[idx].count = snap.val() || 0;
-      updateWeeklyChallengeProgress(idx);
-    });
-  });
-}
-
-function updateWeeklyChallengeProgress(idx){
-  if (idx === undefined) idx = currentWeeklyChallengeIndex;
-  const count = weeklyChallengeState[idx].count;
-  const pct = Math.min(100, Math.round(count/WEEKLY_CHALLENGE_TARGET*100));
-  document.querySelectorAll('.weekly-challenge-fill-target').forEach(el=>{ el.style.width = pct+'%'; });
-  document.querySelectorAll('.weekly-challenge-count-label').forEach(el=>{
-    el.textContent = count.toLocaleString('ru-RU') + ' / ' + WEEKLY_CHALLENGE_TARGET.toLocaleString('ru-RU');
-  });
-  const num = document.getElementById('weeklyChallengeNum');
-  if(num) num.textContent = count.toLocaleString('ru-RU');
-}
-
-function renderWeeklyChallengeParticipants(){
-  // Participants hidden
-}
-
-function refreshWeeklyChallengeState(){
-  const card = document.getElementById('weeklyChallengeCard');
-  if(!card) return;
-  const {start, end, active} = weeklyChallengeWindow();
-  card.style.display = 'block';
-  const badge = document.getElementById('weeklyChallengeBadge');
-  const timer = document.getElementById('weeklyChallengeTimer');
-  const sheetTimer = document.getElementById('weeklyChallengeSheetTimer');
-  if(active){
-    badge.textContent = 'Задание недели · идёт';
-    timer.textContent = 'Осталось ' + formatWeeklyCountdown(end-new Date());
-    if(sheetTimer) sheetTimer.textContent = 'До конца задания: ' + formatWeeklyCountdown(end-new Date());
-  } else {
-    badge.textContent = 'Задание недели · скоро';
-    timer.textContent = 'Начало через ' + formatWeeklyCountdown(start-new Date());
-    if(sheetTimer) sheetTimer.textContent = 'Задание начнётся через ' + formatWeeklyCountdown(start-new Date());
-  }
-  const weekId = weeklyChallengeId(start);
-  weeklyChallengeWeekId = weekId;
-
-  if(weeklyChallengeListenerAttachedId !== weekId){
-    attachWeeklyChallengeListener(weekId);
-  }
-}
-refreshWeeklyChallengeState();
-setInterval(refreshWeeklyChallengeState, 30000);
-
-function openWeeklyChallengeSheet(){
-  pushSheetHistory();
-  refreshWeeklyChallengeState();
-  if(weeklyChallengeWeekId){
-    loadWeeklyChallengeLocalState();
-  }
-  setWeeklyChallengeUI(0);
-  document.getElementById('weeklyChallengeSheet').classList.add('show');
-  document.getElementById('weeklyChallengeBackdrop').classList.add('show');
-}
-function closeWeeklyChallengeSheet(){
-  popSheetHistory();
-  document.getElementById('weeklyChallengeSheet').classList.remove('show');
-  document.getElementById('weeklyChallengeBackdrop').classList.remove('show');
-}
-document.getElementById('weeklyChallengeCard').addEventListener('click', openWeeklyChallengeSheet);
-document.getElementById('weeklyChallengeClose').addEventListener('click', closeWeeklyChallengeSheet);
-document.getElementById('weeklyChallengeBackdrop').addEventListener('click', closeWeeklyChallengeSheet);
-
-
-
-function flushWeeklyChallengeClicks() {
-  const weekId = weeklyChallengeWeekId;
-  if(!weekId) return;
-  WEEKLY_CHALLENGES.forEach((ch, idx) => {
-    const delta = weeklyChallengeState[idx].pendingClicks;
-    if(delta <= 0) return;
-    weeklyChallengeState[idx].pendingClicks = 0;
-    saveWeeklyChallengeLocalState(weekId, idx);
-    
-    if(fbDb){
-      fbDb.ref(ch.node+'/'+weekId+'/count').set(firebase.database.ServerValue.increment(delta));
+  fbDb.ref(WC[chId].node+'/'+weekId+'/count').on('value', snap=>{
+    WC[chId].count = snap.val()||0;
+    wcUpdateCard(chId, weekId);
+    if(document.getElementById(chId+'WeeklyCircle')){
+      const numEl = document.getElementById(chId==='salavat'?'weeklyChallengeNum':'istighfarWeeklyNum');
+      if(numEl) numEl.textContent = WC[chId].count.toLocaleString('ru-RU');
+      wcUpdateSheetProgress(chId);
     }
   });
 }
 
-document.getElementById('weeklyChallengeCircle').addEventListener('click', ()=>{
-  const {active} = weeklyChallengeWindow();
-  if(!active){ showToast('Задание ещё не началось'); return; }
-  
-  let idx = currentWeeklyChallengeIndex;
-  weeklyChallengeState[idx].myCount++;
-  weeklyChallengeState[idx].count++;
-  weeklyChallengeState[idx].pendingClicks++;
-
-  const weekId = weeklyChallengeWeekId;
-  if(weekId){
-    saveWeeklyChallengeLocalState(weekId, idx);
+function wcUpdateCard(chId, weekId){
+  const win = chId==='salavat' ? salavatWindow() : istighfarWindow();
+  const fillEl = document.getElementById(chId+'_weeklyFill');
+  const labelEl = document.getElementById(chId+'_weeklyLabel');
+  const timerEl = document.getElementById(chId+'_weeklyTimer');
+  const badgeEl = document.getElementById(chId+'_weeklyBadge');
+  const pct = Math.min(100, Math.round(WC[chId].count/WEEKLY_CHALLENGE_TARGET*100));
+  if(fillEl) fillEl.style.width = pct+'%';
+  if(labelEl) labelEl.textContent = WC[chId].count.toLocaleString('ru-RU')+' / '+WEEKLY_CHALLENGE_TARGET.toLocaleString('ru-RU');
+  if(timerEl){
+    if(win.active) timerEl.textContent = 'Осталось '+formatWeeklyCountdown(win.end-new Date());
+    else timerEl.textContent = 'Начало через '+formatWeeklyCountdown(win.start-new Date());
   }
+  if(badgeEl){
+    if(win.active) badgeEl.textContent = 'Идёт ✦';
+    else badgeEl.textContent = 'Зикр недели';
+  }
+}
 
+function wcUpdateSheetProgress(chId){
+  const pct = Math.min(100, Math.round(WC[chId].count/WEEKLY_CHALLENGE_TARGET*100));
+  const count = WC[chId].count;
+  if(chId==='salavat'){
+    document.querySelectorAll('.weekly-challenge-fill-target').forEach(el=>{ el.style.width=pct+'%'; });
+    document.querySelectorAll('.weekly-challenge-count-label').forEach(el=>{
+      el.textContent = count.toLocaleString('ru-RU')+' / '+WEEKLY_CHALLENGE_TARGET.toLocaleString('ru-RU');
+    });
+    const num = document.getElementById('weeklyChallengeNum');
+    if(num) num.textContent = count.toLocaleString('ru-RU');
+  } else {
+    const fillEl = document.getElementById('istighfarWeeklyFillSheet');
+    const labelEl = document.getElementById('istighfarWeeklyCountLabel');
+    const numEl  = document.getElementById('istighfarWeeklyNum');
+    if(fillEl) fillEl.style.width = pct+'%';
+    if(labelEl) labelEl.textContent = count.toLocaleString('ru-RU')+' / '+WEEKLY_CHALLENGE_TARGET.toLocaleString('ru-RU');
+    if(numEl)  numEl.textContent = count.toLocaleString('ru-RU');
+  }
+}
+
+function wcFlushClicks(chId){
+  const wc = WC[chId];
+  if(wc.pendingClicks<=0) return;
+  const delta = wc.pendingClicks;
+  wc.pendingClicks = 0;
+  wcSaveLocal(chId, wc.weekId);
+  if(fbDb && wc.weekId){
+    fbDb.ref(wc.node+'/'+wc.weekId+'/count').set(firebase.database.ServerValue.increment(delta));
+  }
+}
+
+function refreshAllWeeklyCards(){
+  const row = document.getElementById('weeklyChallengeCardsRow');
+  if(row) row.style.display = 'flex';
+
+  // Salavat
+  const sw = salavatWindow();
+  const sId = weeklyChallengeId(sw.start);
+  WC.salavat.weekId = sId;
+  wcLoadLocal('salavat', sId);
+  if(WC.salavat.listenerAttached !== sId) wcAttachListener('salavat', sId);
+  wcUpdateCard('salavat', sId);
+
+  // Istighfar
+  const iw = istighfarWindow();
+  const iId = weeklyChallengeId(iw.start);
+  WC.istighfar.weekId = iId;
+  wcLoadLocal('istighfar', iId);
+  if(WC.istighfar.listenerAttached !== iId) wcAttachListener('istighfar', iId);
+  wcUpdateCard('istighfar', iId);
+
+  // Legacy compat
+  weeklyChallengeWeekId = sId;
+}
+refreshAllWeeklyCards();
+setInterval(refreshAllWeeklyCards, 30000);
+
+function openWeeklyChallengeSheet(chId){
+  pushSheetHistory();
+  currentWeeklyChallengeIndex = chId==='salavat'?0:1;
+  if(chId==='salavat'){
+    const sw = salavatWindow();
+    const timerEl = document.getElementById('salavat_sheetTimer') || document.getElementById('weeklyChallengeSheetTimer');
+    if(timerEl){
+      if(sw.active) timerEl.textContent = 'До конца: '+formatWeeklyCountdown(sw.end-new Date());
+      else timerEl.textContent = 'Начало через '+formatWeeklyCountdown(sw.start-new Date());
+    }
+    wcLoadLocal('salavat', WC.salavat.weekId);
+    const myEl = document.getElementById('weeklyChallengeMyCount');
+    if(myEl) myEl.textContent = WC.salavat.myCount.toLocaleString('ru-RU');
+    wcUpdateSheetProgress('salavat');
+    document.getElementById('weeklyChallengeSheet').classList.add('show');
+    document.getElementById('weeklyChallengeBackdrop').classList.add('show');
+  } else {
+    const iw = istighfarWindow();
+    const timerEl = document.getElementById('istighfar_sheetTimer');
+    if(timerEl){
+      if(iw.active) timerEl.textContent = 'До конца: '+formatWeeklyCountdown(iw.end-new Date());
+      else timerEl.textContent = 'Начало через '+formatWeeklyCountdown(iw.start-new Date());
+    }
+    wcLoadLocal('istighfar', WC.istighfar.weekId);
+    const myEl = document.getElementById('istighfarWeeklyMyCount');
+    if(myEl) myEl.textContent = WC.istighfar.myCount.toLocaleString('ru-RU');
+    wcUpdateSheetProgress('istighfar');
+    document.getElementById('istighfarWeeklySheet').classList.add('show');
+    document.getElementById('istighfarWeeklyBackdrop').classList.add('show');
+  }
+}
+
+function closeWeeklyChallengeSheet(){
+  popSheetHistory();
+  document.getElementById('weeklyChallengeSheet').classList.remove('show');
+  document.getElementById('weeklyChallengeBackdrop').classList.remove('show');
+  const iSheet = document.getElementById('istighfarWeeklySheet');
+  const iBack  = document.getElementById('istighfarWeeklyBackdrop');
+  if(iSheet) iSheet.classList.remove('show');
+  if(iBack)  iBack.classList.remove('show');
+}
+
+document.getElementById('weeklyChallengeClose').addEventListener('click', closeWeeklyChallengeSheet);
+document.getElementById('weeklyChallengeBackdrop').addEventListener('click', closeWeeklyChallengeSheet);
+document.getElementById('istighfarWeeklyClose').addEventListener('click', closeWeeklyChallengeSheet);
+document.getElementById('istighfarWeeklyBackdrop').addEventListener('click', closeWeeklyChallengeSheet);
+
+// Salavat circle click
+document.getElementById('weeklyChallengeCircle').addEventListener('click', ()=>{
+  const win = salavatWindow();
+  if(!win.active){ showToast('Салават начнётся в четверг в 20:00'); return; }
+  WC.salavat.myCount++;
+  WC.salavat.count++;
+  WC.salavat.pendingClicks++;
+  wcSaveLocal('salavat', WC.salavat.weekId);
   const myEl = document.getElementById('weeklyChallengeMyCount');
-  if(myEl) myEl.textContent = weeklyChallengeState[idx].myCount.toLocaleString('ru-RU');
-  
-  updateWeeklyChallengeProgress(idx);
-
+  if(myEl) myEl.textContent = WC.salavat.myCount.toLocaleString('ru-RU');
+  wcUpdateSheetProgress('salavat');
   if(navigator.vibrate) try{ navigator.vibrate(10); }catch(e){}
-
-  if(weeklyChallengeClickTimer) clearTimeout(weeklyChallengeClickTimer);
-  weeklyChallengeClickTimer = setTimeout(flushWeeklyChallengeClicks, 300);
+  if(WC.salavat.clickTimer) clearTimeout(WC.salavat.clickTimer);
+  WC.salavat.clickTimer = setTimeout(()=>wcFlushClicks('salavat'), 300);
 });
+
+// Istighfar circle click
+document.getElementById('istighfarWeeklyCircle').addEventListener('click', ()=>{
+  const win = istighfarWindow();
+  if(!win.active){ showToast('Истигфар начнётся в пятницу в 20:00'); return; }
+  WC.istighfar.myCount++;
+  WC.istighfar.count++;
+  WC.istighfar.pendingClicks++;
+  wcSaveLocal('istighfar', WC.istighfar.weekId);
+  const myEl = document.getElementById('istighfarWeeklyMyCount');
+  if(myEl) myEl.textContent = WC.istighfar.myCount.toLocaleString('ru-RU');
+  wcUpdateSheetProgress('istighfar');
+  if(navigator.vibrate) try{ navigator.vibrate(10); }catch(e){}
+  if(WC.istighfar.clickTimer) clearTimeout(WC.istighfar.clickTimer);
+  WC.istighfar.clickTimer = setTimeout(()=>wcFlushClicks('istighfar'), 300);
+});
+
+// Legacy stubs to avoid errors from popstate / other code
+function setWeeklyChallengeUI(){}
+function nextWeeklyChallenge(){}
+function prevWeeklyChallenge(){}
+function refreshWeeklyChallengeState(){ refreshAllWeeklyCards(); }
+// Legacy card click listener no longer needed (onclick= in HTML)
+
+
+
+
+
+
 
 miscSearchInput.addEventListener('input', ()=>{
   const q = miscSearchInput.value.trim();
