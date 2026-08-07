@@ -3006,6 +3006,19 @@ function wcLoadLocal(chId, weekId){
   }catch(e){}
 }
 
+function wcForceSyncUser(chId){
+  const wc = WC[chId];
+  if(fbDb && wc.weekId && fbAuth && fbAuth.currentUser){
+    const uid = fbAuth.currentUser.uid;
+    const uName = (window.state && state.profile && state.profile.username) ? state.profile.username : 'Аноним';
+    if(wc.myCount > 0){
+      fbDb.ref(wc.node+'/'+wc.weekId+'/users/'+uid+'/count').set(wc.myCount);
+      fbDb.ref(wc.node+'/'+wc.weekId+'/users/'+uid+'/name').set(uName);
+      fbDb.ref(wc.node+'/'+wc.weekId+'/users/'+uid+'/updatedAt').set(firebase.database.ServerValue.TIMESTAMP);
+    }
+  }
+}
+
 async function wcAttachListener(chId, weekId){
   WC[chId].listenerAttached = weekId;
   await fbAuthReady;
@@ -3047,6 +3060,8 @@ async function wcAttachListener(chId, weekId){
     });
     container.innerHTML = html;
   });
+  
+  wcForceSyncUser(chId);
 }
 
 function wcUpdateCard(chId, weekId){
@@ -3096,13 +3111,7 @@ function wcFlushClicks(chId){
   wcSaveLocal(chId, wc.weekId);
   if(fbDb && wc.weekId){
     fbDb.ref(wc.node+'/'+wc.weekId+'/count').set(firebase.database.ServerValue.increment(delta));
-    if(fbAuth && fbAuth.currentUser){
-      const uid = fbAuth.currentUser.uid;
-      const uName = (window.state && state.profile && state.profile.name) ? state.profile.name : 'Аноним';
-      fbDb.ref(wc.node+'/'+wc.weekId+'/users/'+uid+'/count').set(firebase.database.ServerValue.increment(delta));
-      fbDb.ref(wc.node+'/'+wc.weekId+'/users/'+uid+'/name').set(uName);
-      fbDb.ref(wc.node+'/'+wc.weekId+'/users/'+uid+'/updatedAt').set(firebase.database.ServerValue.TIMESTAMP);
-    }
+    wcForceSyncUser(chId);
   }
 }
 
