@@ -6006,7 +6006,21 @@ window.toggleFloatingCounter = function(type, btn){
         btn.style.color = type==='weekly_istighfar' ? 'var(--jade)' : ''; 
       }
     } else {
-      window.AndroidApp.startFloatingCounter(type);
+      let initialCount = 0;
+      if(type === 'weekly_salavat') initialCount = WC.salavat.myCount;
+      else if(type === 'weekly_istighfar') initialCount = WC.istighfar.myCount;
+      else if(type === 'dhikr') {
+        const numEl = document.getElementById('dhikrCounterNum');
+        if(numEl) initialCount = parseInt(numEl.textContent.replace(/\s/g,''), 10) || 0;
+      }
+      
+      // Pass initialCount to Android (if supported, otherwise it ignores the 2nd param or we fallback)
+      if (window.AndroidApp.startFloatingCounterWithCount) {
+          window.AndroidApp.startFloatingCounterWithCount(type, initialCount);
+      } else {
+          window.AndroidApp.startFloatingCounter(type); // fallback for older versions
+      }
+      
       if(btn){ 
         btn.textContent='⏹ Остановить плавающий счётчик'; 
         btn.style.borderColor='var(--jade)'; 
