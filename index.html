@@ -543,6 +543,8 @@ body{
 .duel-participant-chip.live-now{border-color:var(--gold) !important;animation:chip-live 1s ease-out 2;}
 @keyframes remote-num-pop{0%{transform:scale(1);}40%{transform:scale(1.12);color:var(--jade);}100%{transform:scale(1);}}
 .counter-circle.remote-pop .counter-num{animation:remote-num-pop 0.45s ease-out;}
+.btn-float-dhikr{background:linear-gradient(135deg,rgba(203,161,53,0.18),rgba(203,161,53,0.06));border:1px solid var(--gold);color:var(--gold-soft);font-size:13px;font-weight:600;border-radius:12px;padding:10px 18px;width:100%;margin-top:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .2s;}
+.btn-float-dhikr:active{opacity:.7;}
 .dhikr-ar{ font-family:var(--font-ar); font-size:23px; color:var(--gold-soft); direction:rtl; line-height:1.85; margin-bottom:12px; text-align:right; }
 .dhikr-tr{ font-size:13.5px; color:var(--ivory); font-weight:700; margin-bottom:6px; line-height:1.5; }
 .dhikr-m{ font-size:13px; color:var(--ivory-dim); line-height:1.6; }
@@ -755,6 +757,10 @@ body{
           <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12M12 3l4 4M12 3L8 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 13v6a2 2 0 002 2h10a2 2 0 002-2v-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span>Установите как приложение: нажмите <b>«Поделиться»</b> внизу экрана в Safari, затем <b>«На экран Домой»</b></span>
         </div>
+        <a href="99ism-android.apk" class="android-app-banner" id="androidAppBanner" download>
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12M12 15l-4-4M12 15l4-4M5 21h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Скачать настоящее приложение для Android (APK)</span>
+        </a>
         <div class="hero">
           <svg class="hero-star" viewBox="0 0 24 24" fill="none">
             <path d="M21 12.9A9 9 0 1111.1 3 7 7 0 0021 12.9z" stroke="#e4c878" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
@@ -1442,6 +1448,7 @@ body{
         <div class="counter-target" id="dhikrCounterTargetLabel" style="display:none;"></div>
         <p class="counter-hint">Нажимайте на круг, чтобы считать</p>
         <button class="btn btn-ghost" id="dhikrCounterReset" style="width:100%;margin-top:6px;">Сбросить счётчик</button>
+        <button class="btn-float-dhikr" id="dhikrFloatBtn" onclick="toggleFloatingCounter('dhikr', this)" style="display:none;">📿 Плавающий счётчик</button>
       </div>
     </div>
   </div>
@@ -1510,6 +1517,7 @@ body{
       <div class="dhikr-m" style="text-align:center;margin-bottom:6px;">О Аллах, благослови Мухаммада и его род</div>
       <div class="counter-circle" id="weeklyChallengeCircle"><span class="counter-num" id="weeklyChallengeNum">0</span></div>
       <p class="counter-hint">Общий счёт всех участников — нажимайте вместе</p>
+      <button class="btn-float-dhikr" id="weeklyFloatBtn" onclick="toggleFloatingCounter('weekly', this)" style="display:none;">📿 Плавающий счётчик</button>
       <div class="weekly-progress-bar"><div class="weekly-progress-fill weekly-challenge-fill-target"></div></div>
       <div class="weekly-challenge-count-label"></div>
       <p style="font-size:12px;color:var(--ivory-dim);margin-top:14px;">Ваш вклад: <b id="weeklyChallengeMyCount" style="color:var(--gold-soft);">0</b></p>
@@ -2939,6 +2947,8 @@ function getWeeklyChallengeUserKey(){
 
 function getWeeklyChallengeUserName(){
   if(typeof state !== 'undefined' && state.profile && state.profile.username){
+    // Always cache the real username so it's available even before auth loads next time
+    try{ localStorage.setItem('weeklyChallengeUserName', state.profile.username); }catch(e){}
     return state.profile.username;
   }
   let localName = null;
@@ -3007,6 +3017,18 @@ async function attachWeeklyChallengeListener(weekId){
     weeklyChallengeParticipants = users;
     renderWeeklyChallengeParticipants();
   });
+
+  // Fix name in Firebase if it was stored as 'Участник' before auth loaded
+  const userKey = getWeeklyChallengeUserKey();
+  const userName = getWeeklyChallengeUserName();
+  if(userName && userName !== 'Участник'){
+    fbDb.ref('weeklyChallenge/'+weekId+'/users/'+userKey).once('value', snap=>{
+      const data = snap.val();
+      if(data && (data.name === 'Участник' || !data.name)){
+        fbDb.ref('weeklyChallenge/'+weekId+'/users/'+userKey+'/name').set(userName);
+      }
+    });
+  }
 }
 
 function updateWeeklyChallengeProgress(){
@@ -3031,13 +3053,18 @@ function renderWeeklyChallengeParticipants(){
   const LIVE_MS = 12000; // show live indicator for 12 sec
 
   // Always sync "my count" = server value + pending (not yet flushed) clicks
+  // Sync myCount from Firebase only when server has more than we've confirmed locally
+  // (handles multi-device sessions). Never add pendingClicks to already-optimistic local count.
   if(myKey && weeklyChallengeParticipants[myKey]){
     const serverCount = weeklyChallengeParticipants[myKey].count || 0;
-    const accurate = serverCount + weeklyChallengePendingClicks;
-    weeklyChallengeMyCount = accurate;
-    saveWeeklyChallengeLocalState(weeklyChallengeWeekId);
-    const myEl = document.getElementById('weeklyChallengeMyCount');
-    if(myEl) myEl.textContent = weeklyChallengeMyCount.toLocaleString('ru-RU');
+    // confirmedLocalCount = what Firebase should already know (excludes still-pending)
+    const confirmedLocalCount = weeklyChallengeMyCount - weeklyChallengePendingClicks;
+    if(serverCount > confirmedLocalCount){
+      weeklyChallengeMyCount = serverCount + weeklyChallengePendingClicks;
+      saveWeeklyChallengeLocalState(weeklyChallengeWeekId);
+      const myEl = document.getElementById('weeklyChallengeMyCount');
+      if(myEl) myEl.textContent = weeklyChallengeMyCount.toLocaleString('ru-RU');
+    }
   }
 
   if(entries.length === 0){
@@ -3152,7 +3179,7 @@ document.getElementById('weeklyChallengeCircle').addEventListener('click', ()=>{
     if(!weeklyChallengeParticipants[myKey]){
       weeklyChallengeParticipants[myKey] = { name: myName, count: 0 };
     }
-    weeklyChallengeParticipants[myKey].count = weeklyChallengeMyCount;
+    // Don't update .count here — render reads weeklyChallengeMyCount directly for "me"
     weeklyChallengeParticipants[myKey].name = myName;
   }
 
@@ -4456,6 +4483,21 @@ function updateProfileUI(){
     renderAvatarInto(document.getElementById('ownAvatarCircle'), state.profile.avatar, state.profile.username);
     loadOwnProfile();
     loadAdminUserCount();
+
+    // Cache username so weekly challenge can use it even before auth loads
+    try{ localStorage.setItem('weeklyChallengeUserName', state.profile.username); }catch(e){}
+
+    // Fix name in Firebase if it was stored as 'Участник' (race condition on first launch)
+    if(fbDb && weeklyChallengeWeekId){
+      const userKey = getWeeklyChallengeUserKey();
+      const realName = state.profile.username;
+      fbDb.ref('weeklyChallenge/'+weeklyChallengeWeekId+'/users/'+userKey+'/name').once('value', snap=>{
+        const stored = snap.val();
+        if(!stored || stored === 'Участник'){
+          fbDb.ref('weeklyChallenge/'+weeklyChallengeWeekId+'/users/'+userKey+'/name').set(realName);
+        }
+      });
+    }
   } else {
     authCard.style.display = 'block';
     profileCard.style.display = 'none';
@@ -5926,6 +5968,86 @@ document.addEventListener('touchend', (e) => {
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
 }
+
+/* =====================================================
+   FLOATING DHIKR COUNTER
+===================================================== */
+(function initFloatingCounterUI(){
+  // Only show buttons in Android app (AndroidApp bridge available)
+  if(typeof window.AndroidApp === 'undefined') return;
+
+  // Show floating buttons
+  const dhikrBtn = document.getElementById('dhikrFloatBtn');
+  const weeklyBtn = document.getElementById('weeklyFloatBtn');
+  if(dhikrBtn) dhikrBtn.style.display = 'flex';
+  if(weeklyBtn) weeklyBtn.style.display = 'flex';
+
+  // Update button state on open
+  function refreshFloatBtnState(type){
+    const btn = type === 'dhikr' ? dhikrBtn : weeklyBtn;
+    if(!btn) return;
+    try{
+      const active = window.AndroidApp.isFloatingActive();
+      if(active && window.AndroidApp.getFloatingType && window.AndroidApp.getFloatingType() === type){
+        btn.textContent = '⏹ Остановить плавающий счётчик';
+        btn.style.borderColor = 'var(--jade)';
+        btn.style.color = 'var(--jade)';
+      } else {
+        btn.innerHTML = '📿 Плавающий счётчик';
+        btn.style.borderColor = '';
+        btn.style.color = '';
+      }
+    }catch(e){}
+  }
+
+  // Expose refresh for sheet open events
+  window.refreshFloatBtnState = refreshFloatBtnState;
+})();
+
+window.toggleFloatingCounter = function(type, btn){
+  if(typeof window.AndroidApp === 'undefined') return;
+  try{
+    const active = window.AndroidApp.isFloatingActive();
+    if(active){
+      window.AndroidApp.stopFloatingCounter();
+      if(btn){ btn.innerHTML = '📿 Плавающий счётчик'; btn.style.borderColor=''; btn.style.color=''; }
+    } else {
+      window.AndroidApp.startFloatingCounter(type);
+      if(btn){ btn.textContent='⏹ Остановить плавающий счётчик'; btn.style.borderColor='var(--jade)'; btn.style.color='var(--jade)'; }
+    }
+  }catch(e){ console.error(e); }
+};
+
+// Called from Android onResume when floating counter has accumulated taps
+window.onFloatingCountSync = function(count, type){
+  if(count <= 0) return;
+  if(type === 'weekly'){
+    // Add to weekly challenge
+    weeklyChallengeMyCount += count;
+    weeklyChallengeCount += count;
+    weeklyChallengePendingClicks += count;
+    updateWeeklyChallengeProgress();
+    const myEl = document.getElementById('weeklyChallengeMyCount');
+    if(myEl) myEl.textContent = weeklyChallengeMyCount.toLocaleString('ru-RU');
+    flushWeeklyChallengeClicks();
+    // Reset button state
+    const btn = document.getElementById('weeklyFloatBtn');
+    if(btn){ btn.innerHTML='📿 Плавающий счётчик'; btn.style.borderColor=''; btn.style.color=''; }
+    showToast('+' + count.toLocaleString('ru-RU') + ' добавлено к заданию недели ✓');
+  } else {
+    // Add to dhikr counter (general counter)
+    const numEl = document.getElementById('dhikrCounterNum');
+    if(numEl){
+      const cur = parseInt(numEl.textContent.replace(/\s/g,''), 10) || 0;
+      numEl.textContent = (cur + count).toLocaleString('ru-RU');
+    }
+    // Reset button state
+    const btn = document.getElementById('dhikrFloatBtn');
+    if(btn){ btn.innerHTML='📿 Плавающий счётчик'; btn.style.borderColor=''; btn.style.color=''; }
+    showToast('+' + count.toLocaleString('ru-RU') + ' добавлено к счётчику зикра ✓');
+  }
+};
+
 </script>
 </body>
 </html>
