@@ -2945,7 +2945,6 @@ let weeklyChallengeWeekId = null;
 let weeklyChallengeClickTimer = null;
 let weeklyChallengeCount = 0;
 let weeklyChallengeMyCount = 0;
-const WEEKLY_CHALLENGE_TARGET = 100000;
 
 const weeklyChallengeState = WEEKLY_CHALLENGES.map(() => ({
   count: 0,
@@ -3098,8 +3097,7 @@ document.getElementById('weeklyChallengeCard').addEventListener('click', openWee
 document.getElementById('weeklyChallengeClose').addEventListener('click', closeWeeklyChallengeSheet);
 document.getElementById('weeklyChallengeBackdrop').addEventListener('click', closeWeeklyChallengeSheet);
 
-let weeklyChallengeClickTimer = null;
-let weeklyChallengePendingClicks = 0;
+
 
 function flushWeeklyChallengeClicks() {
   const weekId = weeklyChallengeWeekId;
