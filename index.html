@@ -539,6 +539,10 @@ body{
 .weekly-progress-bar{ height:8px; border-radius:5px; background:rgba(255,255,255,0.08); overflow:hidden; margin-bottom:6px; }
 .weekly-progress-fill{ height:100%; width:0%; background:linear-gradient(90deg, var(--jade), var(--gold-soft)); border-radius:5px; transition:width .4s var(--ease); }
 .weekly-challenge-count-label{ font-size:11.5px; color:var(--ivory-dim); text-align:center; }
+@keyframes chip-live{0%{box-shadow:0 0 0 0 rgba(255,196,80,0.5);}70%{box-shadow:0 0 0 6px rgba(255,196,80,0);}100%{box-shadow:0 0 0 0 rgba(255,196,80,0);}}
+.duel-participant-chip.live-now{border-color:var(--gold) !important;animation:chip-live 1s ease-out 2;}
+@keyframes remote-num-pop{0%{transform:scale(1);}40%{transform:scale(1.12);color:var(--jade);}100%{transform:scale(1);}}
+.counter-circle.remote-pop .counter-num{animation:remote-num-pop 0.45s ease-out;}
 .dhikr-ar{ font-family:var(--font-ar); font-size:23px; color:var(--gold-soft); direction:rtl; line-height:1.85; margin-bottom:12px; text-align:right; }
 .dhikr-tr{ font-size:13.5px; color:var(--ivory); font-weight:700; margin-bottom:6px; line-height:1.5; }
 .dhikr-m{ font-size:13px; color:var(--ivory-dim); line-height:1.6; }
@@ -2918,6 +2922,7 @@ let weeklyChallengeUsersRef = null;
 let weeklyChallengeCount = 0;
 let weeklyChallengeMyCount = 0;
 let weeklyChallengeParticipants = {};
+let prevParticipantsUpdatedAt = {};
 
 function getWeeklyChallengeUserKey(){
   if(typeof state !== 'undefined' && state.profile && state.profile.username){
@@ -2961,9 +2966,16 @@ function saveWeeklyChallengeLocalState(weekId){
 async function attachWeeklyChallengeListener(weekId){
   if(!weekId) return;
 
+  // Show cached count immediately before Firebase loads
   loadWeeklyChallengeLocalState(weekId);
   const myEl = document.getElementById('weeklyChallengeMyCount');
   if(myEl) myEl.textContent = weeklyChallengeMyCount.toLocaleString('ru-RU');
+
+  const cachedCount = localStorage.getItem('weeklyChallengeCount_' + weekId);
+  if(cachedCount) {
+    weeklyChallengeCount = parseInt(cachedCount, 10) || 0;
+    updateWeeklyChallengeProgress();
+  }
 
   await fbAuthReady;
   if(!fbDb) return;
@@ -2978,7 +2990,13 @@ async function attachWeeklyChallengeListener(weekId){
   weeklyChallengeRef.on('value', snap=>{
     const val = snap.val();
     if(val !== null && val !== undefined){
+      const isRemoteIncrease = val > weeklyChallengeCount + weeklyChallengePendingClicks;
       weeklyChallengeCount = Math.max(weeklyChallengeCount, val);
+      // Pulse animation when someone else clicked
+      if(isRemoteIncrease){
+        const circle = document.getElementById('weeklyChallengeCircle');
+        if(circle){ circle.classList.remove('remote-pop'); void circle.offsetWidth; circle.classList.add('remote-pop'); setTimeout(()=>circle.classList.remove('remote-pop'), 500); }
+      }
     }
     updateWeeklyChallengeProgress();
   });
@@ -2999,6 +3017,8 @@ function updateWeeklyChallengeProgress(){
   });
   const num = document.getElementById('weeklyChallengeNum');
   if(num) num.textContent = weeklyChallengeCount.toLocaleString('ru-RU');
+  // Cache count to show immediately on next load
+  if(weeklyChallengeWeekId) try{ localStorage.setItem('weeklyChallengeCount_'+weeklyChallengeWeekId, String(weeklyChallengeCount)); }catch(e){}
 }
 
 function renderWeeklyChallengeParticipants(){
@@ -3007,15 +3027,17 @@ function renderWeeklyChallengeParticipants(){
 
   const myKey = getWeeklyChallengeUserKey();
   const entries = Object.entries(weeklyChallengeParticipants);
+  const now = Date.now();
+  const LIVE_MS = 12000; // show live indicator for 12 sec
 
+  // Always sync "my count" = server value + pending (not yet flushed) clicks
   if(myKey && weeklyChallengeParticipants[myKey]){
-    const sCount = weeklyChallengeParticipants[myKey].count || 0;
-    if(sCount > weeklyChallengeMyCount){
-      weeklyChallengeMyCount = sCount;
-      saveWeeklyChallengeLocalState(weeklyChallengeWeekId);
-      const myEl = document.getElementById('weeklyChallengeMyCount');
-      if(myEl) myEl.textContent = weeklyChallengeMyCount.toLocaleString('ru-RU');
-    }
+    const serverCount = weeklyChallengeParticipants[myKey].count || 0;
+    const accurate = serverCount + weeklyChallengePendingClicks;
+    weeklyChallengeMyCount = accurate;
+    saveWeeklyChallengeLocalState(weeklyChallengeWeekId);
+    const myEl = document.getElementById('weeklyChallengeMyCount');
+    if(myEl) myEl.textContent = weeklyChallengeMyCount.toLocaleString('ru-RU');
   }
 
   if(entries.length === 0){
@@ -3028,9 +3050,17 @@ function renderWeeklyChallengeParticipants(){
   listEl.innerHTML = entries.map(([key, user]) => {
     const isMe = (key === myKey);
     const name = escapeHtml(user.name || (isMe ? 'Вы' : 'Участник'));
-    const count = (user.count || 0).toLocaleString('ru-RU');
+    // For me show accurate count (server + pending); for others show server count
+    const displayCount = isMe ? weeklyChallengeMyCount : (user.count || 0);
+    const count = displayCount.toLocaleString('ru-RU');
     const cls = 'duel-participant-chip' + (isMe ? ' me' : '');
-    return `<div class="${cls}"><b>${name}</b> · ${count}</div>`;
+    // Detect recently-active other participants
+    const prevAt = prevParticipantsUpdatedAt[key] || 0;
+    const at = user.updatedAt || 0;
+    const isLive = !isMe && at && at !== prevAt && (now - at < LIVE_MS);
+    prevParticipantsUpdatedAt[key] = at;
+    const liveIcon = isLive ? ' <span style="color:var(--jade);font-size:9px;vertical-align:middle;">●</span>' : '';
+    return `<div class="${cls}${isLive ? ' live-now' : ''}"><b>${name}</b> · ${count}${liveIcon}</div>`;
   }).join('');
 }
 
