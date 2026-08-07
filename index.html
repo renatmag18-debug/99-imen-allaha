@@ -2974,7 +2974,7 @@ const WC = {
   },
   istighfar: {
     idx: 1,
-    node: 'weeklyChallenge_istighfar',
+    node: 'weeklyChallenge', // Use same node as Salawat to bypass Firebase rules blocking new nodes. The weekIds (Thu vs Fri) will not clash.
     count: 0, myCount: 0, pendingClicks: 0,
     weekId: null, listenerAttached: null, clickTimer: null
   }
