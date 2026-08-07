@@ -1537,7 +1537,7 @@ body{
       <div class="dhikr-m" id="wcSheetM" style="text-align:center;margin-bottom:6px;">О Аллах, благослови Мухаммада и его род</div>
       <div class="counter-circle" id="weeklyChallengeCircle"><span class="counter-num" id="weeklyChallengeNum">0</span></div>
       <p class="counter-hint">Общий счёт всех участников — нажимайте вместе</p>
-      <button class="btn-float-dhikr" id="weeklyFloatBtn" onclick="toggleFloatingCounter('weekly_' + currentWeeklyChallengeIndex, this)" style="display:none;">📿 Плавающий счётчик</button>
+      <button class="btn-float-dhikr" id="weeklyFloatBtn" onclick="toggleFloatingCounter('weekly_salavat', this)" style="display:none;">📿 Плавающий счётчик</button>
       <div class="weekly-progress-bar"><div class="weekly-progress-fill weekly-challenge-fill-target"></div></div>
       <div class="weekly-challenge-count-label"></div>
       <p style="font-size:12px;color:var(--ivory-dim);margin-top:14px;">Ваш вклад: <b id="weeklyChallengeMyCount" style="color:var(--gold-soft);">0</b></p>
@@ -1562,7 +1562,7 @@ body{
       <div class="dhikr-m" style="text-align:center;margin-bottom:6px;">Прошу прощения у Аллаха</div>
       <div class="counter-circle" id="istighfarWeeklyCircle" style="border-color:var(--jade);"><span class="counter-num" id="istighfarWeeklyNum" style="color:var(--jade);">0</span></div>
       <p class="counter-hint">Общий счёт всех участников — нажимайте вместе</p>
-      <button class="btn-float-dhikr" id="istighfarFloatBtn" onclick="toggleFloatingCounter('weekly_1', this)" style="display:none;border-color:var(--jade);color:var(--jade);">📿 Плавающий счётчик</button>
+      <button class="btn-float-dhikr" id="istighfarFloatBtn" onclick="toggleFloatingCounter('weekly_istighfar', this)" style="display:none;border-color:var(--jade);color:var(--jade);">📿 Плавающий счётчик</button>
       <div class="weekly-progress-bar"><div class="weekly-progress-fill" style="background:linear-gradient(90deg,var(--jade),#5efad0);" id="istighfarWeeklyFillSheet"></div></div>
       <div class="weekly-challenge-count-label" id="istighfarWeeklyCountLabel"></div>
       <p style="font-size:12px;color:var(--ivory-dim);margin-top:14px;">Ваш вклад: <b id="istighfarWeeklyMyCount" style="color:var(--jade);">0</b></p>
@@ -5961,25 +5961,31 @@ if('serviceWorker' in navigator){
 
   // Show floating buttons
   const dhikrBtn = document.getElementById('dhikrFloatBtn');
-  const weeklyBtn = document.getElementById('weeklyFloatBtn');
+  const weeklyBtn = document.getElementById('weeklyFloatBtn'); // Salavat
+  const istighfarBtn = document.getElementById('istighfarFloatBtn'); // Istighfar
   if(dhikrBtn) dhikrBtn.style.display = 'flex';
   if(weeklyBtn) weeklyBtn.style.display = 'flex';
+  if(istighfarBtn) istighfarBtn.style.display = 'flex';
 
   // Update button state on open
   function refreshFloatBtnState(type){
-    const btn = type === 'dhikr' ? dhikrBtn : weeklyBtn;
+    let btn = null;
+    if(type === 'dhikr') btn = dhikrBtn;
+    else if(type === 'weekly_salavat') btn = weeklyBtn;
+    else if(type === 'weekly_istighfar') btn = istighfarBtn;
     if(!btn) return;
+    
     try{
       const active = window.AndroidApp.isFloatingActive();
       const androidType = window.AndroidApp.getFloatingType ? window.AndroidApp.getFloatingType() : '';
       if(active && androidType && (androidType === type || androidType.startsWith(type))){
         btn.textContent = '⏹ Остановить плавающий счётчик';
-        btn.style.borderColor = 'var(--jade)';
-        btn.style.color = 'var(--jade)';
+        btn.style.borderColor = (type==='weekly_istighfar') ? 'var(--jade)' : 'var(--jade)';
+        btn.style.color = (type==='weekly_istighfar') ? 'var(--jade)' : 'var(--jade)';
       } else {
         btn.innerHTML = '📿 Плавающий счётчик';
-        btn.style.borderColor = '';
-        btn.style.color = '';
+        btn.style.borderColor = (type==='weekly_istighfar') ? 'var(--jade)' : '';
+        btn.style.color = (type==='weekly_istighfar') ? 'var(--jade)' : '';
       }
     }catch(e){}
   }
@@ -5994,10 +6000,18 @@ window.toggleFloatingCounter = function(type, btn){
     const active = window.AndroidApp.isFloatingActive();
     if(active){
       window.AndroidApp.stopFloatingCounter();
-      if(btn){ btn.innerHTML = '📿 Плавающий счётчик'; btn.style.borderColor=''; btn.style.color=''; }
+      if(btn){ 
+        btn.innerHTML = '📿 Плавающий счётчик'; 
+        btn.style.borderColor = type==='weekly_istighfar' ? 'var(--jade)' : ''; 
+        btn.style.color = type==='weekly_istighfar' ? 'var(--jade)' : ''; 
+      }
     } else {
       window.AndroidApp.startFloatingCounter(type);
-      if(btn){ btn.textContent='⏹ Остановить плавающий счётчик'; btn.style.borderColor='var(--jade)'; btn.style.color='var(--jade)'; }
+      if(btn){ 
+        btn.textContent='⏹ Остановить плавающий счётчик'; 
+        btn.style.borderColor='var(--jade)'; 
+        btn.style.color='var(--jade)'; 
+      }
     }
   }catch(e){ console.error(e); }
 };
@@ -6005,25 +6019,32 @@ window.toggleFloatingCounter = function(type, btn){
 // Called from Android onResume when floating counter has accumulated taps
 window.onFloatingCountSync = function(count, type){
   if(count <= 0) return;
-  if(type === 'weekly' || type.startsWith('weekly_')){
-    let idx = 0;
-    if(type.startsWith('weekly_')) {
-        idx = parseInt(type.split('_')[1], 10) || 0;
+  
+  if(type === 'weekly_salavat' || type === 'weekly_istighfar' || type.startsWith('weekly_0') || type.startsWith('weekly_1')){
+    let chId = 'salavat';
+    if(type === 'weekly_istighfar' || type.startsWith('weekly_1')) chId = 'istighfar';
+    
+    const wc = WC[chId];
+    wc.myCount += count;
+    wc.count += count;
+    wc.pendingClicks += count;
+    
+    wcUpdateSheetProgress(chId);
+    
+    const myElId = chId === 'salavat' ? 'weeklyChallengeMyCount' : 'istighfarWeeklyMyCount';
+    const myEl = document.getElementById(myElId);
+    if(myEl) myEl.textContent = wc.myCount.toLocaleString('ru-RU');
+    
+    wcFlushClicks(chId);
+    
+    const btnId = chId === 'salavat' ? 'weeklyFloatBtn' : 'istighfarFloatBtn';
+    const btn = document.getElementById(btnId);
+    if(btn){ 
+      btn.innerHTML='📿 Плавающий счётчик'; 
+      btn.style.borderColor = chId==='istighfar' ? 'var(--jade)' : ''; 
+      btn.style.color = chId==='istighfar' ? 'var(--jade)' : ''; 
+      btn.dataset.active='false'; 
     }
-    weeklyChallengeState[idx].myCount += count;
-    weeklyChallengeState[idx].count += count;
-    weeklyChallengeState[idx].pendingClicks += count;
-    updateWeeklyChallengeProgress(idx);
-    
-    if (idx === currentWeeklyChallengeIndex) {
-      const myEl = document.getElementById('weeklyChallengeMyCount');
-      if(myEl) myEl.textContent = weeklyChallengeState[idx].myCount.toLocaleString('ru-RU');
-    }
-    
-    flushWeeklyChallengeClicks();
-    
-    const btn = document.getElementById('weeklyFloatBtn');
-    if(btn){ btn.innerHTML='📿 Плавающий счётчик'; btn.style.borderColor=''; btn.style.color=''; btn.dataset.active='false'; }
     showToast('+' + count.toLocaleString('ru-RU') + ' добавлено к заданию недели ✓');
   } else {
     // Add to dhikr counter (general counter)
