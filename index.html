@@ -6159,15 +6159,19 @@ async function checkForAppUpdate(){
 
     localStorage.setItem('lastAppUpdateCheck', now.toString());
     const resp = await fetch('https://99ism.ru/version.json', {cache:'no-store'});
+    if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
     const data = await resp.json();
-    const serverVersion = data.versionCode;
+    const serverVersion = parseInt(data.versionCode, 10);
+    if(!serverVersion || isNaN(serverVersion)) throw new Error('Invalid versionCode');
+
     const lastIgnoredVersion = parseInt(localStorage.getItem('ignoredUpdateVersion')||'0', 10);
 
     // Try to get current app version from Android
     if(window.AndroidApp && window.AndroidApp.getAppVersion){
       try{
         const currentVersion = parseInt(window.AndroidApp.getAppVersion(), 10);
-        if(serverVersion > currentVersion && serverVersion !== lastIgnoredVersion){
+        if(!isNaN(currentVersion) && serverVersion > currentVersion && serverVersion !== lastIgnoredVersion){
           showUpdatePrompt(serverVersion);
         }
       }catch(e){ console.warn('Could not get app version:', e); }
@@ -6175,12 +6179,35 @@ async function checkForAppUpdate(){
   }catch(e){ console.warn('App update check failed:', e); }
 }
 
-function showUpdatePrompt(newVersion){
+async function showUpdatePrompt(newVersion){
   const msg = `Доступно обновление приложения (v${newVersion}). Скачать?`;
   if(confirm(msg)){
-    window.location.href = 'https://99ism.ru/99ism.apk';
+    await installAPKUpdate();
   } else {
     localStorage.setItem('ignoredUpdateVersion', newVersion.toString());
+  }
+}
+
+async function installAPKUpdate(){
+  try {
+    // Используем встроенный Android метод для безопасной установки APK
+    if(window.AndroidApp && window.AndroidApp.installAPK){
+      window.AndroidApp.installAPK('https://99ism.ru/99ism.apk');
+      return;
+    }
+
+    // Fallback: прямое открытие с правильным Content-Type
+    const apkUrl = 'https://99ism.ru/99ism.apk?t=' + Date.now();
+    const a = document.createElement('a');
+    a.href = apkUrl;
+    a.download = '99ism.apk';
+    a.type = 'application/vnd.android.package-archive';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } catch(e) {
+    console.error('Ошибка при установке обновления:', e);
+    alert('Не удалось скачать обновление. Попробуйте позже.');
   }
 }
 
