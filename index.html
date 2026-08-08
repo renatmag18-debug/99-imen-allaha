@@ -6149,6 +6149,44 @@ document.addEventListener('touchend', (e) => {
   }
 }, {passive:true});
 
+// Check for app updates (Android TWA)
+async function checkForAppUpdate(){
+  if(!window.AndroidApp) return; // only for Android app
+  try{
+    const lastCheckTime = parseInt(localStorage.getItem('lastAppUpdateCheck')||'0', 10);
+    const now = Date.now();
+    if(now - lastCheckTime < 3600000) return; // check only once per hour
+
+    localStorage.setItem('lastAppUpdateCheck', now.toString());
+    const resp = await fetch('https://99ism.ru/version.json', {cache:'no-store'});
+    const data = await resp.json();
+    const serverVersion = data.versionCode;
+    const lastIgnoredVersion = parseInt(localStorage.getItem('ignoredUpdateVersion')||'0', 10);
+
+    // Try to get current app version from Android
+    if(window.AndroidApp && window.AndroidApp.getAppVersion){
+      try{
+        const currentVersion = parseInt(window.AndroidApp.getAppVersion(), 10);
+        if(serverVersion > currentVersion && serverVersion !== lastIgnoredVersion){
+          showUpdatePrompt(serverVersion);
+        }
+      }catch(e){ console.warn('Could not get app version:', e); }
+    }
+  }catch(e){ console.warn('App update check failed:', e); }
+}
+
+function showUpdatePrompt(newVersion){
+  const msg = `Доступно обновление приложения (v${newVersion}). Скачать?`;
+  if(confirm(msg)){
+    window.location.href = 'https://99ism.ru/99ism.apk';
+  } else {
+    localStorage.setItem('ignoredUpdateVersion', newVersion.toString());
+  }
+}
+
+// Check for updates on app start
+setTimeout(checkForAppUpdate, 2000);
+
 </script>
 </body>
 </html>
