@@ -6159,15 +6159,19 @@ async function checkForAppUpdate(){
 
     localStorage.setItem('lastAppUpdateCheck', now.toString());
     const resp = await fetch('https://99ism.ru/version.json', {cache:'no-store'});
+    if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
     const data = await resp.json();
-    const serverVersion = data.versionCode;
+    const serverVersion = parseInt(data.versionCode, 10);
+    if(!serverVersion || isNaN(serverVersion)) throw new Error('Invalid versionCode');
+
     const lastIgnoredVersion = parseInt(localStorage.getItem('ignoredUpdateVersion')||'0', 10);
 
     // Try to get current app version from Android
     if(window.AndroidApp && window.AndroidApp.getAppVersion){
       try{
         const currentVersion = parseInt(window.AndroidApp.getAppVersion(), 10);
-        if(serverVersion > currentVersion && serverVersion !== lastIgnoredVersion){
+        if(!isNaN(currentVersion) && serverVersion > currentVersion && serverVersion !== lastIgnoredVersion){
           showUpdatePrompt(serverVersion);
         }
       }catch(e){ console.warn('Could not get app version:', e); }
@@ -6175,17 +6179,61 @@ async function checkForAppUpdate(){
   }catch(e){ console.warn('App update check failed:', e); }
 }
 
-function showUpdatePrompt(newVersion){
+async function showUpdatePrompt(newVersion){
   const msg = `Доступно обновление приложения (v${newVersion}). Скачать?`;
   if(confirm(msg)){
-    window.location.href = 'https://99ism.ru/99ism.apk';
+    await installAPKUpdate();
   } else {
     localStorage.setItem('ignoredUpdateVersion', newVersion.toString());
   }
 }
 
-// Check for updates on app start
-setTimeout(checkForAppUpdate, 2000);
+async function installAPKUpdate(){
+  try {
+    const apkUrl = 'https://99ism.ru/99ism.apk';
+
+    // Метод 1: Встроенный Android интент для установки APK
+    if(window.AndroidApp && window.AndroidApp.installAPK){
+      console.log('Using native Android installAPK method');
+      window.AndroidApp.installAPK(apkUrl);
+      return;
+    }
+
+    // Метод 2: Использовать file:// scheme если доступен (для TWA)
+    if(window.AndroidApp && window.AndroidApp.openURL){
+      console.log('Using AndroidApp.openURL');
+      window.AndroidApp.openURL('file:///storage/emulated/0/Download/99ism.apk');
+      return;
+    }
+
+    // Метод 3: Прямое открытие с правильным Content-Type через iframe
+    console.log('Using iframe fallback');
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = apkUrl + '?t=' + Date.now();
+    document.body.appendChild(iframe);
+
+    // Cleanup после небольшой задержки
+    setTimeout(() => document.body.removeChild(iframe), 5000);
+
+    // Также попробуем открыть через обычную ссылку
+    setTimeout(() => {
+      const a = document.createElement('a');
+      a.href = apkUrl + '?cache=' + Date.now();
+      a.download = '99ism.apk';
+      a.click();
+    }, 1000);
+
+  } catch(e) {
+    console.error('Ошибка при установке обновления:', e);
+    alert('Не удалось скачать обновление.\n\nПожалуйста удалите старую версию приложения и попробуйте снова, или скачайте APK вручную с https://99ism.ru/99ism.apk');
+  }
+}
+
+// Автоматическая проверка отключена из-за проблем с установкой APK из приложения.
+// Пользователи могут обновляться вручную через https://99ism.ru/99ism.apk
+// TODO: Реализовать правильный механизм через Google Play или встроенный Android API
+// setTimeout(checkForAppUpdate, 2000);
 
 </script>
 </body>
