@@ -2435,9 +2435,9 @@ function dhikrCardHTML(item, tappable, favId){
     </div>`;
 }
 
-function attachDhikrCounterHandlers(container, items){
+function attachDhikrCounterHandlers(container, items, ids){
   container.querySelectorAll('.dhikr-card.tappable').forEach((card,i)=>{
-    card.addEventListener('click', ()=>openDhikrCounter(items[i]));
+    card.addEventListener('click', ()=>openDhikrCounter(items[i], ids ? ids[i] : null));
   });
 }
 
@@ -2706,7 +2706,7 @@ inlineAudioEl.addEventListener('ended', ()=>{
 });
 
 document.getElementById('zikrList').innerHTML = ZIKR.map((i,idx)=>dhikrCardHTML(i,true,'zikr:'+idx)).join('');
-attachDhikrCounterHandlers(document.getElementById('zikrList'), ZIKR);
+attachDhikrCounterHandlers(document.getElementById('zikrList'), ZIKR, ZIKR.map((_,idx)=>'zikr:'+idx));
 attachInlineAudioHandlers(document.getElementById('zikrList'));
 attachFavHandlers(document.getElementById('zikrList'));
 attachShareHandlers(document.getElementById('zikrList'));
@@ -2717,7 +2717,7 @@ function renderAzkar(period){
   const catKey = period==='evening' ? 'azkar_evening' : 'azkar_morning';
   const list = period==='evening' ? AZKAR_EVENING : AZKAR_MORNING;
   azkarListEl.innerHTML = list.map((i,idx)=>dhikrCardHTML(i,true,catKey+':'+idx)).join('');
-  attachDhikrCounterHandlers(azkarListEl, list);
+  attachDhikrCounterHandlers(azkarListEl, list, list.map((_,idx)=>catKey+':'+idx));
   attachInlineAudioHandlers(azkarListEl);
   attachFavHandlers(azkarListEl);
   attachShareHandlers(azkarListEl);
@@ -2748,6 +2748,24 @@ const dhikrCounterSheet = document.getElementById('dhikrCounterSheet');
 const dhikrCounterCircle = document.getElementById('dhikrCounterCircle');
 let dhikrCounterValue = 0;
 let dhikrCounterTarget = null;
+// Which zikr/azkar/namaz item the open sheet belongs to (e.g. 'zikr:3') — the
+// count is persisted per item so re-opening the same one (or coming back to
+// the app) keeps the tally. null means "no stable id" (shouldn't normally
+// happen — every tappable card is rendered with one) and just falls back to
+// the old non-persisted in-memory behaviour for that session.
+let dhikrCounterId = null;
+
+const DHIKR_COUNTS_KEY = 'dhikrCounts';
+function loadDhikrCounts(){
+  try{ return JSON.parse(localStorage.getItem(DHIKR_COUNTS_KEY) || '{}'); }catch(e){ return {}; }
+}
+function saveDhikrCounterValue(){
+  if(!dhikrCounterId) return;
+  const counts = loadDhikrCounts();
+  if(dhikrCounterValue > 0) counts[dhikrCounterId] = dhikrCounterValue;
+  else delete counts[dhikrCounterId];
+  try{ localStorage.setItem(DHIKR_COUNTS_KEY, JSON.stringify(counts)); }catch(e){}
+}
 
 function parseDhikrTarget(countStr){
   if(!countStr) return null;
@@ -2766,9 +2784,11 @@ function updateDhikrCounterUI(){
     dhikrCounterCircle.classList.remove('done');
   }
 }
-function openDhikrCounter(item){
+function openDhikrCounter(item, id){
   pushSheetHistory();
-  dhikrCounterValue = 0;
+  dhikrCounterId = id || null;
+  const counts = loadDhikrCounts();
+  dhikrCounterValue = (dhikrCounterId && counts[dhikrCounterId]) ? counts[dhikrCounterId] : 0;
   dhikrCounterTarget = parseDhikrTarget(item.count);
   document.getElementById('dhikrCounterTitle').textContent = item.title || '';
   document.getElementById('dhikrCounterAr').textContent = item.ar;
@@ -2791,11 +2811,13 @@ function closeDhikrCounter(){
 dhikrCounterCircle.addEventListener('click', ()=>{
   dhikrCounterValue++;
   updateDhikrCounterUI();
+  saveDhikrCounterValue();
   if(navigator.vibrate) navigator.vibrate(12);
 });
 document.getElementById('dhikrCounterReset').addEventListener('click', ()=>{
   dhikrCounterValue = 0;
   updateDhikrCounterUI();
+  saveDhikrCounterValue();
 });
 
 /* --- audio playback (Quran ayat only, via everyayah.com) --- */
@@ -2838,7 +2860,7 @@ document.getElementById('dhikrCounterClose').addEventListener('click', closeDhik
 dhikrCounterBackdrop.addEventListener('click', closeDhikrCounter);
 
 document.getElementById('namazList').innerHTML = NAMAZ.map((i,idx)=>dhikrCardHTML(i,true,'namaz:'+idx)).join('');
-attachDhikrCounterHandlers(document.getElementById('namazList'), NAMAZ);
+attachDhikrCounterHandlers(document.getElementById('namazList'), NAMAZ, NAMAZ.map((_,idx)=>'namaz:'+idx));
 attachInlineAudioHandlers(document.getElementById('namazList'));
 attachFavHandlers(document.getElementById('namazList'));
 attachShareHandlers(document.getElementById('namazList'));
@@ -2895,18 +2917,19 @@ let miscSearchPrevKey = 'zikr';
 function renderMiscCards(targetEl, emptyEl, predicate){
   let html = '';
   const tappableItems = [];
+  const tappableIds = [];
   MISC_SEARCH_SOURCES.forEach(src=>{
     let groupHtml = '';
     src.items.forEach((item, idx)=>{
       if(!predicate(item, src, idx)) return;
       groupHtml += dhikrCardHTML(item, src.tappable, src.key+':'+idx);
-      if(src.tappable) tappableItems.push(item);
+      if(src.tappable){ tappableItems.push(item); tappableIds.push(src.key+':'+idx); }
     });
     if(groupHtml) html += `<div class="search-group-label">${src.label}</div>` + groupHtml;
   });
   targetEl.innerHTML = html;
   if(emptyEl) emptyEl.style.display = html ? 'none' : 'block';
-  attachDhikrCounterHandlers(targetEl, tappableItems);
+  attachDhikrCounterHandlers(targetEl, tappableItems, tappableIds);
   attachInlineAudioHandlers(targetEl);
   attachFavHandlers(targetEl);
   attachShareHandlers(targetEl);
@@ -3015,6 +3038,33 @@ function wcForceSyncUser(chId){
       fbDb.ref(wc.node+'/'+wc.weekId+'/users/'+uid+'/updatedAt').set(firebase.database.ServerValue.TIMESTAMP);
     }
   }
+}
+
+function getWeeklyChallengeUserKey(){
+  return (fbAuth && fbAuth.currentUser) ? fbAuth.currentUser.uid : null;
+}
+
+// Corrects participant entries that got written as 'Аноним' — e.g. the user
+// tapped the counter before login/Firebase auth had finished resolving —
+// once we actually know their real username. Runs for both weekly zikrs
+// (each has its own node/weekId), unlike the old single-node version this
+// replaced which only ever looked at the Salawat challenge.
+function wcFixStaleParticipantNames(){
+  if(!fbDb || !state.profile || !state.profile.authenticated) return;
+  const userKey = getWeeklyChallengeUserKey();
+  if(!userKey) return;
+  const realName = state.profile.username;
+  ['salavat','istighfar'].forEach(chId=>{
+    const wc = WC[chId];
+    if(!wc.weekId) return;
+    const nameRef = fbDb.ref(wc.node+'/'+wc.weekId+'/users/'+userKey+'/name');
+    nameRef.once('value', snap=>{
+      const stored = snap.val();
+      if(!stored || stored === 'Аноним'){
+        nameRef.set(realName);
+      }
+    });
+  });
 }
 
 async function wcAttachListener(chId, weekId){
@@ -4524,17 +4574,9 @@ function updateProfileUI(){
     // Cache username so weekly challenge can use it even before auth loads
     try{ localStorage.setItem('weeklyChallengeUserName', state.profile.username); }catch(e){}
 
-    // Fix name in Firebase if it was stored as 'Участник' (race condition on first launch)
-    if(fbDb && weeklyChallengeWeekId){
-      const userKey = getWeeklyChallengeUserKey();
-      const realName = state.profile.username;
-      fbDb.ref('weeklyChallenge/'+weeklyChallengeWeekId+'/users/'+userKey+'/name').once('value', snap=>{
-        const stored = snap.val();
-        if(!stored || stored === 'Участник'){
-          fbDb.ref('weeklyChallenge/'+weeklyChallengeWeekId+'/users/'+userKey+'/name').set(realName);
-        }
-      });
-    }
+    // Self-heal stale 'Аноним' names left in the weekly-challenge participant
+    // lists from before login finished (or before this fix existed).
+    wcFixStaleParticipantNames();
   } else {
     authCard.style.display = 'block';
     profileCard.style.display = 'none';
@@ -4997,12 +5039,44 @@ function pushSupported(){
   return 'Notification' in window && 'serviceWorker' in navigator && !!(window.firebase && firebase.messaging);
 }
 let pushTokenRefreshedThisSession = false;
+// Native Android reports the REAL system notification toggle here (see
+// MainActivity.pushNotifStatusToWebView) — it can flip at any time behind
+// our back (user goes to system Settings and turns it off), independent of
+// window.androidFCMEnabled/localStorage, which only ever recorded "was
+// granted once". null = native hasn't reported yet this load.
+let androidNotifRealStatus = null;
+window.onAndroidNotifStatus = function(enabled){
+  androidNotifRealStatus = enabled;
+  if(!enabled){
+    window.androidFCMEnabled = false;
+    try{ localStorage.removeItem('androidFCMActive'); }catch(e){}
+  }
+  updateNotifUI();
+};
+// Single source of truth for "are notifications actually on", shared by the
+// status label and the daily-reminder section — on Android this trusts the
+// live system toggle (once reported) instead of the old cached flags, which
+// stayed true forever once a token was fetched even if the user later
+// disabled notifications for the app in system settings.
+function notifPermissionGranted(){
+  if(!pushSupported()) return false;
+  if(window.AndroidApp){
+    return androidNotifRealStatus !== null
+      ? androidNotifRealStatus
+      : (window.androidFCMEnabled || localStorage.getItem('androidFCMActive') === 'true');
+  }
+  return !!(window.Notification && Notification.permission === 'granted');
+}
 function updateNotifUI(){
   const btn = document.getElementById('enableNotifBtn');
   const status = document.getElementById('notifStatus');
   if(!btn || !status) return;
   if(!pushSupported()){ btn.style.display='none'; status.style.display='none'; return; }
-  if((window.Notification && Notification.permission === 'granted') || window.androidFCMEnabled || localStorage.getItem('androidFCMActive') === 'true'){
+
+  const isAndroid = !!window.AndroidApp;
+  const granted = notifPermissionGranted();
+
+  if(granted){
     btn.style.display='none';
     status.textContent = '🔔 Уведомления включены';
     status.style.display='block';
@@ -5018,6 +5092,13 @@ function updateNotifUI(){
       pushTokenRefreshedThisSession = true;
       registerPushToken();
     }
+  } else if(isAndroid){
+    // Always actionable on Android — tapping it opens the real system
+    // settings screen (see enableNotifications), since re-requesting the
+    // in-app permission dialog is a silent no-op once already denied.
+    btn.style.display='block';
+    status.textContent = 'Уведомления отключены в настройках приложения';
+    status.style.display='block';
   } else if(window.Notification && Notification.permission === 'denied'){
     btn.style.display='none';
     status.textContent = 'Уведомления заблокированы в настройках браузера';
@@ -5043,7 +5124,15 @@ async function registerPushToken(){
 async function enableNotifications(){
   if(window.AndroidApp) {
     if(!state.profile || !state.profile.authenticated || !getAuthCredentials()){ showToast('Нет соединения с сервером'); return; }
-    window.AndroidApp.requestNotificationPermission();
+    // Re-requesting the in-app permission dialog is a silent no-op once
+    // already denied (and pre-13 Android never shows one for this at all) —
+    // the system notification settings screen is the only path that reliably
+    // lets the user turn it back on from here.
+    if(window.AndroidApp.openNotificationSettings){
+      window.AndroidApp.openNotificationSettings();
+    } else {
+      window.AndroidApp.requestNotificationPermission();
+    }
     return;
   }
   
@@ -5093,7 +5182,7 @@ function updateReminderUI(){
   const offBtn  = document.getElementById('reminderOffBtn');
   const label   = document.getElementById('reminderActiveLabel');
 
-  const granted  = pushSupported() && ((window.Notification && Notification.permission === 'granted') || window.androidFCMEnabled || localStorage.getItem('androidFCMActive') === 'true');
+  const granted  = notifPermissionGranted();
   const loggedIn = !!(state.profile && state.profile.authenticated);
 
   if(section) section.style.display = (granted && loggedIn) ? 'block' : 'none';
@@ -6020,33 +6109,22 @@ if('serviceWorker' in navigator){
   if(dhikrBtn) dhikrBtn.style.display = 'flex';
   if(weeklyBtn) weeklyBtn.style.display = 'flex';
   if(istighfarBtn) istighfarBtn.style.display = 'flex';
-
-  // Update button state on open
-  function refreshFloatBtnState(type){
-    let btn = null;
-    if(type === 'dhikr') btn = dhikrBtn;
-    else if(type === 'weekly_salavat') btn = weeklyBtn;
-    else if(type === 'weekly_istighfar') btn = istighfarBtn;
-    if(!btn) return;
-    
-    try{
-      const active = window.AndroidApp.isFloatingActive();
-      const androidType = window.AndroidApp.getFloatingType ? window.AndroidApp.getFloatingType() : '';
-      if(active && androidType && (androidType === type || androidType.startsWith(type))){
-        btn.textContent = '⏹ Остановить плавающий счётчик';
-        btn.style.borderColor = (type==='weekly_istighfar') ? 'var(--jade)' : 'var(--jade)';
-        btn.style.color = (type==='weekly_istighfar') ? 'var(--jade)' : 'var(--jade)';
-      } else {
-        btn.innerHTML = '📿 Плавающий счётчик';
-        btn.style.borderColor = (type==='weekly_istighfar') ? 'var(--jade)' : '';
-        btn.style.color = (type==='weekly_istighfar') ? 'var(--jade)' : '';
-      }
-    }catch(e){}
-  }
-
-  // Expose refresh for sheet open events
-  window.refreshFloatBtnState = refreshFloatBtnState;
 })();
+
+// Sets one floating-counter button's appearance to match whether it's the
+// one currently running.
+function setFloatBtnActive(btn, type, isActive){
+  if(!btn) return;
+  if(isActive){
+    btn.textContent = '⏹ Остановить плавающий счётчик';
+    btn.style.borderColor = 'var(--jade)';
+    btn.style.color = 'var(--jade)';
+  } else {
+    btn.innerHTML = '📿 Плавающий счётчик';
+    btn.style.borderColor = (type==='weekly_istighfar') ? 'var(--jade)' : '';
+    btn.style.color = (type==='weekly_istighfar') ? 'var(--jade)' : '';
+  }
+}
 
 window.toggleFloatingCounter = function(type, btn){
   if(typeof window.AndroidApp === 'undefined') return;
@@ -6054,11 +6132,7 @@ window.toggleFloatingCounter = function(type, btn){
     const active = window.AndroidApp.isFloatingActive();
     if(active){
       window.AndroidApp.stopFloatingCounter();
-      if(btn){ 
-        btn.innerHTML = '📿 Плавающий счётчик'; 
-        btn.style.borderColor = type==='weekly_istighfar' ? 'var(--jade)' : ''; 
-        btn.style.color = type==='weekly_istighfar' ? 'var(--jade)' : ''; 
-      }
+      setFloatBtnActive(btn, type, false);
     } else {
       let initialCount = 0;
       if(type === 'weekly_salavat') initialCount = WC.salavat.myCount;
@@ -6067,65 +6141,62 @@ window.toggleFloatingCounter = function(type, btn){
         const numEl = document.getElementById('dhikrCounterNum');
         if(numEl) initialCount = parseInt(numEl.textContent.replace(/\s/g,''), 10) || 0;
       }
-      
+
       // Pass initialCount to Android (if supported, otherwise it ignores the 2nd param or we fallback)
       if (window.AndroidApp.startFloatingCounterWithCount) {
           window.AndroidApp.startFloatingCounterWithCount(type, initialCount);
       } else {
           window.AndroidApp.startFloatingCounter(type); // fallback for older versions
       }
-      
-      if(btn){ 
-        btn.textContent='⏹ Остановить плавающий счётчик'; 
-        btn.style.borderColor='var(--jade)'; 
-        btn.style.color='var(--jade)'; 
-      }
+
+      setFloatBtnActive(btn, type, true);
     }
   }catch(e){ console.error(e); }
 };
 
-// Called from Android onResume when floating counter has accumulated taps
-window.onFloatingCountSync = function(count, type){
-  if(count <= 0) return;
-  
-  if(type === 'weekly_salavat' || type === 'weekly_istighfar' || type.startsWith('weekly_0') || type.startsWith('weekly_1')){
-    let chId = 'salavat';
-    if(type === 'weekly_istighfar' || type.startsWith('weekly_1')) chId = 'istighfar';
-    
-    const wc = WC[chId];
-    wc.myCount += count;
-    wc.count += count;
-    wc.pendingClicks += count;
-    
-    wcUpdateSheetProgress(chId);
-    
-    const myElId = chId === 'salavat' ? 'weeklyChallengeMyCount' : 'istighfarWeeklyMyCount';
-    const myEl = document.getElementById(myElId);
-    if(myEl) myEl.textContent = wc.myCount.toLocaleString('ru-RU');
-    
-    wcFlushClicks(chId);
-    
-    const btnId = chId === 'salavat' ? 'weeklyFloatBtn' : 'istighfarFloatBtn';
-    const btn = document.getElementById(btnId);
-    if(btn){ 
-      btn.innerHTML='📿 Плавающий счётчик'; 
-      btn.style.borderColor = chId==='istighfar' ? 'var(--jade)' : ''; 
-      btn.style.color = chId==='istighfar' ? 'var(--jade)' : ''; 
-      btn.dataset.active='false'; 
+// Called from Android onResume on every return to the app — not just when
+// taps piled up while backgrounded. Previously this only ran (and only
+// existed) when count > 0, which meant: (a) a floating counter left running
+// with zero new taps never got its button state resynced at all, and (b) the
+// one case that did fire unconditionally reset every button to "off"
+// appearance even though the native service was still very much running —
+// exactly the "shows enable when it's actually on" bug. `active`/`type` here
+// are the real, current state straight from FloatingButtonService.
+window.onFloatingStateSync = function(active, type, count){
+  if(count > 0){
+    if(type === 'weekly_salavat' || type === 'weekly_istighfar'){
+      const chId = type === 'weekly_istighfar' ? 'istighfar' : 'salavat';
+      const wc = WC[chId];
+      wc.myCount += count;
+      wc.count += count;
+      wc.pendingClicks += count;
+
+      wcUpdateSheetProgress(chId);
+
+      const myElId = chId === 'salavat' ? 'weeklyChallengeMyCount' : 'istighfarWeeklyMyCount';
+      const myEl = document.getElementById(myElId);
+      if(myEl) myEl.textContent = wc.myCount.toLocaleString('ru-RU');
+
+      wcFlushClicks(chId);
+      showToast('+' + count.toLocaleString('ru-RU') + ' добавлено к заданию недели ✓');
+    } else if(type === 'dhikr'){
+      // Update the real counter value (not just the visible text) so it
+      // doesn't get silently overwritten next time the sheet re-renders —
+      // that's what used to make floating-button taps disappear on return.
+      dhikrCounterValue += count;
+      updateDhikrCounterUI();
+      saveDhikrCounterValue();
+      showToast('+' + count.toLocaleString('ru-RU') + ' добавлено к счётчику зикра ✓');
     }
-    showToast('+' + count.toLocaleString('ru-RU') + ' добавлено к заданию недели ✓');
-  } else {
-    // Add to dhikr counter (general counter)
-    const numEl = document.getElementById('dhikrCounterNum');
-    if(numEl){
-      const cur = parseInt(numEl.textContent.replace(/\s/g,''), 10) || 0;
-      numEl.textContent = (cur + count).toLocaleString('ru-RU');
-    }
-    // Reset button state
-    const btn = document.getElementById('dhikrFloatBtn');
-    if(btn){ btn.innerHTML='📿 Плавающий счётчик'; btn.style.borderColor=''; btn.style.color=''; btn.dataset.active='false'; }
-    showToast('+' + count.toLocaleString('ru-RU') + ' добавлено к счётчику зикра ✓');
   }
+
+  // Resync all three buttons' appearance with the real native state.
+  const dhikrBtn = document.getElementById('dhikrFloatBtn');
+  const weeklyBtn = document.getElementById('weeklyFloatBtn');
+  const istighfarBtn = document.getElementById('istighfarFloatBtn');
+  setFloatBtnActive(dhikrBtn, 'dhikr', active && type === 'dhikr');
+  setFloatBtnActive(weeklyBtn, 'weekly_salavat', active && type === 'weekly_salavat');
+  setFloatBtnActive(istighfarBtn, 'weekly_istighfar', active && type === 'weekly_istighfar');
 };
 
 // --- Global Edge Swipe to Go Back ---
