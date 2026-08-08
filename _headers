@@ -1,0 +1,13 @@
+/99ism.apk
+  Content-Type: application/vnd.android.package-archive
+  Cache-Control: public, max-age=86400
+  Content-Disposition: attachment; filename="99ism.apk"
+
+/99ism-android.apk
+  Content-Type: application/vnd.android.package-archive
+  Cache-Control: public, max-age=86400
+  Content-Disposition: attachment; filename="99ism-android.apk"
+
+/version.json
+  Content-Type: application/json
+  Cache-Control: public, max-age=3600

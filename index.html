@@ -6190,24 +6190,43 @@ async function showUpdatePrompt(newVersion){
 
 async function installAPKUpdate(){
   try {
-    // Используем встроенный Android метод для безопасной установки APK
+    const apkUrl = 'https://99ism.ru/99ism.apk';
+
+    // Метод 1: Встроенный Android интент для установки APK
     if(window.AndroidApp && window.AndroidApp.installAPK){
-      window.AndroidApp.installAPK('https://99ism.ru/99ism.apk');
+      console.log('Using native Android installAPK method');
+      window.AndroidApp.installAPK(apkUrl);
       return;
     }
 
-    // Fallback: прямое открытие с правильным Content-Type
-    const apkUrl = 'https://99ism.ru/99ism.apk?t=' + Date.now();
-    const a = document.createElement('a');
-    a.href = apkUrl;
-    a.download = '99ism.apk';
-    a.type = 'application/vnd.android.package-archive';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    // Метод 2: Использовать file:// scheme если доступен (для TWA)
+    if(window.AndroidApp && window.AndroidApp.openURL){
+      console.log('Using AndroidApp.openURL');
+      window.AndroidApp.openURL('file:///storage/emulated/0/Download/99ism.apk');
+      return;
+    }
+
+    // Метод 3: Прямое открытие с правильным Content-Type через iframe
+    console.log('Using iframe fallback');
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = apkUrl + '?t=' + Date.now();
+    document.body.appendChild(iframe);
+
+    // Cleanup после небольшой задержки
+    setTimeout(() => document.body.removeChild(iframe), 5000);
+
+    // Также попробуем открыть через обычную ссылку
+    setTimeout(() => {
+      const a = document.createElement('a');
+      a.href = apkUrl + '?cache=' + Date.now();
+      a.download = '99ism.apk';
+      a.click();
+    }, 1000);
+
   } catch(e) {
     console.error('Ошибка при установке обновления:', e);
-    alert('Не удалось скачать обновление. Попробуйте позже.');
+    alert('Не удалось скачать обновление.\n\nПожалуйста удалите старую версию приложения и попробуйте снова, или скачайте APK вручную с https://99ism.ru/99ism.apk');
   }
 }
 
