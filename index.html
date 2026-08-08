@@ -6165,7 +6165,7 @@ window.toggleFloatingCounter = function(type, btn){
 // appearance even though the native service was still very much running —
 // exactly the "shows enable when it's actually on" bug. `active`/`type` here
 // are the real, current state straight from FloatingButtonService.
-window.onFloatingStateSync = function(active, type, count){
+window.onFloatingStateSync = function(active, type, count, live){
   if(count > 0){
     if(type === 'weekly_salavat' || type === 'weekly_istighfar'){
       const chId = type === 'weekly_istighfar' ? 'istighfar' : 'salavat';
@@ -6181,7 +6181,12 @@ window.onFloatingStateSync = function(active, type, count){
       if(myEl) myEl.textContent = wc.myCount.toLocaleString('ru-RU');
 
       wcFlushClicks(chId);
-      showToast('+' + count.toLocaleString('ru-RU') + ' добавлено к заданию недели ✓');
+      // live=true means each tap arrives one at a time in real time (the
+      // overlay is tappable even while the app is in the foreground) — the
+      // number visibly ticking up already IS the feedback, so a toast on
+      // every single tap would just flash and be annoying. Only show it for
+      // the batched "here's what you did while away" catch-up sync.
+      if(!live) showToast('+' + count.toLocaleString('ru-RU') + ' добавлено к заданию недели ✓');
     } else if(type === 'dhikr'){
       // Update the real counter value (not just the visible text) so it
       // doesn't get silently overwritten next time the sheet re-renders —
@@ -6189,7 +6194,7 @@ window.onFloatingStateSync = function(active, type, count){
       dhikrCounterValue += count;
       updateDhikrCounterUI();
       saveDhikrCounterValue();
-      showToast('+' + count.toLocaleString('ru-RU') + ' добавлено к счётчику зикра ✓');
+      if(!live) showToast('+' + count.toLocaleString('ru-RU') + ' добавлено к счётчику зикра ✓');
     }
   }
 
