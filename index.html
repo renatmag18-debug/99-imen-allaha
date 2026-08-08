@@ -2812,12 +2812,14 @@ dhikrCounterCircle.addEventListener('click', ()=>{
   dhikrCounterValue++;
   updateDhikrCounterUI();
   saveDhikrCounterValue();
+  syncFloatingOverlayCount('dhikr', dhikrCounterValue);
   if(navigator.vibrate) navigator.vibrate(12);
 });
 document.getElementById('dhikrCounterReset').addEventListener('click', ()=>{
   dhikrCounterValue = 0;
   updateDhikrCounterUI();
   saveDhikrCounterValue();
+  syncFloatingOverlayCount('dhikr', 0);
 });
 
 /* --- audio playback (Quran ayat only, via everyayah.com) --- */
@@ -3247,6 +3249,7 @@ document.getElementById('weeklyChallengeCircle').addEventListener('click', ()=>{
   const myEl = document.getElementById('weeklyChallengeMyCount');
   if(myEl) myEl.textContent = WC.salavat.myCount.toLocaleString('ru-RU');
   wcUpdateSheetProgress('salavat');
+  syncFloatingOverlayCount('weekly_salavat', WC.salavat.myCount);
   if(navigator.vibrate) try{ navigator.vibrate(10); }catch(e){}
   if(WC.salavat.clickTimer) clearTimeout(WC.salavat.clickTimer);
   WC.salavat.clickTimer = setTimeout(()=>wcFlushClicks('salavat'), 300);
@@ -3263,6 +3266,7 @@ document.getElementById('istighfarWeeklyCircle').addEventListener('click', ()=>{
   const myEl = document.getElementById('istighfarWeeklyMyCount');
   if(myEl) myEl.textContent = WC.istighfar.myCount.toLocaleString('ru-RU');
   wcUpdateSheetProgress('istighfar');
+  syncFloatingOverlayCount('weekly_istighfar', WC.istighfar.myCount);
   if(navigator.vibrate) try{ navigator.vibrate(10); }catch(e){}
   if(WC.istighfar.clickTimer) clearTimeout(WC.istighfar.clickTimer);
   WC.istighfar.clickTimer = setTimeout(()=>wcFlushClicks('istighfar'), 300);
@@ -6116,6 +6120,19 @@ if('serviceWorker' in navigator){
 
 // Sets one floating-counter button's appearance to match whether it's the
 // one currently running.
+// Pushes the in-app counter's new value down to the floating overlay when
+// the user taps the MAIN counter (not the floating one) — without this the
+// sync only ever worked one-way (overlay tap → app), so tapping inside the
+// app left the overlay's own number stuck showing a stale total.
+function syncFloatingOverlayCount(type, total){
+  if(typeof window.AndroidApp === 'undefined' || !window.AndroidApp.updateFloatingCount) return;
+  try{
+    if(window.AndroidApp.isFloatingActive() && window.AndroidApp.getFloatingType && window.AndroidApp.getFloatingType() === type){
+      window.AndroidApp.updateFloatingCount(total);
+    }
+  }catch(e){}
+}
+
 function setFloatBtnActive(btn, type, isActive){
   if(!btn) return;
   if(isActive){
