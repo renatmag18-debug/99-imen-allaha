@@ -1526,12 +1526,6 @@ body{
     </div>
     <div class="sheet-body" style="text-align:center;">
       <p class="misc-intro" id="weeklyChallengeSheetTimer" style="padding-bottom:6px;"></p>
-      <!-- Carousel nav -->
-      <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:6px;">
-        <button onclick="prevWeeklyChallenge()" style="background:none;border:1px solid rgba(255,255,255,0.18);border-radius:50%;width:32px;height:32px;color:var(--ivory);font-size:18px;cursor:pointer;line-height:1;">‹</button>
-        <span id="wcPageIndicator" style="font-size:11px;color:var(--ivory-dim);min-width:40px;text-align:center;">1 / 2</span>
-        <button onclick="nextWeeklyChallenge()" style="background:none;border:1px solid rgba(255,255,255,0.18);border-radius:50%;width:32px;height:32px;color:var(--ivory);font-size:18px;cursor:pointer;line-height:1;">›</button>
-      </div>
       <div class="dhikr-ar" id="wcSheetAr" style="text-align:center;font-size:26px;">اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَعَلَى آلِ مُحَمَّدٍ</div>
       <div class="dhikr-tr" id="wcSheetTr" style="text-align:center;">Аллахумма салли аля Мухаммад ва аля али Мухаммад</div>
       <div class="dhikr-m" id="wcSheetM" style="text-align:center;margin-bottom:6px;">О Аллах, благослови Мухаммада и его род</div>
@@ -3010,7 +3004,11 @@ function wcForceSyncUser(chId){
   const wc = WC[chId];
   if(fbDb && wc.weekId && fbAuth && fbAuth.currentUser){
     const uid = fbAuth.currentUser.uid;
-    const uName = (window.state && state.profile && state.profile.username) ? state.profile.username : 'Аноним';
+    let uName = (window.state && state.profile && state.profile.username) ? state.profile.username : null;
+    if(!uName){
+      try{ uName = localStorage.getItem('weeklyChallengeUserName'); }catch(e){}
+    }
+    uName = uName || 'Аноним';
     if(wc.myCount > 0){
       fbDb.ref(wc.node+'/'+wc.weekId+'/users/'+uid+'/count').set(wc.myCount);
       fbDb.ref(wc.node+'/'+wc.weekId+'/users/'+uid+'/name').set(uName);
