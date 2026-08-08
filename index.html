@@ -1326,8 +1326,17 @@ body{
                     <button id="importBackupBtn" style="flex:1;padding:7px 10px;border-radius:8px;border:1px solid var(--gold);background:none;color:var(--gold);font-family:var(--font-body);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;">Восстановить</button>
                   </div>
 
+                  <div id="volKeySection" style="display:none;">
+                    <div style="height:1px;background:var(--line);margin:0 0 4px;"></div>
+                    <div style="padding:10px 16px 6px;font-size:12px;color:var(--ivory-dim);">🔊 Кнопки громкости</div>
+                    <div style="padding:0 16px 10px;">
+                      <div style="font-size:12px;color:var(--ivory-dim);margin-bottom:8px;">Считать зикр кнопками громкости при запущенном плавающем счётчике — работает даже на заблокированном экране, звук не трогает.</div>
+                      <button id="volKeyEnableBtn" style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--gold);background:none;color:var(--gold);font-family:var(--font-body);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;">Включить</button>
+                    </div>
+                  </div>
+
                   <div style="height:1px;background:var(--line);margin:0 0 4px;"></div>
-                  
+
                   <div style="padding:10px 16px 6px;font-size:12px;color:var(--ivory-dim);">📅 Зикр недели</div>
                   <div style="padding:0 16px 10px;display:flex;align-items:center;justify-content:space-between;">
                     <div style="font-size:13px;color:var(--ivory);">Уведомлять о начале</div>
@@ -4782,10 +4791,45 @@ document.getElementById('hideRegisterBtn').addEventListener('click', ()=>{
   document.getElementById('customQuestionField').style.display = 'none';
 });
 
+// Only relevant inside the Android app (the accessibility-service trick is
+// meaningless on the plain website) — hidden entirely otherwise. Re-checked
+// every time the menu opens since the user grants this in system Settings,
+// outside the app, and comes back.
+function updateVolKeyUI(){
+  const section = document.getElementById('volKeySection');
+  const btn = document.getElementById('volKeyEnableBtn');
+  if(!section || !btn) return;
+  if(typeof window.AndroidApp === 'undefined' || !window.AndroidApp.openAccessibilitySettings){
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = 'block';
+  let enabled = false;
+  try{ enabled = !!(window.AndroidApp.isVolumeKeyAccessibilityEnabled && window.AndroidApp.isVolumeKeyAccessibilityEnabled()); }catch(e){}
+  if(enabled){
+    btn.textContent = '✓ Включено';
+    btn.disabled = true;
+    btn.style.opacity = '0.7';
+  } else {
+    btn.textContent = 'Включить';
+    btn.disabled = false;
+    btn.style.opacity = '1';
+  }
+}
+const volKeyEnableBtnEl = document.getElementById('volKeyEnableBtn');
+if(volKeyEnableBtnEl) volKeyEnableBtnEl.addEventListener('click', ()=>{
+  if(window.AndroidApp && window.AndroidApp.openAccessibilitySettings){
+    showToast('Найдите «99 имён Аллаха» в списке и включите');
+    window.AndroidApp.openAccessibilitySettings();
+  }
+});
+
 document.getElementById('profileMenuBtn').addEventListener('click', (e)=>{
   e.stopPropagation();
   const menu = document.getElementById('profileMenu');
-  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  const willShow = menu.style.display === 'none';
+  menu.style.display = willShow ? 'block' : 'none';
+  if(willShow) updateVolKeyUI();
 });
 
 document.addEventListener('click', ()=>{
@@ -5072,6 +5116,10 @@ window.onAndroidNotifStatus = function(enabled){
     try{ localStorage.removeItem('androidFCMActive'); }catch(e){}
   }
   updateNotifUI();
+  // Piggy-backs on the same "app just resumed" signal — the user may have
+  // just come back from granting the volume-key accessibility permission in
+  // system Settings, so refresh its status too.
+  if(typeof updateVolKeyUI === 'function') updateVolKeyUI();
 };
 // Single source of truth for "are notifications actually on", shared by the
 // status label and the daily-reminder section — on Android this trusts the
