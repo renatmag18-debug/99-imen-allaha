@@ -2976,7 +2976,17 @@ function salavatWindow(now){
   const end = new Date(start);
   end.setDate(end.getDate() + 1); // +1 день = пятница 20:00
   end.setHours(WEEKLY_HOUR, 0, 0, 0);
-  return { start, end, active: now >= start && now < end };
+  const active = now >= start && now < end;
+  // `start`/`end` above always describe the most recent (possibly already
+  // past) window — fine for computing `active`, but useless for "starts in
+  // X" once that window has closed, since start-now would be negative and
+  // collapse to "0м". nextStart is the next FUTURE occurrence instead.
+  let nextStart = start;
+  if(!active && now >= end){
+    nextStart = new Date(start);
+    nextStart.setDate(nextStart.getDate() + 7);
+  }
+  return { start, end, active, nextStart };
 }
 
 // Истигфар: от ближайшего прошлого ПЯТНИЦЫ 20:00 до следующей пятницы 20:00
@@ -2992,7 +3002,13 @@ function istighfarWindow(now){
   const end = new Date(start);
   end.setDate(end.getDate() + 7);
   end.setHours(WEEKLY_HOUR, 0, 0, 0);
-  return { start, end, active: now >= start && now < end };
+  const active = now >= start && now < end;
+  let nextStart = start;
+  if(!active && now >= end){
+    nextStart = new Date(start);
+    nextStart.setDate(nextStart.getDate() + 7);
+  }
+  return { start, end, active, nextStart };
 }
 
 // Unified state per challenge
@@ -3125,7 +3141,7 @@ function wcUpdateCard(chId, weekId){
   if(labelEl) labelEl.textContent = WC[chId].count.toLocaleString('ru-RU')+' / '+WEEKLY_CHALLENGE_TARGET.toLocaleString('ru-RU');
   if(timerEl){
     if(win.active) timerEl.textContent = 'Осталось '+formatWeeklyCountdown(win.end-new Date());
-    else timerEl.textContent = 'Начало через '+formatWeeklyCountdown(win.start-new Date());
+    else timerEl.textContent = 'Начало через '+formatWeeklyCountdown(win.nextStart-new Date());
   }
   if(badgeEl){
     if(win.active) badgeEl.textContent = 'Идёт ✦';
@@ -3199,7 +3215,7 @@ function openWeeklyChallengeSheet(chId){
     const timerEl = document.getElementById('salavat_sheetTimer') || document.getElementById('weeklyChallengeSheetTimer');
     if(timerEl){
       if(sw.active) timerEl.textContent = 'До конца: '+formatWeeklyCountdown(sw.end-new Date());
-      else timerEl.textContent = 'Начало через '+formatWeeklyCountdown(sw.start-new Date());
+      else timerEl.textContent = 'Начало через '+formatWeeklyCountdown(sw.nextStart-new Date());
     }
     wcLoadLocal('salavat', WC.salavat.weekId);
     const myEl = document.getElementById('weeklyChallengeMyCount');
@@ -3212,7 +3228,7 @@ function openWeeklyChallengeSheet(chId){
     const timerEl = document.getElementById('istighfar_sheetTimer');
     if(timerEl){
       if(iw.active) timerEl.textContent = 'До конца: '+formatWeeklyCountdown(iw.end-new Date());
-      else timerEl.textContent = 'Начало через '+formatWeeklyCountdown(iw.start-new Date());
+      else timerEl.textContent = 'Начало через '+formatWeeklyCountdown(iw.nextStart-new Date());
     }
     wcLoadLocal('istighfar', WC.istighfar.weekId);
     const myEl = document.getElementById('istighfarWeeklyMyCount');
@@ -6154,6 +6170,13 @@ window.toggleFloatingCounter = function(type, btn){
       window.AndroidApp.stopFloatingCounter();
       setFloatBtnActive(btn, type, false);
     } else {
+      // Match the main in-app circle's own gating — it already refuses to
+      // count before the weekly window opens (with this same toast); the
+      // floating counter never had that check, so it was possible to start
+      // it early and rack up taps that the app-side tap would have refused.
+      if(type === 'weekly_salavat' && !salavatWindow().active){ showToast('Салават начнётся в четверг в 20:00'); return; }
+      if(type === 'weekly_istighfar' && !istighfarWindow().active){ showToast('Истигфар начнётся в пятницу в 20:00'); return; }
+
       let initialCount = 0;
       if(type === 'weekly_salavat') initialCount = WC.salavat.myCount;
       else if(type === 'weekly_istighfar') initialCount = WC.istighfar.myCount;
@@ -6186,6 +6209,15 @@ window.onFloatingStateSync = function(active, type, count, live){
   if(count > 0){
     if(type === 'weekly_salavat' || type === 'weekly_istighfar'){
       const chId = type === 'weekly_istighfar' ? 'istighfar' : 'salavat';
+      const win = chId === 'salavat' ? salavatWindow() : istighfarWindow();
+      if(!win.active){
+        // The window closed while this floating session was still running
+        // from earlier (started during the active window, left going past
+        // its end) — stop it and drop these taps rather than let it keep
+        // silently counting outside the challenge's actual time window.
+        if(window.AndroidApp && window.AndroidApp.stopFloatingCounter) window.AndroidApp.stopFloatingCounter();
+        active = false;
+      } else {
       const wc = WC[chId];
       wc.myCount += count;
       wc.count += count;
@@ -6204,6 +6236,7 @@ window.onFloatingStateSync = function(active, type, count, live){
       // every single tap would just flash and be annoying. Only show it for
       // the batched "here's what you did while away" catch-up sync.
       if(!live) showToast('+' + count.toLocaleString('ru-RU') + ' добавлено к заданию недели ✓');
+      }
     } else if(type === 'dhikr'){
       // Update the real counter value (not just the visible text) so it
       // doesn't get silently overwritten next time the sheet re-renders —
