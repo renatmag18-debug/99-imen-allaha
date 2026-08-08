@@ -5077,9 +5077,12 @@ function updateNotifUI(){
   const granted = notifPermissionGranted();
 
   if(granted){
+    // Nothing to show or do when notifications are already on — the label
+    // used to say so here, but the Friends profile card isn't the place for
+    // status noise; the "disabled" states below still show since those are
+    // actionable (there's a button to tap).
     btn.style.display='none';
-    status.textContent = '🔔 Уведомления включены';
-    status.style.display='block';
+    status.style.display='none';
     // Permission already being granted doesn't mean our stored FCM token is
     // still valid — tokens rotate (browser data cleared, PWA reinstalled,
     // FCM's own refresh cycle), and registerPushToken() used to only ever
