@@ -802,9 +802,68 @@ body{
       <svg viewBox="0 0 24 24" fill="none"><path d="M20.2 13.1A8.2 8.2 0 1110.9 3.8a6.3 6.3 0 009.3 9.3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/></svg>
       Асма-уль-Хусна
     </div>
-    <button class="icon-btn" id="progressBtn" title="Прогресс">
-      <svg viewBox="0 0 24 24" fill="none"><path d="M12 21c-4.97-3.14-9-7.1-9-11.5A5.5 5.5 0 0112 5a5.5 5.5 0 019 4.5c0 4.4-4.03 8.36-9 11.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
-    </button>
+    <div style="position:relative;">
+      <button class="icon-btn" id="profileMenuBtn" title="Настройки" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="1.5"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div id="profileMenu" style="display:none;position:absolute;top:46px;right:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 0;min-width:220px;box-shadow:0 4px 16px rgba(0,0,0,0.4);z-index:100;">
+
+        <!-- Reminder section (shown only when notifications granted) -->
+        <div id="reminderMenuSection" style="display:none;">
+          <div style="padding:10px 16px 6px;font-size:12px;color:var(--ivory-dim);">⏰ Напоминания об учёбе</div>
+
+          <!-- Frequency picker -->
+          <div id="reminderFreqRow" style="display:flex;gap:6px;padding:0 16px 10px;">
+            <button class="reminder-freq-btn" data-freq="1" style="flex:1;padding:7px 0;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ivory);font-family:var(--font-body);font-size:13px;cursor:pointer;transition:all .2s;">1×</button>
+            <button class="reminder-freq-btn" data-freq="2" style="flex:1;padding:7px 0;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ivory);font-family:var(--font-body);font-size:13px;cursor:pointer;transition:all .2s;">2×</button>
+            <button class="reminder-freq-btn" data-freq="3" style="flex:1;padding:7px 0;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ivory);font-family:var(--font-body);font-size:13px;cursor:pointer;transition:all .2s;">3×</button>
+          </div>
+
+          <!-- Save / active state -->
+          <div style="padding:0 16px 10px;display:flex;gap:6px;align-items:center;">
+            <button id="reminderSaveBtn" style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:var(--gold);color:#1a0f00;font-family:var(--font-body);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;">Сохранить</button>
+            <button id="reminderOffBtn" style="display:none;padding:7px 10px;border-radius:8px;border:1px solid var(--rose);background:none;color:var(--rose);font-family:var(--font-body);font-size:13px;cursor:pointer;transition:all .2s;">Выключить</button>
+          </div>
+
+          <!-- Active label -->
+          <div id="reminderActiveLabel" style="display:none;padding:0 16px 10px;font-size:12px;color:var(--gold);"></div>
+
+          <div style="height:1px;background:var(--line);margin:0 0 4px;"></div>
+
+          <div style="padding:10px 16px 6px;font-size:12px;color:var(--ivory-dim);">💾 Данные приложения</div>
+          <div style="padding:0 16px 10px;display:flex;gap:6px;align-items:center;">
+            <button id="exportBackupBtn" style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:var(--gold);color:#1a0f00;font-family:var(--font-body);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;">Сохранить (Бэкап)</button>
+            <button id="importBackupBtn" style="flex:1;padding:7px 10px;border-radius:8px;border:1px solid var(--gold);background:none;color:var(--gold);font-family:var(--font-body);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;">Восстановить</button>
+          </div>
+
+          <div id="volKeySection" style="display:none;">
+            <div style="height:1px;background:var(--line);margin:0 0 4px;"></div>
+            <div style="padding:10px 16px 6px;font-size:12px;color:var(--ivory-dim);">🔊 Кнопки громкости</div>
+            <div style="padding:0 16px 10px;">
+              <div style="font-size:12px;color:var(--ivory-dim);margin-bottom:8px;">Считать зикр кнопками громкости при запущенном плавающем счётчике — работает даже на заблокированном экране, звук не трогает.</div>
+              <button id="volKeyEnableBtn" style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--gold);background:none;color:var(--gold);font-family:var(--font-body);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;">Включить</button>
+            </div>
+          </div>
+
+          <div style="height:1px;background:var(--line);margin:0 0 4px;"></div>
+
+          <div style="padding:10px 16px 6px;font-size:12px;color:var(--ivory-dim);">📅 Зикр недели</div>
+          <div style="padding:0 16px 10px;display:flex;align-items:center;justify-content:space-between;">
+            <div style="font-size:13px;color:var(--ivory);">Уведомлять о начале</div>
+            <label style="position:relative;display:inline-block;width:40px;height:24px;">
+              <input type="checkbox" id="weeklyNotifToggle" style="opacity:0;width:0;height:0;" checked>
+              <span class="slider" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:rgba(255,255,255,0.1);transition:.4s;border-radius:24px;border:1px solid var(--line);"></span>
+              <span class="slider-knob" style="position:absolute;content:'';height:18px;width:18px;left:2px;bottom:2px;background-color:var(--ivory);transition:.4s;border-radius:50%;"></span>
+            </label>
+          </div>
+          <div style="height:1px;background:var(--line);margin:0 0 4px;"></div>
+        </div>
+
+        <button id="logoutBtn" style="display:block;width:100%;text-align:left;padding:10px 16px;background:none;border:none;color:var(--rose);cursor:pointer;font-family:var(--font-body);font-size:13px;transition:background .2s;">
+          Выход
+        </button>
+      </div>
+    </div>
   </div>
 
   <div class="stage" id="stage">
@@ -1166,7 +1225,7 @@ body{
     <section class="screen" data-screen="misc">
       <div class="search-wrap">
         <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-        <input id="miscSearchInput" type="search" inputmode="search" placeholder="Поиск по зикрам, азкарам, дуа, намазу…" autocomplete="off">
+        <input id="miscSearchInput" type="search" inputmode="search" placeholder="Поиск" autocomplete="off">
       </div>
       <!-- Two weekly challenge cards side by side -->
       <div id="weeklyChallengeCardsRow" style="display:none;flex-direction:row;gap:10px;margin:0 auto 14px;max-width:90%;width:100%;">
@@ -1372,66 +1431,6 @@ body{
                 </button>
               </div>
               <div style="font-size:12px;color:var(--ivory-dim);margin-top:6px;display:none;" id="adminUserCount"></div>
-            </div>
-            <div style="position:relative;">
-              <button id="profileMenuBtn" style="background:none;border:none;color:var(--ivory-dim);cursor:pointer;padding:4px;font-size:20px;">⋮</button>
-              <div id="profileMenu" style="display:none;position:absolute;top:28px;right:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 0;min-width:220px;box-shadow:0 4px 16px rgba(0,0,0,0.4);z-index:100;">
-
-                <!-- Reminder section (shown only when notifications granted) -->
-                <div id="reminderMenuSection" style="display:none;">
-                  <div style="padding:10px 16px 6px;font-size:12px;color:var(--ivory-dim);">⏰ Напоминания об учёбе</div>
-
-                  <!-- Frequency picker -->
-                  <div id="reminderFreqRow" style="display:flex;gap:6px;padding:0 16px 10px;">
-                    <button class="reminder-freq-btn" data-freq="1" style="flex:1;padding:7px 0;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ivory);font-family:var(--font-body);font-size:13px;cursor:pointer;transition:all .2s;">1×</button>
-                    <button class="reminder-freq-btn" data-freq="2" style="flex:1;padding:7px 0;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ivory);font-family:var(--font-body);font-size:13px;cursor:pointer;transition:all .2s;">2×</button>
-                    <button class="reminder-freq-btn" data-freq="3" style="flex:1;padding:7px 0;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ivory);font-family:var(--font-body);font-size:13px;cursor:pointer;transition:all .2s;">3×</button>
-                  </div>
-
-                  <!-- Save / active state -->
-                  <div style="padding:0 16px 10px;display:flex;gap:6px;align-items:center;">
-                    <button id="reminderSaveBtn" style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:var(--gold);color:#1a0f00;font-family:var(--font-body);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;">Сохранить</button>
-                    <button id="reminderOffBtn" style="display:none;padding:7px 10px;border-radius:8px;border:1px solid var(--rose);background:none;color:var(--rose);font-family:var(--font-body);font-size:13px;cursor:pointer;transition:all .2s;">Выключить</button>
-                  </div>
-
-                  <!-- Active label -->
-                  <div id="reminderActiveLabel" style="display:none;padding:0 16px 10px;font-size:12px;color:var(--gold);"></div>
-
-                  <div style="height:1px;background:var(--line);margin:0 0 4px;"></div>
-                  
-                  <div style="padding:10px 16px 6px;font-size:12px;color:var(--ivory-dim);">💾 Данные приложения</div>
-                  <div style="padding:0 16px 10px;display:flex;gap:6px;align-items:center;">
-                    <button id="exportBackupBtn" style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:var(--gold);color:#1a0f00;font-family:var(--font-body);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;">Сохранить (Бэкап)</button>
-                    <button id="importBackupBtn" style="flex:1;padding:7px 10px;border-radius:8px;border:1px solid var(--gold);background:none;color:var(--gold);font-family:var(--font-body);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;">Восстановить</button>
-                  </div>
-
-                  <div id="volKeySection" style="display:none;">
-                    <div style="height:1px;background:var(--line);margin:0 0 4px;"></div>
-                    <div style="padding:10px 16px 6px;font-size:12px;color:var(--ivory-dim);">🔊 Кнопки громкости</div>
-                    <div style="padding:0 16px 10px;">
-                      <div style="font-size:12px;color:var(--ivory-dim);margin-bottom:8px;">Считать зикр кнопками громкости при запущенном плавающем счётчике — работает даже на заблокированном экране, звук не трогает.</div>
-                      <button id="volKeyEnableBtn" style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--gold);background:none;color:var(--gold);font-family:var(--font-body);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;">Включить</button>
-                    </div>
-                  </div>
-
-                  <div style="height:1px;background:var(--line);margin:0 0 4px;"></div>
-
-                  <div style="padding:10px 16px 6px;font-size:12px;color:var(--ivory-dim);">📅 Зикр недели</div>
-                  <div style="padding:0 16px 10px;display:flex;align-items:center;justify-content:space-between;">
-                    <div style="font-size:13px;color:var(--ivory);">Уведомлять о начале</div>
-                    <label style="position:relative;display:inline-block;width:40px;height:24px;">
-                      <input type="checkbox" id="weeklyNotifToggle" style="opacity:0;width:0;height:0;" checked>
-                      <span class="slider" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:rgba(255,255,255,0.1);transition:.4s;border-radius:24px;border:1px solid var(--line);"></span>
-                      <span class="slider-knob" style="position:absolute;content:'';height:18px;width:18px;left:2px;bottom:2px;background-color:var(--ivory);transition:.4s;border-radius:50%;"></span>
-                    </label>
-                  </div>
-                  <div style="height:1px;background:var(--line);margin:0 0 4px;"></div>
-                </div>
-
-                <button id="logoutBtn" style="display:block;width:100%;text-align:left;padding:10px 16px;background:none;border:none;color:var(--rose);cursor:pointer;font-family:var(--font-body);font-size:13px;transition:background .2s;">
-                  Выход
-                </button>
-              </div>
             </div>
           </div>
           <button class="btn btn-ghost" id="enableNotifBtn" style="width:100%;margin-top:14px;display:none;">🔔 Включить уведомления</button>
@@ -2073,6 +2072,7 @@ function go(name, replace = false){
     state.screen = name;
     window.scrollTo(0,0);
     const sc = screens[name].querySelector('.scroll'); if(sc) sc.scrollTop = 0;
+    if(typeof updateSettingsGearVisibility === 'function') updateSettingsGearVisibility();
   };
   
   if(!isPopping) {
@@ -3539,10 +3539,15 @@ document.getElementById('learnedBtn').addEventListener('click', ()=>{
   }, {passive:true});
 })();
 
-document.getElementById('progressBtn').addEventListener('click', ()=>{
-  showToast(`Изучено ${state.learned.size} из 99 имён`);
-});
 document.getElementById('brandBtn').addEventListener('click', ()=>go('home'));
+
+// The settings gear only makes sense on the Друзья screen (it's the
+// account-settings menu — reminders, backup, volume keys, logout), so it
+// stays hidden everywhere else even though it lives in the shared topbar.
+function updateSettingsGearVisibility(){
+  const show = state.screen === 'friends' && state.profile && state.profile.authenticated;
+  document.getElementById('profileMenuBtn').style.display = show ? 'flex' : 'none';
+}
 
 /* =====================================================
    QUIZ
@@ -4743,6 +4748,7 @@ function updateProfileUI(){
   const authCard = document.getElementById('authCard');
   const profileCard = document.getElementById('profileCard');
   const addFriendForm = document.getElementById('addFriendForm');
+  if(typeof updateSettingsGearVisibility === 'function') updateSettingsGearVisibility();
 
   if(state.profile && state.profile.authenticated){
     authCard.style.display = 'none';
