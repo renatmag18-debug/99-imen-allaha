@@ -6510,13 +6510,19 @@ function showUpdatePrompt(newVersion){
   const banner = document.getElementById('updateBanner');
   const btn = document.getElementById('updateBannerActionBtn');
   document.getElementById('updateBannerVersion').textContent = 'v' + newVersion;
-  document.getElementById('updateBannerSub').textContent = 'Новая версия приложения готова к загрузке';
-  btn.disabled = false;
-  btn.textContent = 'Обновить';
-  btn.dataset.state = 'prompt';
+  document.getElementById('updateBannerSub').textContent = 'Загружаем обновление…';
+  btn.disabled = true;
+  btn.textContent = 'Загрузка…';
+  btn.dataset.state = 'downloading';
   document.getElementById('updateBannerProgressTrack').classList.remove('show');
   document.getElementById('updateBannerProgressFill').style.transform = 'scaleX(0)';
   banner.classList.add('show');
+  // No tap needed to start — it downloads itself the moment an update is
+  // found, and fires the install prompt itself the moment it's done. The
+  // only thing a user still has to touch is Android's own "Install this
+  // update?" system dialog — that confirmation can't be skipped for an APK
+  // installed outside Google Play, no matter what this page does.
+  downloadUpdateWithProgress(true);
 }
 
 function hideUpdateBanner(){
@@ -6535,7 +6541,9 @@ document.getElementById('updateBannerActionBtn').addEventListener('click', (e)=>
     installAPKUpdate();
     return;
   }
-  downloadUpdateWithProgress();
+  // Manual tap only ever happens after an auto-download failed (button
+  // reads "Повторить" then) — retry the same auto-everything flow.
+  downloadUpdateWithProgress(true);
 });
 
 // Downloads the APK ourselves (with a real byte-progress bar) purely for
@@ -6544,7 +6552,7 @@ document.getElementById('updateBannerActionBtn').addEventListener('click', (e)=>
 // to work with the native bridge (a blob: URL wouldn't be resolvable from
 // native code). Costs a second download on install, but keeps the install
 // step itself exactly as it was.
-async function downloadUpdateWithProgress(){
+async function downloadUpdateWithProgress(autoInstall){
   const btn = document.getElementById('updateBannerActionBtn');
   const sub = document.getElementById('updateBannerSub');
   const track = document.getElementById('updateBannerProgressTrack');
@@ -6583,6 +6591,10 @@ async function downloadUpdateWithProgress(){
     btn.disabled = false;
     btn.textContent = 'Установить';
     btn.dataset.state = 'ready';
+    // Fires Android's own install prompt right away — the "Установить"
+    // button stays live in case that system dialog gets dismissed/missed
+    // and the user needs to bring it back manually.
+    if(autoInstall) installAPKUpdate();
   }catch(e){
     if(e.name === 'AbortError') return;
     console.warn('Update download failed:', e);
