@@ -696,6 +696,18 @@ body{
 }
 .profile-stat-tile b{ display:block; font-family:var(--font-num); font-size:19px; color:var(--gold-soft); }
 .profile-stat-tile span{ font-size:11px; color:var(--ivory-dim); }
+.profile-view-add-friend{
+  display:flex; align-items:center; justify-content:center; gap:6px; margin:14px auto 0;
+  padding:10px 22px; border-radius:999px; border:none; cursor:pointer;
+  background:linear-gradient(145deg, var(--gold-soft), var(--gold)); color:#1a1204;
+  font-family:var(--font-body); font-weight:700; font-size:13px;
+  transition:transform .2s var(--ease), opacity .2s var(--ease);
+}
+.profile-view-add-friend:active{ transform:scale(.95); }
+.profile-view-add-friend[disabled]{
+  background:rgba(255,255,255,0.06); color:var(--ivory-dim); cursor:default;
+}
+.profile-view-add-friend[hidden]{ display:none; }
 .friend-name{ flex:1; font-size:13.5px; font-weight:700; color:var(--ivory); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .friend-actions{ display:flex; gap:6px; flex-shrink:0; }
 .friend-action-btn{
@@ -1511,6 +1523,7 @@ body{
       <div style="text-align:center;font-weight:700;font-size:17px;color:var(--ivory);margin-top:10px;" id="profileViewName"></div>
       <div style="text-align:center;font-size:12px;color:var(--ivory-dim);margin-top:2px;" id="profileViewStatus"></div>
       <div class="profile-stat-grid" id="profileViewStats"></div>
+      <button class="profile-view-add-friend" id="profileViewAddFriendBtn"></button>
     </div>
   </div>
 
@@ -2074,7 +2087,12 @@ function go(name, replace = false){
 }
 
 window.addEventListener('popstate', (e) => {
-  if(e.state && e.state.screen) {
+  // A closed sheet also fires popstate (it landed back on the screen entry
+  // that was already active) — e.state.screen equals state.screen in that
+  // case, and re-running go() for the screen we never left just resets
+  // scroll to the top for no reason. Only actually navigate when the
+  // target screen differs from the current one.
+  if(e.state && e.state.screen && e.state.screen !== state.screen) {
     isPopping = true;
     go(e.state.screen);
     isPopping = false;
@@ -5743,8 +5761,8 @@ async function openProfileView(username){
   const stats = result.stats || {};
   document.getElementById('profileViewStats').innerHTML = `
     <div class="profile-stat-tile"><b>${(stats.totalZikrCount||0).toLocaleString('ru-RU')}</b><span>зикров посчитано</span></div>
-    <div class="profile-stat-tile"><b>${formatJoinedDate(result.joinedAt)}</b><span>на сайте с</span></div>
   `;
+  renderProfileViewAddFriendBtn(result.username);
 
   if(profileViewPresenceUnsub) profileViewPresenceUnsub();
   const dot = document.getElementById('profileViewPresence');
@@ -5763,6 +5781,48 @@ function closeProfileView(){
 }
 document.getElementById('profileViewClose').addEventListener('click', closeProfileView);
 profileViewBackdrop.addEventListener('click', closeProfileView);
+
+function renderProfileViewAddFriendBtn(username){
+  const btn = document.getElementById('profileViewAddFriendBtn');
+  btn.dataset.username = username;
+  const isSelf = state.profile && state.profile.authenticated &&
+    state.profile.username.toLowerCase() === username.toLowerCase();
+  if(!state.profile || !state.profile.authenticated || isSelf){
+    btn.hidden = true;
+    return;
+  }
+  btn.hidden = false;
+  const alreadyFriend = state.friendsList.some(f => f.uid.toLowerCase() === username.toLowerCase());
+  if(alreadyFriend){
+    btn.textContent = '✓ Уже друзья';
+    btn.disabled = true;
+  } else {
+    btn.textContent = '+ Добавить в друзья';
+    btn.disabled = false;
+  }
+}
+document.getElementById('profileViewAddFriendBtn').addEventListener('click', async (e)=>{
+  const btn = e.currentTarget;
+  const username = btn.dataset.username;
+  if(!username || btn.disabled) return;
+  btn.disabled = true;
+  const prevText = btn.textContent;
+  btn.textContent = 'Отправка…';
+
+  const result = await apiAddFriend(username);
+  if(result.error){
+    if(result.error === 'already friends'){ btn.textContent = '✓ Уже друзья'; return; }
+    if(result.error === 'request already sent'){ btn.textContent = 'Заявка уже отправлена'; return; }
+    showToast(ADD_FRIEND_ERRORS[result.error] || 'Не удалось отправить запрос');
+    btn.textContent = prevText;
+    btn.disabled = false;
+    return;
+  }
+
+  notifyFriend(username, '99 имён Аллаха', state.profile.username+' хочет добавить вас в друзья', 'friend-request', baseUrl()+'?screen=friends');
+  btn.textContent = 'Заявка отправлена ✓';
+  showToast('Запрос отправлен: '+username);
+});
 
 /* ---------------- time-on-site tracking ---------------- */
 let timeTrackingAccumulated = 0; // seconds banked since the last successful sync
@@ -5906,6 +5966,47 @@ function dhikrRoomMakeId(){
   return Math.random().toString(36).slice(2,8).toUpperCase();
 }
 
+// Room membership only ever lived in the in-memory dhikrRoom object — if
+// the WebView got reloaded (Android reclaiming a backgrounded activity is
+// the common case), that state vanished and the room looked "reset" even
+// though it was still sitting there fine in Firebase, just with no local
+// pointer to it anymore. Persisting the bare minimum needed to reattach
+// fixes that without touching the room data itself.
+const DHIKR_ROOM_STATE_KEY = 'dhikrRoomActive';
+function saveDhikrRoomState(){
+  if(!dhikrRoom.roomId || !dhikrRoom.myId){ try{ localStorage.removeItem(DHIKR_ROOM_STATE_KEY); }catch(e){} return; }
+  try{
+    localStorage.setItem(DHIKR_ROOM_STATE_KEY, JSON.stringify({
+      roomId: dhikrRoom.roomId, myId: dhikrRoom.myId, isHost: dhikrRoom.isHost,
+      myName: dhikrRoom.myName, zikr: dhikrRoom.zikr
+    }));
+  }catch(e){}
+}
+async function restoreDhikrRoomState(){
+  let saved;
+  try{ saved = JSON.parse(localStorage.getItem(DHIKR_ROOM_STATE_KEY) || 'null'); }catch(e){ saved = null; }
+  if(!saved || !saved.roomId || !saved.myId) return;
+  await fbAuthReady;
+  if(!fbDb) return;
+  try{
+    // Confirm our seat is still actually there before resuming — the host
+    // may have left/closed it, or we left from another device in the
+    // meantime — rather than reattaching to something that's gone.
+    const snap = await fbDb.ref('dhikrRooms/'+saved.roomId+'/players/'+saved.myId).once('value');
+    if(!snap.exists()){ localStorage.removeItem(DHIKR_ROOM_STATE_KEY); return; }
+  }catch(e){ return; }
+  Object.assign(dhikrRoom, {
+    roomId: saved.roomId, myId: saved.myId, isHost: !!saved.isHost,
+    myName: saved.myName || '', zikr: saved.zikr || null
+  });
+  attachDhikrRoomListener();
+  // Puts the setup/active toggle into the right state now, before the user
+  // ever opens the sheet — openDhikrRoomSheet() only flips it when roomId
+  // was previously unset, so a fresh page load needs this done up front.
+  showDhikrRoomActive();
+}
+restoreDhikrRoomState();
+
 function renderDhikrRoomZikrChoice(){
   const wrap = document.getElementById('dhikrRoomZikrChoice');
   wrap.innerHTML = ZIKR.map((z,i)=>
@@ -5969,7 +6070,14 @@ function attachDhikrRoomListener(){
 }
 function onDhikrRoomSnapshot(snap){
   const val = snap.val();
-  if(!val) return;
+  if(!val || !val.players || !val.players[dhikrRoom.myId]){
+    // Room deleted, or we're no longer in its players list (left from
+    // another device, host closed it, etc.) — don't keep showing a room
+    // that no longer includes us.
+    showToast('Комната зикра больше не активна');
+    resetDhikrRoom();
+    return;
+  }
   dhikrRoom.players = val.players || {};
   dhikrRoom.count = val.count || 0;
   if(val.zikr) dhikrRoom.zikr = val.zikr;
@@ -6006,6 +6114,7 @@ document.getElementById('dhikrRoomCreateBtn').addEventListener('click', ()=>{
     players: { [dhikrRoom.myId]: { name, count:0 } }
   });
   attachDhikrRoomListener();
+  saveDhikrRoomState();
   dhikrRoomPickedFriends.forEach(uid=>sendDhikrRoomInvite(uid));
   dhikrRoomPickedFriends = [];
   updateDhikrRoomPickSummary();
@@ -6040,6 +6149,7 @@ document.getElementById('dhikrRoomCircle').addEventListener('click', ()=>{
 function resetDhikrRoom(){
   if(dhikrRoom.roomRef){ try{ dhikrRoom.roomRef.off('value', onDhikrRoomSnapshot); }catch(e){} }
   Object.assign(dhikrRoom, { isHost:false, roomId:null, myId:null, myName:'', zikr:null, roomRef:null, players:{}, count:0 });
+  try{ localStorage.removeItem(DHIKR_ROOM_STATE_KEY); }catch(e){}
   showDhikrRoomSetup();
 }
 document.getElementById('dhikrRoomLeaveBtn').addEventListener('click', ()=>{
@@ -6057,6 +6167,7 @@ function joinDhikrRoomAsGuest(roomId, name){
   dhikrRoom.myId = myRef.key;
   myRef.set({ name: dhikrRoom.myName, count:0 });
   attachDhikrRoomListener();
+  saveDhikrRoomState();
   showDhikrRoomActive();
   openDhikrRoomSheet();
 }
