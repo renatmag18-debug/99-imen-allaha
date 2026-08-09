@@ -1458,7 +1458,7 @@ body{
 
         <!-- Leaderboard Section -->
         <div style="margin-top:30px;border-top:1px solid var(--line);padding-top:20px;">
-          <h3 style="text-align:center;margin-bottom:14px;color:var(--ivory);">🏆 Рейтинг учащихся</h3>
+          <h3 style="text-align:center;margin-bottom:14px;color:var(--ivory);">🏆 Рейтинг по зикрам</h3>
           <div id="leaderboardScopeChoice" style="display:flex;justify-content:center;gap:8px;margin-bottom:20px;">
             <button class="len-chip active" data-scope="global">Глобальный</button>
             <button class="len-chip" data-scope="friends">Друзья</button>
@@ -2182,11 +2182,10 @@ async function loadLeaderboard(){
       </div>
       <div style="flex:1;min-width:0;">
         <div style="color:var(--ivory);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(user.username)}</div>
-        <div style="font-size:12px;color:var(--ivory-dim);">Правильных: ${user.correctAnswers}</div>
       </div>
       <div style="flex-shrink:0;text-align:right;font-family:var(--font-num);color:var(--gold-soft);">
-        <div style="font-size:16px;font-weight:bold;">${user.totalStudied}</div>
-        <div style="font-size:11px;color:var(--ivory-dim);">изучено</div>
+        <div style="font-size:16px;font-weight:bold;">${(user.totalZikrCount||0).toLocaleString('ru-RU')}</div>
+        <div style="font-size:11px;color:var(--ivory-dim);">зикров</div>
       </div>
     </div>
   `).join('');
@@ -2873,26 +2872,6 @@ function getZikrLifetimeTotal(){
   const v = parseInt(localStorage.getItem(ZIKR_LIFETIME_KEY), 10);
   return isNaN(v) ? null : v;
 }
-// One-time baseline for users who already had counts before this tally
-// existed — best-effort from whatever's still in localStorage (per-item
-// dhikr counts + every weekly-challenge week ever saved on this device).
-function seedZikrLifetimeTotal(){
-  if(getZikrLifetimeTotal() !== null) return;
-  let seed = 0;
-  const counts = loadDhikrCounts();
-  Object.keys(counts).forEach(k=>{ seed += counts[k] || 0; });
-  try{
-    for(let i=0;i<localStorage.length;i++){
-      const key = localStorage.key(i);
-      if(key && key.indexOf('wc_mycount_') === 0){
-        seed += parseInt(localStorage.getItem(key), 10) || 0;
-      }
-    }
-  }catch(e){}
-  try{ localStorage.setItem(ZIKR_LIFETIME_KEY, String(seed)); }catch(e){}
-}
-seedZikrLifetimeTotal();
-
 let zikrLifetimePendingSync = 0;
 let zikrLifetimeSyncTimer = null;
 function bumpZikrLifetimeTotal(n){
@@ -2915,6 +2894,36 @@ async function flushZikrLifetimeSync(){
 document.addEventListener('visibilitychange', ()=>{
   if(document.visibilityState === 'hidden') flushZikrLifetimeSync();
 });
+// Catch-all retry: the 800ms flush above only fires right after a bump, and
+// right at page load (when the one-time seed below schedules its own bump)
+// login restoration is often still async-pending, so that first attempt's
+// "not authenticated yet" bail-out could otherwise strand the seed in
+// memory forever if the user never taps a counter again this session.
+setInterval(()=>{ if(zikrLifetimePendingSync > 0) flushZikrLifetimeSync(); }, 30000);
+
+// One-time baseline for users who already had counts before this tally
+// existed — best-effort from whatever's still in localStorage (per-item
+// dhikr counts + every weekly-challenge week ever saved on this device).
+// Goes through bumpZikrLifetimeTotal (not a direct localStorage write) so
+// the seed itself actually reaches the server instead of just sitting
+// invisibly on this one device until the next fresh tap.
+function seedZikrLifetimeTotal(){
+  if(getZikrLifetimeTotal() !== null) return;
+  try{ localStorage.setItem(ZIKR_LIFETIME_KEY, '0'); }catch(e){}
+  let seed = 0;
+  const counts = loadDhikrCounts();
+  Object.keys(counts).forEach(k=>{ seed += counts[k] || 0; });
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const key = localStorage.key(i);
+      if(key && key.indexOf('wc_mycount_') === 0){
+        seed += parseInt(localStorage.getItem(key), 10) || 0;
+      }
+    }
+  }catch(e){}
+  if(seed > 0) bumpZikrLifetimeTotal(seed);
+}
+seedZikrLifetimeTotal();
 
 function parseDhikrTarget(countStr){
   if(!countStr) return null;
@@ -4713,6 +4722,10 @@ async function initProfile(){
       state.profile = { username, authenticated: true };
       updateProfileUI();
       listenFriendsRealtime();
+      // Auth just became available — flush any zikr-count sync (e.g. the
+      // one-time seed from seedZikrLifetimeTotal()) that bailed out earlier
+      // because it ran before login was restored.
+      if(typeof flushZikrLifetimeSync === 'function') flushZikrLifetimeSync();
       // Load leaderboard if on friends screen
       if(state.screen === 'friends'){
         loadLeaderboard();

@@ -658,12 +658,13 @@ async function handleLeaderboard(env, scopeUsername) {
     .map(([key, user]) => ({
       username: user.username || key,
       avatar: user.avatar || null,
+      totalZikrCount: user.stats.totalZikrCount || 0,
       totalStudied: user.stats.totalStudied || 0,
       correctAnswers: user.stats.correctAnswers || 0,
       friendsCount: Object.keys(user.friends || {}).length,
       lastActive: user.stats.lastActive
     }))
-    .sort((a, b) => b.totalStudied - a.totalStudied)
+    .sort((a, b) => b.totalZikrCount - a.totalZikrCount)
     .slice(0, 100);
 
   return corsResponse(jsonResponse({ leaderboard }));
