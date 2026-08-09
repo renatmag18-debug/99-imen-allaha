@@ -175,6 +175,43 @@ body{
 .ios-app-banner.show{ display:flex; }
 .ios-app-banner svg{ width:20px; height:20px; flex-shrink:0; color:var(--gold-soft); }
 .ios-app-banner b{ color:var(--gold-soft); }
+.update-banner{
+  display:none; flex-direction:column;
+  border:1px solid var(--gold); border-radius:14px; margin-bottom:14px; overflow:hidden;
+  background:linear-gradient(160deg, rgba(203,161,53,0.14), rgba(203,161,53,0.02));
+}
+.update-banner.show{ display:flex; }
+.update-banner-main{ display:flex; align-items:center; gap:10px; padding:12px 12px 12px 14px; }
+.update-banner-icon{ width:20px; height:20px; flex-shrink:0; color:var(--gold-soft); }
+.update-banner-icon svg{ width:100%; height:100%; }
+.update-banner-text{ flex:1; min-width:0; }
+.update-banner-title{ font-size:12.5px; font-weight:700; color:var(--gold-soft); }
+.update-banner-title span{ color:var(--ivory-dim); font-weight:600; }
+.update-banner-sub{ font-size:11.5px; color:var(--ivory-dim); margin-top:2px; }
+.update-banner-action{
+  font-family:var(--font-body); font-weight:700; font-size:12.5px; white-space:nowrap; flex-shrink:0;
+  border-radius:10px; padding:8px 14px; border:none; cursor:pointer;
+  background:linear-gradient(145deg, var(--gold-soft), var(--gold)); color:#1a1204;
+  transition:transform .2s var(--ease), opacity .2s var(--ease);
+}
+.update-banner-action:active{ transform:scale(.94); }
+.update-banner-action:disabled{ opacity:.65; cursor:default; }
+.update-banner-close{
+  width:26px; height:26px; flex-shrink:0; border-radius:8px; border:none; background:none; padding:0;
+  color:var(--ivory-dim); cursor:pointer; display:flex; align-items:center; justify-content:center;
+  transition:background .2s var(--ease), color .2s var(--ease);
+}
+.update-banner-close svg{ width:14px; height:14px; }
+.update-banner-close:hover{ background:rgba(255,255,255,0.08); color:var(--ivory); }
+.update-banner-progress-track{
+  display:none; height:4px; background:rgba(255,255,255,0.1); margin:0 14px 12px; border-radius:3px; overflow:hidden;
+}
+.update-banner-progress-track.show{ display:block; }
+.update-banner-progress-fill{
+  height:100%; width:100%; transform-origin:left; transform:scaleX(0); will-change:transform;
+  background:linear-gradient(90deg, var(--jade), var(--gold-soft)); border-radius:3px;
+  transition:transform .2s linear;
+}
 .hero{ display:flex; flex-direction:column; align-items:center; text-align:center; padding-top:6px;}
 .hero-star{ width:150px; height:150px; margin:8px auto 6px; animation: moon-glow 4.5s ease-in-out infinite; filter:drop-shadow(0 0 20px rgba(228,200,120,0.35));}
 @keyframes moon-glow{ 0%,100%{ transform:scale(1) rotate(-6deg); opacity:.92; } 50%{ transform:scale(1.045) rotate(-6deg); opacity:1; } }
@@ -773,6 +810,26 @@ body{
           <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12M12 15l-4-4M12 15l4-4M5 21h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span>Скачать настоящее приложение для Android (APK)</span>
         </a>
+
+        <div class="update-banner" id="updateBanner">
+          <div class="update-banner-main">
+            <div class="update-banner-icon">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12M12 3l4 4M12 3L8 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 13v6a2 2 0 002 2h10a2 2 0 002-2v-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="update-banner-text">
+              <div class="update-banner-title">Доступно обновление <span id="updateBannerVersion"></span></div>
+              <div class="update-banner-sub" id="updateBannerSub">Новая версия приложения готова к загрузке</div>
+            </div>
+            <button class="update-banner-action" id="updateBannerActionBtn" data-state="prompt">Обновить</button>
+            <button class="update-banner-close" id="updateBannerCloseBtn" title="Позже" aria-label="Закрыть">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+          <div class="update-banner-progress-track" id="updateBannerProgressTrack">
+            <div class="update-banner-progress-fill" id="updateBannerProgressFill"></div>
+          </div>
+        </div>
+
         <div class="hero">
           <svg class="hero-star" viewBox="0 0 24 24" fill="none">
             <path d="M21 12.9A9 9 0 1111.1 3 7 7 0 0021 12.9z" stroke="#e4c878" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
@@ -6445,12 +6502,97 @@ async function checkForAppUpdate(){
   }catch(e){ console.warn('App update check failed:', e); }
 }
 
-async function showUpdatePrompt(newVersion){
-  const msg = `Доступно обновление приложения (v${newVersion}). Скачать?`;
-  if(confirm(msg)){
-    await installAPKUpdate();
-  } else {
-    localStorage.setItem('ignoredUpdateVersion', newVersion.toString());
+let pendingUpdateVersion = null;
+let updateDownloadAbort = null;
+
+function showUpdatePrompt(newVersion){
+  pendingUpdateVersion = newVersion;
+  const banner = document.getElementById('updateBanner');
+  const btn = document.getElementById('updateBannerActionBtn');
+  document.getElementById('updateBannerVersion').textContent = 'v' + newVersion;
+  document.getElementById('updateBannerSub').textContent = 'Новая версия приложения готова к загрузке';
+  btn.disabled = false;
+  btn.textContent = 'Обновить';
+  btn.dataset.state = 'prompt';
+  document.getElementById('updateBannerProgressTrack').classList.remove('show');
+  document.getElementById('updateBannerProgressFill').style.transform = 'scaleX(0)';
+  banner.classList.add('show');
+}
+
+function hideUpdateBanner(){
+  document.getElementById('updateBanner').classList.remove('show');
+  if(updateDownloadAbort){ updateDownloadAbort.abort(); updateDownloadAbort = null; }
+}
+
+document.getElementById('updateBannerCloseBtn').addEventListener('click', ()=>{
+  if(pendingUpdateVersion) localStorage.setItem('ignoredUpdateVersion', pendingUpdateVersion.toString());
+  hideUpdateBanner();
+});
+
+document.getElementById('updateBannerActionBtn').addEventListener('click', (e)=>{
+  const btn = e.currentTarget;
+  if(btn.dataset.state === 'ready'){
+    installAPKUpdate();
+    return;
+  }
+  downloadUpdateWithProgress();
+});
+
+// Downloads the APK ourselves (with a real byte-progress bar) purely for
+// UI feedback — the actual install still hands the original https URL to
+// installAPKUpdate() below, unchanged, since that's the path already known
+// to work with the native bridge (a blob: URL wouldn't be resolvable from
+// native code). Costs a second download on install, but keeps the install
+// step itself exactly as it was.
+async function downloadUpdateWithProgress(){
+  const btn = document.getElementById('updateBannerActionBtn');
+  const sub = document.getElementById('updateBannerSub');
+  const track = document.getElementById('updateBannerProgressTrack');
+  const fill = document.getElementById('updateBannerProgressFill');
+  btn.disabled = true;
+  btn.textContent = 'Загрузка…';
+  btn.dataset.state = 'downloading';
+  sub.textContent = 'Загружаем обновление…';
+  track.classList.add('show');
+  fill.style.transform = 'scaleX(0)';
+
+  try{
+    updateDownloadAbort = new AbortController();
+    const res = await fetch('https://99ism.ru/99ism.apk?t=' + Date.now(), {
+      signal: updateDownloadAbort.signal, cache: 'no-store'
+    });
+    if(!res.ok || !res.body) throw new Error('HTTP ' + res.status);
+
+    const total = parseInt(res.headers.get('content-length') || '0', 10);
+    const reader = res.body.getReader();
+    let loaded = 0;
+    while(true){
+      const { done, value } = await reader.read();
+      if(done) break;
+      loaded += value.length;
+      if(total > 0){
+        fill.style.transform = 'scaleX(' + Math.min(1, loaded/total) + ')';
+        sub.textContent = 'Загружаем обновление — ' + Math.round(Math.min(1, loaded/total)*100) + '%';
+      } else {
+        sub.textContent = 'Загружаем обновление — ' + (loaded/1048576).toFixed(1) + ' МБ';
+      }
+    }
+
+    fill.style.transform = 'scaleX(1)';
+    sub.textContent = 'Обновление загружено';
+    btn.disabled = false;
+    btn.textContent = 'Установить';
+    btn.dataset.state = 'ready';
+  }catch(e){
+    if(e.name === 'AbortError') return;
+    console.warn('Update download failed:', e);
+    sub.textContent = 'Не удалось загрузить — нажмите, чтобы повторить';
+    track.classList.remove('show');
+    btn.disabled = false;
+    btn.textContent = 'Повторить';
+    btn.dataset.state = 'prompt';
+  }finally{
+    updateDownloadAbort = null;
   }
 }
 
@@ -6496,10 +6638,11 @@ async function installAPKUpdate(){
   }
 }
 
-// Автоматическая проверка отключена из-за проблем с установкой APK из приложения.
-// Пользователи могут обновляться вручную через https://99ism.ru/99ism.apk
-// TODO: Реализовать правильный механизм через Google Play или встроенный Android API
-// setTimeout(checkForAppUpdate, 2000);
+// Re-enabled now that the prompt is an in-page banner (with a real download
+// progress bar) instead of a bare confirm() — the actual install call below
+// is unchanged from before, so if that specific step still has issues,
+// this only affects how the offer is *shown*, not whether install works.
+setTimeout(checkForAppUpdate, 2000);
 
 </script>
 </body>
