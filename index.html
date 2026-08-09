@@ -718,10 +718,7 @@ body{
 .friend-action-btn:active{ transform:scale(.92); }
 .friend-action-btn.accept{ border-color:var(--jade); color:var(--jade); }
 .friend-action-btn.decline{ border-color:var(--rose); color:var(--rose); }
-.friend-action-btn.duel{ border-color:var(--gold); color:var(--gold-soft); }
-.friend-action-btn.duel-invite{
-  width:auto; padding:0 12px; border-color:var(--gold); color:var(--gold-soft); font-size:12px; font-weight:700; white-space:nowrap;
-}
+.friend-action-btn.duel{ border-color:var(--gold); color:var(--gold-soft); font-size:15px; }
 .friend-menu-wrap{ position:relative; }
 .friend-menu{
   display:none; position:absolute; top:40px; right:0; background:var(--panel); border:1px solid var(--line);
@@ -5613,14 +5610,16 @@ function renderFriendsScreen(){
             </div>
             <div class="friend-name">${escapeHtml(f.name)}</div>
           </div>
-          <div class="friend-menu-wrap">
-            <button class="friend-action-btn menu" data-friend-menu="${escapeHtml(f.uid)}" title="Ещё">⋮</button>
-            <div class="friend-menu" data-friend-menu-panel="${escapeHtml(f.uid)}">
-              <button data-remove-friend="${escapeHtml(f.uid)}">Удалить из друзей</button>
+          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+            <button class="friend-action-btn duel" data-duel-friend="${escapeHtml(f.uid)}" title="Пригласить на дуэль">⚔️</button>
+            <div class="friend-menu-wrap">
+              <button class="friend-action-btn menu" data-friend-menu="${escapeHtml(f.uid)}" title="Ещё">⋮</button>
+              <div class="friend-menu" data-friend-menu-panel="${escapeHtml(f.uid)}">
+                <button data-remove-friend="${escapeHtml(f.uid)}">Удалить из друзей</button>
+              </div>
             </div>
           </div>
         </div>
-        <button class="friend-action-btn duel-invite" data-duel-friend="${escapeHtml(f.uid)}">Пригласить на дуэль</button>
       </div>`).join('');
 
     state.friendsList.forEach(f => {
