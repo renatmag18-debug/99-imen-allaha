@@ -260,6 +260,24 @@ async function apiTrackTime(seconds) {
   }
 }
 
+async function apiTrackZikr(count) {
+  const auth = getAuthCredentials();
+  if (!auth) return { error: 'Not authenticated' };
+
+  try {
+    const res = await fetch(`${API_BASE}/api/track-zikr`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: auth.username, password: auth.password, count })
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Failed to track zikr' };
+    return data;
+  } catch (e) {
+    return { error: 'Network error' };
+  }
+}
+
 // Register an FCM push token for the logged-in user. Goes through the worker
 // (admin-authenticated) rather than a direct client-side RTDB write, since
 // the fcmTokens security rule requires auth.uid === $uid and there's no

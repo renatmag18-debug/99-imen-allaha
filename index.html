@@ -324,6 +324,18 @@ body{
    was launched from. */
 #friendPickerBackdrop{ z-index:30; }
 #friendPickerSheet{ z-index:31; }
+/* Profile view is a quick glance, not a drill-down — small dialog centered
+   on screen instead of a full-width bottom sheet, on every viewport (not
+   just the desktop breakpoint below). */
+#profileViewSheet{
+  left:50%; right:auto; bottom:auto; top:50%; margin:0;
+  width:calc(100% - 64px); max-width:300px; max-height:80vh;
+  border-radius:22px; border-bottom:1px solid var(--line);
+  padding:22px 20px calc(22px + var(--safe-bottom));
+  transform:translate(-50%,-50%) scale(.94); opacity:0; pointer-events:none;
+  transition:transform .3s var(--ease), opacity .25s var(--ease);
+}
+#profileViewSheet.show{ transform:translate(-50%,-50%) scale(1); opacity:1; pointer-events:auto; }
 .sheet-handle{ width:40px; height:4px; border-radius:3px; background:var(--line); margin:2px auto 14px; }
 .sheet-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;}
 .sheet-idx{ font-family:var(--font-num); font-size:13px; color:var(--jade); }
@@ -343,7 +355,7 @@ body{
 /* ================= QUIZ ================= */
 .quiz-head{ display:flex; align-items:center; gap:12px; padding:0 20px 16px; flex-shrink:0;}
 .progress-track{ flex:1; height:6px; border-radius:4px; background:rgba(255,255,255,0.08); overflow:hidden;}
-.progress-fill{ height:100%; background:linear-gradient(90deg, var(--jade), var(--gold-soft)); border-radius:4px; transition:width .4s var(--ease);}
+.progress-fill{ height:100%; width:100%; background:linear-gradient(90deg, var(--jade), var(--gold-soft)); border-radius:4px; transform-origin:left; will-change:transform; transition:transform .4s var(--ease);}
 .q-count{ font-family:var(--font-num); font-size:14px; color:var(--ivory-dim); white-space:nowrap;}
 
 .quiz-intro{ text-align:center; padding-top:10px;}
@@ -423,7 +435,7 @@ body{
 .duel-lb-row + .duel-lb-row{ border-top:1px solid rgba(255,255,255,0.05); }
 .duel-lb-name{ flex-shrink:0; font-size:13px; font-weight:700; color:var(--ivory); max-width:38%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 .duel-lb-bar{ flex:1; height:6px; border-radius:4px; background:rgba(255,255,255,0.08); overflow:hidden;}
-.duel-lb-fill{ height:100%; background:linear-gradient(90deg, var(--jade), var(--gold-soft)); border-radius:4px; transition:width .4s var(--ease);}
+.duel-lb-fill{ height:100%; width:100%; background:linear-gradient(90deg, var(--jade), var(--gold-soft)); border-radius:4px; transform-origin:left; will-change:transform; transition:transform .4s var(--ease);}
 .duel-lb-score{ flex-shrink:0; font-family:var(--font-num); font-size:14px; color:var(--gold-soft); min-width:34px; text-align:right;}
 .duel-lb-done{ font-size:10px; color:var(--jade); }
 
@@ -443,10 +455,10 @@ body{
 
 .duel-timerbar-wrap{ display:flex; align-items:center; gap:10px; padding:0 20px 12px; flex-shrink:0; }
 .duel-timerbar-track{ flex:1; height:9px; border-radius:5px; background:rgba(255,255,255,0.08); overflow:hidden; border:1px solid var(--line);}
-.duel-timerbar-fill{ height:100%; border-radius:5px; background:linear-gradient(90deg, var(--jade), var(--gold-soft)); width:100%; }
+.duel-timerbar-fill{ height:100%; border-radius:5px; background:linear-gradient(90deg, var(--jade), var(--gold-soft)); width:100%; transform-origin:left; will-change:transform; }
 .duel-timerbar-fill.low{ background:linear-gradient(90deg, var(--rose), #e0704f); animation: timer-pulse .5s ease-in-out infinite; }
 .duel-timerbar-num{ font-family:var(--font-num); font-size:16px; font-weight:700; color:var(--ivory); min-width:22px; text-align:right; flex-shrink:0;}
-@keyframes timer-pulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.08); } }
+@keyframes timer-pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.55; } }
 .live-word{ color:var(--rose); animation: live-blink 2.2s ease-in-out infinite; }
 @keyframes live-blink{ 0%,100%{ opacity:1; } 50%{ opacity:.45; } }
 
@@ -537,7 +549,7 @@ body{
 .weekly-challenge-timer{ font-size:11px; color:var(--ivory-dim); flex-shrink:0; }
 .weekly-challenge-title{ font-family:var(--font-display); font-size:16px; color:var(--ivory); margin-bottom:10px; }
 .weekly-progress-bar{ height:8px; border-radius:5px; background:rgba(255,255,255,0.08); overflow:hidden; margin-bottom:6px; }
-.weekly-progress-fill{ height:100%; width:0%; background:linear-gradient(90deg, var(--jade), var(--gold-soft)); border-radius:5px; transition:width .4s var(--ease); }
+.weekly-progress-fill{ height:100%; width:100%; transform:scaleX(0); background:linear-gradient(90deg, var(--jade), var(--gold-soft)); border-radius:5px; transform-origin:left; will-change:transform; transition:transform .4s var(--ease); }
 .weekly-challenge-count-label{ font-size:11.5px; color:var(--ivory-dim); text-align:center; }
 @keyframes chip-live{0%{box-shadow:0 0 0 0 rgba(255,196,80,0.5);}70%{box-shadow:0 0 0 6px rgba(255,196,80,0);}100%{box-shadow:0 0 0 0 rgba(255,196,80,0);}}
 .duel-participant-chip.live-now{border-color:var(--gold) !important;animation:chip-live 1s ease-out 2;}
@@ -641,7 +653,7 @@ body{
   width:72px; height:72px; border-radius:50%; display:flex; align-items:center; justify-content:center;
   font-size:32px; margin:0 auto; color:#1a1204; font-family:var(--font-display); font-weight:700;
 }
-.profile-stat-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:18px; }
+.profile-stat-grid{ display:grid; grid-template-columns:1fr; gap:10px; margin-top:18px; }
 .profile-stat-tile{
   background:rgba(255,255,255,0.03); border-radius:12px; padding:12px; text-align:center;
 }
@@ -862,7 +874,7 @@ body{
         <button class="icon-btn" id="quizExit">
           <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         </button>
-        <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+        <div class="progress-track"><div class="progress-fill" id="progressFill" style="transform:scaleX(0)"></div></div>
         <div class="q-count" id="qCount">1/10</div>
       </div>
       <div class="duel-timerbar-wrap" id="duelTimerBarWrap" style="display:none">
@@ -1428,7 +1440,6 @@ body{
 
   <div class="sheet-backdrop" id="profileViewBackdrop"></div>
   <div class="sheet" id="profileViewSheet">
-    <div class="sheet-handle"></div>
     <div class="sheet-top">
       <div class="sheet-idx">Профиль</div>
       <button class="sheet-close" id="profileViewClose">
@@ -1607,6 +1618,7 @@ body{
         <div class="counter-circle" id="dhikrRoomCircle"><span class="counter-num" id="dhikrRoomNum">0</span></div>
         <p class="counter-hint">Общий счёт комнаты</p>
         <div id="dhikrRoomParticipants" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:6px 0 14px;"></div>
+        <button class="btn-float-dhikr" id="dhikrRoomFloatBtn" onclick="toggleFloatingCounter('dhikr_room', this)" style="display:none;width:100%;margin-bottom:8px;">📿 Плавающий счётчик</button>
         <button class="btn btn-ghost" id="dhikrRoomInviteMoreBtn" style="width:100%;">Пригласить ещё</button>
         <button class="btn btn-ghost" id="dhikrRoomLeaveBtn" style="width:100%;margin-top:8px;color:var(--rose);border-color:var(--rose);">Покинуть комнату</button>
       </div>
@@ -2776,6 +2788,59 @@ function saveDhikrCounterValue(){
   try{ localStorage.setItem(DHIKR_COUNTS_KEY, JSON.stringify(counts)); }catch(e){}
 }
 
+/* ---------------- lifetime zikr total (all counters combined) ----------------
+   One running tally across every way of counting a zikr: the main dhikr/azkar/
+   namaz counter, the two weekly-challenge circles, and taps that come back
+   from the Android floating overlay / volume-button counting. Individual
+   counters can be reset without affecting this — it only grows. */
+const ZIKR_LIFETIME_KEY = 'zikrLifetimeTotal';
+function getZikrLifetimeTotal(){
+  const v = parseInt(localStorage.getItem(ZIKR_LIFETIME_KEY), 10);
+  return isNaN(v) ? null : v;
+}
+// One-time baseline for users who already had counts before this tally
+// existed — best-effort from whatever's still in localStorage (per-item
+// dhikr counts + every weekly-challenge week ever saved on this device).
+function seedZikrLifetimeTotal(){
+  if(getZikrLifetimeTotal() !== null) return;
+  let seed = 0;
+  const counts = loadDhikrCounts();
+  Object.keys(counts).forEach(k=>{ seed += counts[k] || 0; });
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const key = localStorage.key(i);
+      if(key && key.indexOf('wc_mycount_') === 0){
+        seed += parseInt(localStorage.getItem(key), 10) || 0;
+      }
+    }
+  }catch(e){}
+  try{ localStorage.setItem(ZIKR_LIFETIME_KEY, String(seed)); }catch(e){}
+}
+seedZikrLifetimeTotal();
+
+let zikrLifetimePendingSync = 0;
+let zikrLifetimeSyncTimer = null;
+function bumpZikrLifetimeTotal(n){
+  if(!n) return;
+  const total = (getZikrLifetimeTotal() || 0) + n;
+  try{ localStorage.setItem(ZIKR_LIFETIME_KEY, String(total)); }catch(e){}
+  zikrLifetimePendingSync += n;
+  if(zikrLifetimeSyncTimer) clearTimeout(zikrLifetimeSyncTimer);
+  zikrLifetimeSyncTimer = setTimeout(flushZikrLifetimeSync, 800);
+}
+async function flushZikrLifetimeSync(){
+  if(zikrLifetimeSyncTimer){ clearTimeout(zikrLifetimeSyncTimer); zikrLifetimeSyncTimer = null; }
+  if(zikrLifetimePendingSync <= 0) return;
+  if(!state.profile || !state.profile.authenticated || !apiTrackZikr) return;
+  const delta = zikrLifetimePendingSync;
+  zikrLifetimePendingSync = 0;
+  const result = await apiTrackZikr(delta);
+  if(result && result.error) zikrLifetimePendingSync += delta; // retry on next flush
+}
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'hidden') flushZikrLifetimeSync();
+});
+
 function parseDhikrTarget(countStr){
   if(!countStr) return null;
   const m = countStr.match(/\d+/);
@@ -2822,6 +2887,7 @@ dhikrCounterCircle.addEventListener('click', ()=>{
   updateDhikrCounterUI();
   saveDhikrCounterValue();
   syncFloatingOverlayCount('dhikr', dhikrCounterValue);
+  bumpZikrLifetimeTotal(1);
   if(navigator.vibrate) navigator.vibrate(12);
 });
 document.getElementById('dhikrCounterReset').addEventListener('click', ()=>{
@@ -3146,7 +3212,7 @@ function wcUpdateCard(chId, weekId){
   const timerEl = document.getElementById(chId+'_weeklyTimer');
   const badgeEl = document.getElementById(chId+'_weeklyBadge');
   const pct = Math.min(100, Math.round(WC[chId].count/WEEKLY_CHALLENGE_TARGET*100));
-  if(fillEl) fillEl.style.width = pct+'%';
+  if(fillEl) fillEl.style.transform = 'scaleX(' + (pct/100) + ')';
   if(labelEl) labelEl.textContent = WC[chId].count.toLocaleString('ru-RU')+' / '+WEEKLY_CHALLENGE_TARGET.toLocaleString('ru-RU');
   if(timerEl){
     if(win.active) timerEl.textContent = 'Осталось '+formatWeeklyCountdown(win.end-new Date());
@@ -3162,7 +3228,7 @@ function wcUpdateSheetProgress(chId){
   const pct = Math.min(100, Math.round(WC[chId].count/WEEKLY_CHALLENGE_TARGET*100));
   const count = WC[chId].count;
   if(chId==='salavat'){
-    document.querySelectorAll('.weekly-challenge-fill-target').forEach(el=>{ el.style.width=pct+'%'; });
+    document.querySelectorAll('.weekly-challenge-fill-target').forEach(el=>{ el.style.transform='scaleX('+(pct/100)+')'; });
     document.querySelectorAll('.weekly-challenge-count-label').forEach(el=>{
       el.textContent = count.toLocaleString('ru-RU')+' / '+WEEKLY_CHALLENGE_TARGET.toLocaleString('ru-RU');
     });
@@ -3172,7 +3238,7 @@ function wcUpdateSheetProgress(chId){
     const fillEl = document.getElementById('istighfarWeeklyFillSheet');
     const labelEl = document.getElementById('istighfarWeeklyCountLabel');
     const numEl  = document.getElementById('istighfarWeeklyNum');
-    if(fillEl) fillEl.style.width = pct+'%';
+    if(fillEl) fillEl.style.transform = 'scaleX(' + (pct/100) + ')';
     if(labelEl) labelEl.textContent = count.toLocaleString('ru-RU')+' / '+WEEKLY_CHALLENGE_TARGET.toLocaleString('ru-RU');
     if(numEl)  numEl.textContent = count.toLocaleString('ru-RU');
   }
@@ -3275,6 +3341,7 @@ document.getElementById('weeklyChallengeCircle').addEventListener('click', ()=>{
   if(myEl) myEl.textContent = WC.salavat.myCount.toLocaleString('ru-RU');
   wcUpdateSheetProgress('salavat');
   syncFloatingOverlayCount('weekly_salavat', WC.salavat.myCount);
+  bumpZikrLifetimeTotal(1);
   if(navigator.vibrate) try{ navigator.vibrate(10); }catch(e){}
   if(WC.salavat.clickTimer) clearTimeout(WC.salavat.clickTimer);
   WC.salavat.clickTimer = setTimeout(()=>wcFlushClicks('salavat'), 300);
@@ -3292,6 +3359,7 @@ document.getElementById('istighfarWeeklyCircle').addEventListener('click', ()=>{
   if(myEl) myEl.textContent = WC.istighfar.myCount.toLocaleString('ru-RU');
   wcUpdateSheetProgress('istighfar');
   syncFloatingOverlayCount('weekly_istighfar', WC.istighfar.myCount);
+  bumpZikrLifetimeTotal(1);
   if(navigator.vibrate) try{ navigator.vibrate(10); }catch(e){}
   if(WC.istighfar.clickTimer) clearTimeout(WC.istighfar.clickTimer);
   WC.istighfar.clickTimer = setTimeout(()=>wcFlushClicks('istighfar'), 300);
@@ -3601,7 +3669,7 @@ function renderQuestion(){
   const i = q.order[q.qIndex];
   const n = NAMES[i];
   document.getElementById('qCount').textContent = (q.qIndex+1)+'/'+q.len;
-  document.getElementById('progressFill').style.width = Math.round((q.qIndex)/q.len*100)+'%';
+  document.getElementById('progressFill').style.transform = 'scaleX(' + (q.qIndex/q.len) + ')';
 
   const rng = mulberry32(seedFromString(q.seedStr+'-opt-'+q.qIndex));
   const distractPool = NAMES.map((nn,ii)=>ii).filter(ii=>ii!==i);
@@ -3712,7 +3780,7 @@ function finishQuiz(){
   qCard.style.display='none';
   quizHead.style.display='none';
   resultWrap.style.display='block';
-  document.getElementById('progressFill').style.width='100%';
+  document.getElementById('progressFill').style.transform='scaleX(1)';
   renderMistakes();
 
   const pct = Math.round(q.score/q.len*100);
@@ -3917,12 +3985,12 @@ function startDuelTimer(){
   wrap.style.display='flex';
   fill.classList.remove('low');
   fill.style.transition='none';
-  fill.style.width='100%';
+  fill.style.transform='scaleX(1)';
   num.textContent = total;
   requestAnimationFrame(()=>{
     requestAnimationFrame(()=>{
-      fill.style.transition = `width ${total}s linear`;
-      fill.style.width='0%';
+      fill.style.transition = `transform ${total}s linear`;
+      fill.style.transform='scaleX(0)';
     });
   });
   duel.timerInterval = setInterval(()=>{
@@ -4205,7 +4273,7 @@ function updateOppPanel(){
     const pct = duel.len ? Math.round((p.score||0)/duel.len*100) : 0;
     return `<div class="duel-lb-row">
       <div class="duel-lb-name">${escapeHtml(p.name||'Игрок')}</div>
-      <div class="duel-lb-bar"><div class="duel-lb-fill" style="width:${pct}%"></div></div>
+      <div class="duel-lb-bar"><div class="duel-lb-fill" style="transform:scaleX(${pct/100})"></div></div>
       <div class="duel-lb-score">${p.score||0}</div>
       ${p.finished ? '<div class="duel-lb-done">✓</div>' : ''}
     </div>`;
@@ -5617,12 +5685,7 @@ async function openProfileView(username){
 
   const stats = result.stats || {};
   document.getElementById('profileViewStats').innerHTML = `
-    <div class="profile-stat-tile"><b>${stats.totalStudied||0}</b><span>имён изучено</span></div>
-    <div class="profile-stat-tile"><b>${stats.bestPercent||0}%</b><span>лучший результат</span></div>
-    <div class="profile-stat-tile"><b>${stats.quizzesCompleted||0}</b><span>викторин пройдено</span></div>
-    <div class="profile-stat-tile"><b>${formatDuration(stats.totalTimeSeconds)}</b><span>времени на сайте</span></div>
-    <div class="profile-stat-tile"><b>${result.friendsCount||0}</b><span>друзей</span></div>
-    <div class="profile-stat-tile"><b>${stats.correctAnswers||0}</b><span>правильных в лучшей викторине</span></div>
+    <div class="profile-stat-tile"><b>${(stats.totalZikrCount||0).toLocaleString('ru-RU')}</b><span>зикров посчитано</span></div>
     <div class="profile-stat-tile"><b>${formatJoinedDate(result.joinedAt)}</b><span>на сайте с</span></div>
   `;
 
@@ -5913,6 +5976,7 @@ document.getElementById('dhikrRoomCircle').addEventListener('click', ()=>{
   if(!fbDb || !dhikrRoom.roomId || !dhikrRoom.myId) return;
   fbDb.ref('dhikrRooms/'+dhikrRoom.roomId+'/count').set(firebase.database.ServerValue.increment(1));
   fbDb.ref('dhikrRooms/'+dhikrRoom.roomId+'/players/'+dhikrRoom.myId+'/count').set(firebase.database.ServerValue.increment(1));
+  bumpZikrLifetimeTotal(1);
   if(navigator.vibrate) navigator.vibrate(10);
 });
 
@@ -6112,7 +6176,9 @@ let activeDragScrollArea = null;
 
 document.addEventListener('touchstart', (e) => {
   const sheet = e.target.closest('.sheet.show');
-  if (!sheet) return;
+  // profileViewSheet is a small centered dialog, not a bottom sheet — no
+  // swipe-down-to-dismiss (it'd fight the centering transform on drag).
+  if (!sheet || sheet.id === 'profileViewSheet') return;
   const scrollArea = e.target.closest('.scroll, .sheet-d');
   if (scrollArea && scrollArea.scrollTop > 0) return;
   
@@ -6177,9 +6243,11 @@ if('serviceWorker' in navigator){
   const dhikrBtn = document.getElementById('dhikrFloatBtn');
   const weeklyBtn = document.getElementById('weeklyFloatBtn'); // Salavat
   const istighfarBtn = document.getElementById('istighfarFloatBtn'); // Istighfar
+  const dhikrRoomBtn = document.getElementById('dhikrRoomFloatBtn'); // Zikr with friends
   if(dhikrBtn) dhikrBtn.style.display = 'flex';
   if(weeklyBtn) weeklyBtn.style.display = 'flex';
   if(istighfarBtn) istighfarBtn.style.display = 'flex';
+  if(dhikrRoomBtn) dhikrRoomBtn.style.display = 'flex';
 })();
 
 // Sets one floating-counter button's appearance to match whether it's the
@@ -6224,6 +6292,7 @@ window.toggleFloatingCounter = function(type, btn){
       // it early and rack up taps that the app-side tap would have refused.
       if(type === 'weekly_salavat' && !salavatWindow().active){ showToast('Салават начнётся в четверг в 20:00'); return; }
       if(type === 'weekly_istighfar' && !istighfarWindow().active){ showToast('Истигфар начнётся в пятницу в 20:00'); return; }
+      if(type === 'dhikr_room' && !(dhikrRoom.roomId && dhikrRoom.myId)){ showToast('Сначала создайте или присоединитесь к комнате'); return; }
 
       let initialCount = 0;
       if(type === 'weekly_salavat') initialCount = WC.salavat.myCount;
@@ -6231,6 +6300,9 @@ window.toggleFloatingCounter = function(type, btn){
       else if(type === 'dhikr') {
         const numEl = document.getElementById('dhikrCounterNum');
         if(numEl) initialCount = parseInt(numEl.textContent.replace(/\s/g,''), 10) || 0;
+      } else if(type === 'dhikr_room') {
+        const me = dhikrRoom.players[dhikrRoom.myId];
+        initialCount = (me && me.count) || 0;
       }
 
       // Pass initialCount to Android (if supported, otherwise it ignores the 2nd param or we fallback)
@@ -6278,6 +6350,7 @@ window.onFloatingStateSync = function(active, type, count, live){
       if(myEl) myEl.textContent = wc.myCount.toLocaleString('ru-RU');
 
       wcFlushClicks(chId);
+      bumpZikrLifetimeTotal(count);
       // live=true means each tap arrives one at a time in real time (the
       // overlay is tappable even while the app is in the foreground) — the
       // number visibly ticking up already IS the feedback, so a toast on
@@ -6292,17 +6365,33 @@ window.onFloatingStateSync = function(active, type, count, live){
       dhikrCounterValue += count;
       updateDhikrCounterUI();
       saveDhikrCounterValue();
+      bumpZikrLifetimeTotal(count);
       if(!live) showToast('+' + count.toLocaleString('ru-RU') + ' добавлено к счётчику зикра ✓');
+    } else if(type === 'dhikr_room'){
+      if(!fbDb || !(dhikrRoom.roomId && dhikrRoom.myId)){
+        // Left the room (or never had one) while this was running in the
+        // background — stop it rather than let taps silently pile up
+        // against a room that's no longer ours.
+        if(window.AndroidApp && window.AndroidApp.stopFloatingCounter) window.AndroidApp.stopFloatingCounter();
+        active = false;
+      } else {
+        fbDb.ref('dhikrRooms/'+dhikrRoom.roomId+'/count').set(firebase.database.ServerValue.increment(count));
+        fbDb.ref('dhikrRooms/'+dhikrRoom.roomId+'/players/'+dhikrRoom.myId+'/count').set(firebase.database.ServerValue.increment(count));
+        bumpZikrLifetimeTotal(count);
+        if(!live) showToast('+' + count.toLocaleString('ru-RU') + ' добавлено в комнату зикра ✓');
+      }
     }
   }
 
-  // Resync all three buttons' appearance with the real native state.
+  // Resync all buttons' appearance with the real native state.
   const dhikrBtn = document.getElementById('dhikrFloatBtn');
   const weeklyBtn = document.getElementById('weeklyFloatBtn');
   const istighfarBtn = document.getElementById('istighfarFloatBtn');
+  const dhikrRoomBtn = document.getElementById('dhikrRoomFloatBtn');
   setFloatBtnActive(dhikrBtn, 'dhikr', active && type === 'dhikr');
   setFloatBtnActive(weeklyBtn, 'weekly_salavat', active && type === 'weekly_salavat');
   setFloatBtnActive(istighfarBtn, 'weekly_istighfar', active && type === 'weekly_istighfar');
+  setFloatBtnActive(dhikrRoomBtn, 'dhikr_room', active && type === 'dhikr_room');
 };
 
 // --- Global Edge Swipe to Go Back ---

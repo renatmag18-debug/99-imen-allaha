@@ -14,6 +14,7 @@
  *   POST /api/remove-friend  — Remove an existing friend (both directions)
  *   POST /api/update-avatar  — Set avatar {emoji, color} from the preset picker
  *   POST /api/track-time     — Add elapsed seconds to stats.totalTimeSeconds
+ *   POST /api/track-zikr     — Add taps to stats.totalZikrCount (lifetime, all counters combined)
  *   POST /api/set-reminder   — Save daily reminder time (UTC hour 0-23) for a user
  *   POST /api/cancel-reminder — Remove daily reminder for a user
  *   GET /api/leaderboard     — Get leaderboard
@@ -162,6 +163,11 @@ async function handleAPI(request, env, url) {
   // POST /api/track-time
   if (request.method === 'POST' && path === 'track-time') {
     return handleTrackTime(body, env);
+  }
+
+  // POST /api/track-zikr
+  if (request.method === 'POST' && path === 'track-zikr') {
+    return handleTrackZikr(body, env);
   }
 
   // POST /api/set-reminder — save daily reminder time for a user
@@ -599,6 +605,35 @@ async function handleTrackTime(body, env) {
   });
 
   return corsResponse(jsonResponse({ ok: true, totalTimeSeconds: current + delta }));
+}
+
+async function handleTrackZikr(body, env) {
+  const { username, password, count } = body || {};
+
+  if (!username || !password || !(count > 0)) {
+    return corsResponse(jsonResponse({ error: 'missing data' }, 400));
+  }
+  // Client batches taps and flushes periodically (see bumpZikrLifetimeTotal in
+  // index.html) rather than one request per tap — cap a single call so a
+  // stray/replayed request can't inflate the total.
+  const delta = Math.min(Math.round(count), 20000);
+
+  const key = userKey(username);
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
+  const user = await userRes.json();
+
+  if (!user || user.password !== btoa(password)) {
+    return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
+  }
+
+  const current = (user.stats && user.stats.totalZikrCount) || 0;
+  await rtdbFetch(`/users/${encodeURIComponent(key)}/stats/totalZikrCount.json`, env, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(current + delta)
+  });
+
+  return corsResponse(jsonResponse({ ok: true, totalZikrCount: current + delta }));
 }
 
 async function handleLeaderboard(env, scopeUsername) {
