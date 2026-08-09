@@ -1196,7 +1196,7 @@ body{
           <button class="seg-btn" data-misc="azkar">Азкары</button>
           <button class="seg-btn" data-misc="dua">Дуа</button>
           <button class="seg-btn" data-misc="namaz">Намаз</button>
-          <button class="seg-btn" data-misc="favorites">★ Избранное</button>
+          <button class="seg-btn" data-misc="favorites">Избранное</button>
         </div>
       </div>
 
@@ -3017,8 +3017,7 @@ dhikrCounterPlayBtn.addEventListener('click', ()=>{
 document.getElementById('dhikrCounterClose').addEventListener('click', closeDhikrCounter);
 dhikrCounterBackdrop.addEventListener('click', closeDhikrCounter);
 
-document.getElementById('namazList').innerHTML = NAMAZ.map((i,idx)=>dhikrCardHTML(i,true,'namaz:'+idx)).join('');
-attachDhikrCounterHandlers(document.getElementById('namazList'), NAMAZ, NAMAZ.map((_,idx)=>'namaz:'+idx));
+document.getElementById('namazList').innerHTML = NAMAZ.map((i,idx)=>dhikrCardHTML(i,false,'namaz:'+idx)).join('');
 attachInlineAudioHandlers(document.getElementById('namazList'));
 attachFavHandlers(document.getElementById('namazList'));
 attachShareHandlers(document.getElementById('namazList'));
