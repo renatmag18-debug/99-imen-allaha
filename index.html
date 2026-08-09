@@ -6614,7 +6614,6 @@ async function checkForAppUpdate(){
 }
 
 let pendingUpdateVersion = null;
-let updateDownloadAbort = null;
 
 function showUpdatePrompt(newVersion){
   pendingUpdateVersion = newVersion;
@@ -6625,7 +6624,7 @@ function showUpdatePrompt(newVersion){
   btn.disabled = true;
   btn.textContent = 'Загрузка…';
   btn.dataset.state = 'downloading';
-  document.getElementById('updateBannerProgressTrack').classList.remove('show');
+  document.getElementById('updateBannerProgressTrack').classList.add('show');
   document.getElementById('updateBannerProgressFill').style.transform = 'scaleX(0)';
   banner.classList.add('show');
   // No tap needed to start — it downloads itself the moment an update is
@@ -6633,12 +6632,11 @@ function showUpdatePrompt(newVersion){
   // only thing a user still has to touch is Android's own "Install this
   // update?" system dialog — that confirmation can't be skipped for an APK
   // installed outside Google Play, no matter what this page does.
-  downloadUpdateWithProgress(true);
+  installAPKUpdate();
 }
 
 function hideUpdateBanner(){
   document.getElementById('updateBanner').classList.remove('show');
-  if(updateDownloadAbort){ updateDownloadAbort.abort(); updateDownloadAbort = null; }
 }
 
 document.getElementById('updateBannerCloseBtn').addEventListener('click', ()=>{
@@ -6647,79 +6645,35 @@ document.getElementById('updateBannerCloseBtn').addEventListener('click', ()=>{
 });
 
 document.getElementById('updateBannerActionBtn').addEventListener('click', (e)=>{
-  const btn = e.currentTarget;
-  if(btn.dataset.state === 'ready'){
-    installAPKUpdate();
-    return;
-  }
-  // Manual tap only ever happens after an auto-download failed (button
-  // reads "Повторить" then) — retry the same auto-everything flow.
-  downloadUpdateWithProgress(true);
+  // The only state this button is ever actually clickable in is "prompt"
+  // (shown as "Повторить") — it starts disabled and only re-enables itself
+  // via onApkDownloadFailed below. A tap just retries the whole thing.
+  if(e.currentTarget.disabled) return;
+  showUpdatePrompt(pendingUpdateVersion);
 });
 
-// Downloads the APK ourselves (with a real byte-progress bar) purely for
-// UI feedback — the actual install still hands the original https URL to
-// installAPKUpdate() below, unchanged, since that's the path already known
-// to work with the native bridge (a blob: URL wouldn't be resolvable from
-// native code). Costs a second download on install, but keeps the install
-// step itself exactly as it was.
-async function downloadUpdateWithProgress(autoInstall){
+// The real download progress, reported by the native side (MainActivity's
+// downloadAndInstallApk) as it runs — a single DownloadManager download
+// that's also what actually gets installed, not a separate fetch() just
+// for the progress bar's sake.
+window.onApkDownloadProgress = function(pct){
+  document.getElementById('updateBannerProgressFill').style.transform = 'scaleX(' + Math.min(1, pct/100) + ')';
+  document.getElementById('updateBannerSub').textContent = 'Загружаем обновление — ' + Math.round(pct) + '%';
+};
+window.onApkDownloadComplete = function(){
+  document.getElementById('updateBannerProgressFill').style.transform = 'scaleX(1)';
+  document.getElementById('updateBannerSub').textContent = 'Обновление загружено — открываем установку…';
+};
+window.onApkDownloadFailed = function(){
   const btn = document.getElementById('updateBannerActionBtn');
-  const sub = document.getElementById('updateBannerSub');
-  const track = document.getElementById('updateBannerProgressTrack');
-  const fill = document.getElementById('updateBannerProgressFill');
-  btn.disabled = true;
-  btn.textContent = 'Загрузка…';
-  btn.dataset.state = 'downloading';
-  sub.textContent = 'Загружаем обновление…';
-  track.classList.add('show');
-  fill.style.transform = 'scaleX(0)';
+  document.getElementById('updateBannerSub').textContent = 'Не удалось загрузить — нажмите, чтобы повторить';
+  document.getElementById('updateBannerProgressTrack').classList.remove('show');
+  btn.disabled = false;
+  btn.textContent = 'Повторить';
+  btn.dataset.state = 'prompt';
+};
 
-  try{
-    updateDownloadAbort = new AbortController();
-    const res = await fetch('https://99ism.ru/99ism.apk?t=' + Date.now(), {
-      signal: updateDownloadAbort.signal, cache: 'no-store'
-    });
-    if(!res.ok || !res.body) throw new Error('HTTP ' + res.status);
-
-    const total = parseInt(res.headers.get('content-length') || '0', 10);
-    const reader = res.body.getReader();
-    let loaded = 0;
-    while(true){
-      const { done, value } = await reader.read();
-      if(done) break;
-      loaded += value.length;
-      if(total > 0){
-        fill.style.transform = 'scaleX(' + Math.min(1, loaded/total) + ')';
-        sub.textContent = 'Загружаем обновление — ' + Math.round(Math.min(1, loaded/total)*100) + '%';
-      } else {
-        sub.textContent = 'Загружаем обновление — ' + (loaded/1048576).toFixed(1) + ' МБ';
-      }
-    }
-
-    fill.style.transform = 'scaleX(1)';
-    sub.textContent = 'Обновление загружено';
-    btn.disabled = false;
-    btn.textContent = 'Установить';
-    btn.dataset.state = 'ready';
-    // Fires Android's own install prompt right away — the "Установить"
-    // button stays live in case that system dialog gets dismissed/missed
-    // and the user needs to bring it back manually.
-    if(autoInstall) installAPKUpdate();
-  }catch(e){
-    if(e.name === 'AbortError') return;
-    console.warn('Update download failed:', e);
-    sub.textContent = 'Не удалось загрузить — нажмите, чтобы повторить';
-    track.classList.remove('show');
-    btn.disabled = false;
-    btn.textContent = 'Повторить';
-    btn.dataset.state = 'prompt';
-  }finally{
-    updateDownloadAbort = null;
-  }
-}
-
-async function installAPKUpdate(){
+function installAPKUpdate(){
   try {
     const apkUrl = 'https://99ism.ru/99ism.apk';
 
