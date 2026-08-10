@@ -912,6 +912,21 @@ body{
           </div>
         </div>
 
+        <div class="update-banner" id="zikrAnnounceBanner">
+          <div class="update-banner-main">
+            <div class="update-banner-icon">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 3L20 7.5V16.5L12 21L4 16.5V7.5L12 3Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M12 8v5l3 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="update-banner-text">
+              <div class="update-banner-title">📿 Рейтинг зикров обновлён</div>
+              <div class="update-banner-sub">Мы исправили ошибку синхронизации зикров с профилем и рейтингом. Если ваш счётчик всё ещё не совпадает — ниже появится баннер «Синхронизация прервана», введите там пароль один раз, и всё восстановится.</div>
+            </div>
+            <button class="update-banner-close" id="zikrAnnounceCloseBtn" title="Понятно" aria-label="Закрыть">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+        </div>
+
         <div class="update-banner" id="zikrSyncBanner">
           <div class="update-banner-main">
             <div class="update-banner-icon">
@@ -2974,6 +2989,25 @@ async function reconcileZikrLifetimeTotal(){
 // fix — a stuck sync short of manually finding the logout button and
 // logging back in. This asks for the password once, inline, right where
 // they already are.
+// General announcement (separate from the recovery banner below): the push
+// notification about this fix gets cut off on some devices/OSes when the
+// body text is long, so this is the same message spelled out in full,
+// directly on the home screen where it can't be truncated. Shown once per
+// device to any logged-in user, dismissed permanently via localStorage.
+const ZIKR_ANNOUNCE_DISMISSED_KEY = 'zikrSyncAnnounceDismissed';
+function updateZikrAnnounceBannerVisibility(){
+  const banner = document.getElementById('zikrAnnounceBanner');
+  if(!banner) return;
+  let dismissed = false;
+  try{ dismissed = localStorage.getItem(ZIKR_ANNOUNCE_DISMISSED_KEY) === '1'; }catch(e){}
+  const show = state.profile && state.profile.authenticated && !dismissed;
+  banner.classList.toggle('show', !!show);
+}
+document.getElementById('zikrAnnounceCloseBtn').addEventListener('click', ()=>{
+  try{ localStorage.setItem(ZIKR_ANNOUNCE_DISMISSED_KEY, '1'); }catch(e){}
+  document.getElementById('zikrAnnounceBanner').classList.remove('show');
+});
+
 let zikrSyncBannerDismissed = false;
 function updateZikrSyncBannerVisibility(){
   const banner = document.getElementById('zikrSyncBanner');
@@ -4854,6 +4888,7 @@ async function initProfile(){
       // call can fix this (nothing to authenticate the sync with) — offer a
       // one-tap inline password prompt instead of forcing a full logout.
       if(typeof updateZikrSyncBannerVisibility === 'function') updateZikrSyncBannerVisibility();
+      if(typeof updateZikrAnnounceBannerVisibility === 'function') updateZikrAnnounceBannerVisibility();
       // Load leaderboard if on friends screen
       if(state.screen === 'friends'){
         loadLeaderboard();
