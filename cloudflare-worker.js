@@ -610,11 +610,18 @@ async function handleTrackTime(body, env) {
   }
 
   const current = (user.stats && user.stats.totalTimeSeconds) || 0;
-  await rtdbFetch(`/users/${encodeURIComponent(key)}/stats/totalTimeSeconds.json`, env, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(current + delta)
-  });
+  await Promise.all([
+    rtdbFetch(`/users/${encodeURIComponent(key)}/stats/totalTimeSeconds.json`, env, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(current + delta)
+    }),
+    rtdbFetch(`/users/${encodeURIComponent(key)}/stats/lastActive.json`, env, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(new Date().toISOString())
+    })
+  ]);
 
   return corsResponse(jsonResponse({ ok: true, totalTimeSeconds: current + delta }));
 }
@@ -639,11 +646,18 @@ async function handleTrackZikr(body, env) {
   }
 
   const current = (user.stats && user.stats.totalZikrCount) || 0;
-  await rtdbFetch(`/users/${encodeURIComponent(key)}/stats/totalZikrCount.json`, env, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(current + delta)
-  });
+  await Promise.all([
+    rtdbFetch(`/users/${encodeURIComponent(key)}/stats/totalZikrCount.json`, env, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(current + delta)
+    }),
+    rtdbFetch(`/users/${encodeURIComponent(key)}/stats/lastActive.json`, env, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(new Date().toISOString())
+    })
+  ]);
 
   return corsResponse(jsonResponse({ ok: true, totalZikrCount: current + delta }));
 }

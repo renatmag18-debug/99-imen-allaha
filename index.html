@@ -5931,6 +5931,21 @@ function formatJoinedDate(iso){
     return new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
   }catch(e){ return '—'; }
 }
+function formatLastActive(iso){
+  if(!iso) return null;
+  const d = new Date(iso);
+  if(isNaN(d)) return null;
+  const now = new Date();
+  const diffMin = Math.floor((now - d) / 60000);
+  const time = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  if(diffMin < 1) return 'только что';
+  if(diffMin < 60) return `${diffMin} мин. назад`;
+  if(d.toDateString() === now.toDateString()) return `сегодня в ${time}`;
+  const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
+  if(d.toDateString() === yesterday.toDateString()) return `вчера в ${time}`;
+  if(now - d < 6 * 24 * 3600000) return `${d.toLocaleDateString('ru-RU', { weekday: 'long' })} в ${time}`;
+  return `${d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })} в ${time}`;
+}
 let profileViewPresenceUnsub = null;
 const profileViewSheet = document.getElementById('profileViewSheet');
 const profileViewBackdrop = document.getElementById('profileViewBackdrop');
@@ -5970,9 +5985,12 @@ async function openProfileView(username){
   const dot = document.getElementById('profileViewPresence');
   dot.classList.remove('online');
   const statusEl = document.getElementById('profileViewStatus');
+  const lastActiveText = formatLastActive(stats.lastActive);
   profileViewPresenceUnsub = watchPresence(username, online => {
     dot.classList.toggle('online', online);
-    statusEl.textContent = online ? '🟢 В сети' : 'Не в сети';
+    statusEl.textContent = online
+      ? '🟢 В сети'
+      : (lastActiveText ? `Не в сети · был(а) ${lastActiveText}` : 'Не в сети');
   });
 }
 function closeProfileView(){
