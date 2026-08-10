@@ -708,7 +708,8 @@ body{
 .profile-stat-tile{
   background:rgba(255,255,255,0.03); border-radius:12px; padding:12px; text-align:center;
 }
-.profile-stat-tile b{ display:block; font-family:var(--font-num); font-size:19px; color:var(--gold-soft); }
+.profile-stat-tile b{ display:block; font-family:var(--font-num); font-size:19px; color:var(--gold-soft); transition:opacity .25s var(--ease); }
+.profile-stat-tile.loading b{ opacity:.35; }
 .profile-stat-tile span{ font-size:11px; color:var(--ivory-dim); }
 .profile-view-add-friend{
   display:flex; align-items:center; justify-content:center; gap:6px; margin:14px auto 0;
@@ -5940,7 +5941,15 @@ async function openProfileView(username){
   profileViewBackdrop.classList.add('show');
   document.getElementById('profileViewName').textContent = username;
   document.getElementById('profileViewStatus').textContent = 'Загрузка…';
-  document.getElementById('profileViewStats').innerHTML = '';
+  // Render the tile up front (with a dimmed placeholder) instead of leaving
+  // profileViewStats empty until the fetch resolves — an empty container
+  // that suddenly gains a tile once data arrives is what reads as a jump/
+  // jerk, since the sheet's height changes after it's already visible.
+  // Reserving the same layout from the first paint and just fading the
+  // number in avoids that.
+  document.getElementById('profileViewStats').innerHTML = `
+    <div class="profile-stat-tile loading" id="profileViewZikrTile"><b id="profileViewZikrCount">–</b><span>зикров посчитано</span></div>
+  `;
   renderAvatarInto(document.getElementById('profileViewAvatar'), null, username);
 
   const result = await apiGetProfile(username);
@@ -5953,9 +5962,8 @@ async function openProfileView(username){
   document.getElementById('profileViewStatus').textContent = 'Проверка статуса…';
 
   const stats = result.stats || {};
-  document.getElementById('profileViewStats').innerHTML = `
-    <div class="profile-stat-tile"><b>${(stats.totalZikrCount||0).toLocaleString('ru-RU')}</b><span>зикров посчитано</span></div>
-  `;
+  document.getElementById('profileViewZikrCount').textContent = (stats.totalZikrCount||0).toLocaleString('ru-RU');
+  document.getElementById('profileViewZikrTile').classList.remove('loading');
   renderProfileViewAddFriendBtn(result.username);
 
   if(profileViewPresenceUnsub) profileViewPresenceUnsub();
