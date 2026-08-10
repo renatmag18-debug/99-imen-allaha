@@ -6569,7 +6569,12 @@ document.addEventListener('touchstart', (e) => {
   // profileViewSheet is a small centered dialog, not a bottom sheet — no
   // swipe-down-to-dismiss (it'd fight the centering transform on drag).
   if (!sheet || sheet.id === 'profileViewSheet') return;
-  const scrollArea = e.target.closest('.scroll, .sheet-d');
+  // .sheet-d is just a styled text block, not the scrolling element — the
+  // name-detail sheet actually scrolls via its .sheet-body ancestor, so
+  // checking .sheet-d's scrollTop (always 0) never caught "already scrolled
+  // down" and let any downward swipe close the sheet, even one meant to
+  // scroll back up to the top of a long толкование.
+  const scrollArea = e.target.closest('.scroll, .sheet-body');
   if (scrollArea && scrollArea.scrollTop > 0) return;
   
   sheetDragStartY = e.touches[0].clientY;
