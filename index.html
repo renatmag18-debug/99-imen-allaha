@@ -3037,11 +3037,31 @@ async function submitZikrSyncBannerPassword(){
   const btn = document.getElementById('zikrSyncBannerSubmitBtn');
   btn.disabled = true;
   sub.textContent = 'Проверяем...';
-  const result = await apiLogin(state.profile.username, password);
+  let result = await apiLogin(state.profile.username, password);
   if(result && result.error){
-    btn.disabled = false;
-    sub.textContent = 'Неверный пароль, попробуйте ещё раз';
-    return;
+    // apiLogin only succeeds against an account that already exists
+    // server-side. Accounts that fell back to localStorage-only at register
+    // time (server unreachable) never got created there at all, so this
+    // always failed here and told a user with the *correct* password that it
+    // was wrong — the account itself was invisible to friends/leaderboard,
+    // and this banner could never fix that. Mirror the loginBtn handler's
+    // fallback: check the local copy, and if it matches, register the
+    // account server-side now instead of just re-trying a login that can
+    // never succeed.
+    const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
+    const matchKey = Object.keys(allUsers).find(k => k.toLowerCase() === state.profile.username.toLowerCase());
+    const localUser = matchKey ? allUsers[matchKey] : null;
+    if(!localUser || localUser.password !== b64EncodeUtf8(password)){
+      btn.disabled = false;
+      sub.textContent = 'Неверный пароль, попробуйте ещё раз';
+      return;
+    }
+    result = await apiRegister(matchKey, password, localUser.securityQuestion, localUser.securityAnswer);
+    if(result && result.error){
+      btn.disabled = false;
+      sub.textContent = 'Не удалось связаться с сервером, попробуйте позже';
+      return;
+    }
   }
   passwordInput.value = '';
   document.getElementById('zikrSyncBanner').classList.remove('show');
