@@ -11,10 +11,22 @@ const API_BASE = 'https://99ism-api.99ism-worker.workers.dev';
 // Cache current auth credentials
 let currentAuth = null;
 
+// Plain btoa()/atob() only handle Latin1 and throw ("Invalid character") on
+// anything outside that range, so a password with Cyrillic (or other
+// non-Latin1) characters couldn't even be cached locally. These wrap the
+// standard percent-encoding trick to make them UTF-8 safe while staying
+// byte-for-byte identical to plain btoa()/atob() for ASCII input.
+function b64EncodeUtf8(str) {
+  return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, hex) => String.fromCharCode('0x' + hex)));
+}
+function b64DecodeUtf8(str) {
+  return decodeURIComponent(atob(str).split('').map(c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0')).join(''));
+}
+
 function setAuthCredentials(username, password) {
   currentAuth = { username, password };
   localStorage.setItem('_auth_user', username);
-  localStorage.setItem('_auth_pass', btoa(password)); // Store encoded
+  localStorage.setItem('_auth_pass', b64EncodeUtf8(password)); // Store encoded
 }
 
 function getAuthCredentials() {
@@ -32,7 +44,7 @@ function loadAuthCredentials() {
     const user = localStorage.getItem('_auth_user');
     const pass = localStorage.getItem('_auth_pass');
     if (user && pass) {
-      currentAuth = { username: user, password: atob(pass) };
+      currentAuth = { username: user, password: b64DecodeUtf8(pass) };
       return currentAuth;
     }
   } catch (e) {}

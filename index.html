@@ -212,6 +212,19 @@ body{
   background:linear-gradient(90deg, var(--jade), var(--gold-soft)); border-radius:3px;
   transition:transform .2s linear;
 }
+.zikr-sync-banner-form{ display:none; gap:8px; padding:0 14px 12px; }
+.zikr-sync-banner-form.show{ display:flex; }
+.zikr-sync-banner-form input{
+  flex:1; min-width:0; border-radius:8px; border:1px solid var(--gold);
+  background:rgba(0,0,0,0.2); color:var(--ivory); padding:8px 10px;
+  font-size:13px; font-family:var(--font-body);
+}
+.zikr-sync-banner-form button{
+  font-family:var(--font-body); font-weight:700; font-size:12.5px; white-space:nowrap; flex-shrink:0;
+  border-radius:8px; padding:8px 12px; border:none; cursor:pointer;
+  background:linear-gradient(145deg, var(--gold-soft), var(--gold)); color:#1a1204;
+}
+.zikr-sync-banner-form button:disabled{ opacity:.65; cursor:default; }
 .hero{ display:flex; flex-direction:column; align-items:center; text-align:center; padding-top:6px;}
 .hero-star{ width:150px; height:150px; margin:8px auto 6px; animation: moon-glow 4.5s ease-in-out infinite; filter:drop-shadow(0 0 20px rgba(228,200,120,0.35));}
 @keyframes moon-glow{ 0%,100%{ transform:scale(1) rotate(-6deg); opacity:.92; } 50%{ transform:scale(1.045) rotate(-6deg); opacity:1; } }
@@ -896,6 +909,26 @@ body{
           </div>
           <div class="update-banner-progress-track" id="updateBannerProgressTrack">
             <div class="update-banner-progress-fill" id="updateBannerProgressFill"></div>
+          </div>
+        </div>
+
+        <div class="update-banner" id="zikrSyncBanner">
+          <div class="update-banner-main">
+            <div class="update-banner-icon">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M17 2.1l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 6.1H8a5 5 0 00-5 5v1M7 21.9l-4-4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 17.9h13a5 5 0 005-5v-1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="update-banner-text">
+              <div class="update-banner-title">Синхронизация прервана</div>
+              <div class="update-banner-sub" id="zikrSyncBannerSub">Часть зикров не попала в профиль и рейтинг</div>
+            </div>
+            <button class="update-banner-action" id="zikrSyncBannerActionBtn">Ввести пароль</button>
+            <button class="update-banner-close" id="zikrSyncBannerCloseBtn" title="Позже" aria-label="Закрыть">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+          <div class="zikr-sync-banner-form" id="zikrSyncBannerForm">
+            <input type="password" id="zikrSyncBannerPassword" placeholder="Пароль от аккаунта" autocomplete="current-password">
+            <button id="zikrSyncBannerSubmitBtn">Синхронизировать</button>
           </div>
         </div>
 
@@ -2899,6 +2932,91 @@ document.addEventListener('visibilitychange', ()=>{
 // memory forever if the user never taps a counter again this session.
 setInterval(()=>{ if(zikrLifetimePendingSync > 0) flushZikrLifetimeSync(); }, 30000);
 
+// One-off catch-up for backlog that never made it to the server: for a long
+// stretch, users whose login/register fell back to localStorage (server
+// unreachable at that moment, or — before the b64EncodeUtf8 fix — any
+// Cyrillic password) never got credentials cached at all, so every
+// flushZikrLifetimeSync() attempt since then silently no-opped as "not
+// authenticated". zikrLifetimePendingSync only tracks taps since the last
+// page load, so once credentials come back (a fresh login, or the fix
+// below) there's no record of how much history was never sent — this
+// compares the device's full running total against whatever the server
+// actually has and sends just the gap, once per page load. Safe to call
+// whenever credentials are available, including for users who were syncing
+// fine all along: if server already matches local, gap is ~0 and it's a
+// no-op.
+let zikrReconcileDone = false;
+async function reconcileZikrLifetimeTotal(){
+  if(zikrReconcileDone) return;
+  if(!state.profile || !state.profile.authenticated) return;
+  const auth = typeof getAuthCredentials === 'function' && getAuthCredentials();
+  if(!auth || !apiGetProfile || !apiTrackZikr) return;
+  zikrReconcileDone = true;
+  const localTotal = getZikrLifetimeTotal() || 0;
+  if(localTotal <= 0) return;
+  const result = await apiGetProfile(state.profile.username);
+  if(!result || result.error){ zikrReconcileDone = false; return; } // retry next load
+  const serverTotal = (result.stats && result.stats.totalZikrCount) || 0;
+  let gap = localTotal - serverTotal;
+  while(gap > 0){
+    const chunk = Math.min(gap, 20000); // matches the worker's per-request cap
+    const res = await apiTrackZikr(chunk);
+    if(res && res.error) return;
+    gap -= chunk;
+  }
+}
+
+// Inline recovery for the case reconcileZikrLifetimeTotal() can't fix on its
+// own: no cached credentials at all, so there's no password to authenticate
+// a background sync with. initProfile() never shows a login prompt once a
+// username is remembered (that's the whole "stay logged in" point), so
+// without this banner these users would have no way to notice — let alone
+// fix — a stuck sync short of manually finding the logout button and
+// logging back in. This asks for the password once, inline, right where
+// they already are.
+let zikrSyncBannerDismissed = false;
+function updateZikrSyncBannerVisibility(){
+  const banner = document.getElementById('zikrSyncBanner');
+  if(!banner) return;
+  const needsAuth = state.profile && state.profile.authenticated &&
+    !(typeof getAuthCredentials === 'function' && getAuthCredentials()) &&
+    (getZikrLifetimeTotal() || 0) > 0;
+  banner.classList.toggle('show', !!needsAuth && !zikrSyncBannerDismissed);
+}
+document.getElementById('zikrSyncBannerCloseBtn').addEventListener('click', ()=>{
+  zikrSyncBannerDismissed = true;
+  document.getElementById('zikrSyncBanner').classList.remove('show');
+});
+document.getElementById('zikrSyncBannerActionBtn').addEventListener('click', ()=>{
+  const form = document.getElementById('zikrSyncBannerForm');
+  form.classList.add('show');
+  document.getElementById('zikrSyncBannerPassword').focus();
+});
+async function submitZikrSyncBannerPassword(){
+  const passwordInput = document.getElementById('zikrSyncBannerPassword');
+  const password = passwordInput.value.trim();
+  const sub = document.getElementById('zikrSyncBannerSub');
+  if(!password || !state.profile || !state.profile.username) return;
+  const btn = document.getElementById('zikrSyncBannerSubmitBtn');
+  btn.disabled = true;
+  sub.textContent = 'Проверяем...';
+  const result = await apiLogin(state.profile.username, password);
+  if(result && result.error){
+    btn.disabled = false;
+    sub.textContent = 'Неверный пароль, попробуйте ещё раз';
+    return;
+  }
+  passwordInput.value = '';
+  document.getElementById('zikrSyncBanner').classList.remove('show');
+  showToast('Синхронизация восстановлена');
+  zikrReconcileDone = false; // allow it to run now that credentials exist
+  await reconcileZikrLifetimeTotal();
+}
+document.getElementById('zikrSyncBannerSubmitBtn').addEventListener('click', submitZikrSyncBannerPassword);
+document.getElementById('zikrSyncBannerPassword').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter') submitZikrSyncBannerPassword();
+});
+
 // One-time baseline for users who already had counts before this tally
 // existed — best-effort from whatever's still in localStorage (per-item
 // dhikr counts + every weekly-challenge week ever saved on this device).
@@ -4727,7 +4845,15 @@ async function initProfile(){
       // Auth just became available — flush any zikr-count sync (e.g. the
       // one-time seed from seedZikrLifetimeTotal()) that bailed out earlier
       // because it ran before login was restored.
-      if(typeof flushZikrLifetimeSync === 'function') flushZikrLifetimeSync();
+      if(typeof flushZikrLifetimeSync === 'function') await flushZikrLifetimeSync();
+      // Catch up any historical zikr backlog that never reached the server
+      // (see reconcileZikrLifetimeTotal for why) — runs automatically
+      // whenever credentials are available, no re-login needed.
+      if(typeof reconcileZikrLifetimeTotal === 'function') reconcileZikrLifetimeTotal();
+      // If credentials never got cached in the first place, no background
+      // call can fix this (nothing to authenticate the sync with) — offer a
+      // one-tap inline password prompt instead of forcing a full logout.
+      if(typeof updateZikrSyncBannerVisibility === 'function') updateZikrSyncBannerVisibility();
       // Load leaderboard if on friends screen
       if(state.screen === 'friends'){
         loadLeaderboard();
@@ -4865,9 +4991,18 @@ document.getElementById('registerBtn').addEventListener('click', async ()=>{
       registerStatus.textContent = 'Этот никнейм уже занят'; return;
     }
 
-    allUsers[username] = { password: btoa(password), securityQuestion, securityAnswer };
+    allUsers[username] = { password: b64EncodeUtf8(password), securityQuestion, securityAnswer };
     localStorage.setItem('users', JSON.stringify(allUsers));
     localOnly = true;
+    // Without this, currentAuth stays null for the rest of the session (and
+    // forever, since _auth_user/_auth_pass never get persisted either) even
+    // though state.profile.authenticated is true — every zikr tap keeps
+    // counting locally but apiTrackZikr/apiSyncProgress silently no-op with
+    // "Not authenticated", so the server-side stats.totalZikrCount (and the
+    // leaderboard) stay stuck at 0 no matter how much the user actually
+    // reads. Set it now so tracking calls have credentials to retry with —
+    // they'll start succeeding as soon as this account exists server-side.
+    setAuthCredentials(username, password);
   }
 
   saveUsername(username);
@@ -4903,11 +5038,17 @@ document.getElementById('loginBtn').addEventListener('click', async ()=>{
     const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
     const matchKey = Object.keys(allUsers).find(k => k.toLowerCase() === username.toLowerCase());
     const localUser = matchKey ? allUsers[matchKey] : null;
-    if(!localUser || localUser.password !== btoa(password)){
+    if(!localUser || localUser.password !== b64EncodeUtf8(password)){
       authStatus.textContent = 'Неверный никнейм или пароль';
       return;
     }
     canonicalUsername = matchKey;
+    // Set this even before we know whether migration below succeeds — same
+    // reasoning as the register handler's fallback: without it, currentAuth
+    // (and the persisted _auth_user/_auth_pass) never get populated, so
+    // every future zikr tap/quiz sync silently no-ops as "Not authenticated"
+    // and the server-side totals (profile + leaderboard) stay stuck at 0.
+    setAuthCredentials(canonicalUsername, password);
     // Account predates the backend (or the server was briefly unreachable) —
     // create it server-side now so sync/leaderboard/friends start working.
     const migrated = await apiRegister(canonicalUsername, password, localUser.securityQuestion, localUser.securityAnswer);
@@ -5081,7 +5222,7 @@ document.getElementById('resetPasswordBtn').addEventListener('click', ()=>{
     if(!newPassword){ resetStatus.textContent = 'Введите новый пароль'; return; }
     if(newPassword.length < 3){ resetStatus.textContent = 'Пароль минимум 3 символа'; return; }
 
-    allUsers[username].password = btoa(newPassword);
+    allUsers[username].password = b64EncodeUtf8(newPassword);
     localStorage.setItem('users', JSON.stringify(allUsers));
 
     resetStatus.textContent = 'Пароль сброшен! Теперь можете войти';

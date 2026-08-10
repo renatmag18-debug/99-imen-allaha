@@ -54,6 +54,18 @@ function userKey(username) {
   return (username || '').trim().toLowerCase();
 }
 
+// Plain btoa() only handles Latin1 and throws ("Invalid character") on
+// anything outside that range — so any password containing Cyrillic (or
+// other non-Latin1) characters made register/login throw here, which the
+// client saw as a generic network error and silently fell back to a
+// broken local-only account. This wraps the standard percent-encoding
+// trick to make it UTF-8 safe while staying byte-for-byte identical to
+// plain btoa() for ASCII input, so existing accounts' stored passwords
+// still compare equal.
+function b64EncodeUtf8(str) {
+  return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, hex) => String.fromCharCode('0x' + hex)));
+}
+
 async function rtdbFetch(path, env, options) {
   const token = await getAccessToken(env, RTDB_SCOPE);
   const opts = { ...options, headers: { ...(options && options.headers), 'Authorization': `Bearer ${token}` } };
@@ -204,7 +216,7 @@ async function handleAdminUserCount(body, env) {
 
   const userRes = await rtdbFetch(`/users/${encodeURIComponent(userKey(username))}.json`, env);
   const user = await userRes.json();
-  if (!user || user.password !== btoa(password)) return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
+  if (!user || user.password !== b64EncodeUtf8(password)) return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
 
   // /users also holds legacy anonymous-Firebase-Auth entries from the duel
   // feature (keyed by Firebase uid, no password/stats) — only count real
@@ -241,7 +253,7 @@ async function handleRegister(body, env) {
   const displayUsername = username.trim();
   const userData = {
     username: displayUsername,
-    password: btoa(password),
+    password: b64EncodeUtf8(password),
     securityQuestion: securityQuestion || 'default',
     securityAnswer: (securityAnswer || '').toLowerCase(),
     joinedAt: new Date().toISOString(),
@@ -280,7 +292,7 @@ async function handleLogin(body, env) {
   const userRes = await rtdbFetch(`/users/${encodeURIComponent(userKey(username))}.json`, env);
   const user = await userRes.json();
 
-  if (!user || !user.password || user.password !== btoa(password)) {
+  if (!user || !user.password || user.password !== b64EncodeUtf8(password)) {
     return corsResponse(jsonResponse({ error: 'invalid username or password' }, 401));
   }
 
@@ -302,7 +314,7 @@ async function handleSyncProgress(body, env) {
   const userRes = await rtdbFetch(`/users/${encodeURIComponent(userKey(username))}.json`, env);
   const user = await userRes.json();
 
-  if (!user || user.password !== btoa(password)) {
+  if (!user || user.password !== b64EncodeUtf8(password)) {
     return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
   }
 
@@ -400,7 +412,7 @@ async function handleAddFriend(body, env) {
   const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
   const user = await userRes.json();
 
-  if (!user || user.password !== btoa(password)) {
+  if (!user || user.password !== b64EncodeUtf8(password)) {
     return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
   }
 
@@ -448,7 +460,7 @@ async function handleAcceptFriendRequest(body, env) {
   const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
   const user = await userRes.json();
 
-  if (!user || user.password !== btoa(password)) {
+  if (!user || user.password !== b64EncodeUtf8(password)) {
     return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
   }
   if (!user.friendRequestsIn || !user.friendRequestsIn[fromKey]) {
@@ -485,7 +497,7 @@ async function handleDeclineFriendRequest(body, env) {
   const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
   const user = await userRes.json();
 
-  if (!user || user.password !== btoa(password)) {
+  if (!user || user.password !== b64EncodeUtf8(password)) {
     return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
   }
 
@@ -510,7 +522,7 @@ async function handleRemoveFriend(body, env) {
   const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
   const user = await userRes.json();
 
-  if (!user || user.password !== btoa(password)) {
+  if (!user || user.password !== b64EncodeUtf8(password)) {
     return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
   }
 
@@ -535,7 +547,7 @@ async function handleRegisterPushToken(body, env) {
   const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
   const user = await userRes.json();
 
-  if (!user || user.password !== btoa(password)) {
+  if (!user || user.password !== b64EncodeUtf8(password)) {
     return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
   }
 
@@ -566,7 +578,7 @@ async function handleUpdateAvatar(body, env) {
   const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
   const user = await userRes.json();
 
-  if (!user || user.password !== btoa(password)) {
+  if (!user || user.password !== b64EncodeUtf8(password)) {
     return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
   }
 
@@ -593,7 +605,7 @@ async function handleTrackTime(body, env) {
   const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
   const user = await userRes.json();
 
-  if (!user || user.password !== btoa(password)) {
+  if (!user || user.password !== b64EncodeUtf8(password)) {
     return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
   }
 
@@ -622,7 +634,7 @@ async function handleTrackZikr(body, env) {
   const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
   const user = await userRes.json();
 
-  if (!user || user.password !== btoa(password)) {
+  if (!user || user.password !== b64EncodeUtf8(password)) {
     return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
   }
 
@@ -688,7 +700,7 @@ async function handleSetReminder(body, env) {
   const key = userKey(username);
   const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
   const user = await userRes.json();
-  if (!user || user.password !== btoa(password)) return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
+  if (!user || user.password !== b64EncodeUtf8(password)) return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
 
   await rtdbFetch(`/users/${encodeURIComponent(key)}/reminder.json`, env, {
     method: 'PUT',
@@ -711,7 +723,7 @@ async function handleCancelReminder(body, env) {
   const key = userKey(username);
   const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
   const user = await userRes.json();
-  if (!user || user.password !== btoa(password)) return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
+  if (!user || user.password !== b64EncodeUtf8(password)) return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
 
   await rtdbFetch(`/users/${encodeURIComponent(key)}/reminder.json`, env, { method: 'DELETE' });
 
