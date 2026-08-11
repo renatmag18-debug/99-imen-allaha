@@ -346,6 +346,7 @@ body{
 .card:hover{ border-color:var(--gold); background:rgba(255,255,255,0.06); }
 .card .idx{ font-family:var(--font-num); font-size:11px; color:var(--jade); margin-bottom:4px;}
 .card .ar{ font-family:var(--font-ar); font-size:24px; color:var(--gold-soft); direction:rtl; margin-bottom:5px; line-height:1.1;}
+.card .salam{ font-family:var(--font-ar); font-size:12px; color:var(--gold-soft); direction:rtl; margin-bottom:5px; line-height:1.1;}
 .card .tr{ font-size:10.5px; color:var(--ivory-dim); line-height:1.3; }
 .card.learned{ border-color: rgba(46,138,114,0.5); }
 .card.learned::after{ content:"✓"; position:absolute; }
@@ -2032,31 +2033,31 @@ console.assert(NAMES.length===99, "Ожидается 99 имён, найден�
    ДАННЫЕ: Имена Пророков (25 Пророков, упомянутых в Коране)
 ===================================================== */
 const PROPHETS = [
-{ar:"مُحَمَّدٌ ﷺ",tr:"Мухаммад"},
-{ar:"آدَمُ ﷺ",tr:"Адам"},
-{ar:"إِبْرَاهِيمُ ﷺ",tr:"Ибрахим"},
-{ar:"إِسْمَاعِيلُ ﷺ",tr:"Исмаил"},
-{ar:"إِلْيَاسُ ﷺ",tr:"Ильяс"},
-{ar:"إِدْرِيسُ ﷺ",tr:"Идрис"},
-{ar:"أَيُّوبُ ﷺ",tr:"Аййуб"},
-{ar:"عِيسَى ﷺ",tr:"Иса"},
-{ar:"مُوسَى ﷺ",tr:"Муса"},
-{ar:"نُوحٌ ﷺ",tr:"Нух"},
-{ar:"لُوطٌ ﷺ",tr:"Лут"},
-{ar:"يُوسُفُ ﷺ",tr:"Юсуф"},
-{ar:"يَعْقُوبُ ﷺ",tr:"Якуб"},
-{ar:"إِسْحَاقُ ﷺ",tr:"Исхак"},
-{ar:"الْيَسَع ﷺ",tr:"аль-Яса'"},
-{ar:"هُودٌ ﷺ",tr:"Худ"},
-{ar:"يُونُسُ ﷺ",tr:"Юнус"},
-{ar:"صَالِحٌ ﷺ",tr:"Салих"},
-{ar:"شُعَيْبٌ ﷺ",tr:"Шуайб"},
-{ar:"دَاوُۥدُ ﷺ",tr:"Дауд"},
-{ar:"يَحْيَى ﷺ",tr:"Яхья"},
-{ar:"زَكَرِيَّا ﷺ",tr:"Закариййа"},
-{ar:"ذُو الْكِفْلِ ﷺ",tr:"Зуль-Кифл"},
-{ar:"سُلَيْمَانُ ﷺ",tr:"Сулейман"},
-{ar:"هَارُونُ ﷺ",tr:"Харун"}
+{ar:"مُحَمَّدٌ",tr:"Мухаммад"},
+{ar:"آدَمُ",tr:"Адам"},
+{ar:"إِبْرَاهِيمُ",tr:"Ибрахим"},
+{ar:"إِسْمَاعِيلُ",tr:"Исмаил"},
+{ar:"إِلْيَاسُ",tr:"Ильяс"},
+{ar:"إِدْرِيسُ",tr:"Идрис"},
+{ar:"أَيُّوبُ",tr:"Аййуб"},
+{ar:"عِيسَى",tr:"Иса"},
+{ar:"مُوسَى",tr:"Муса"},
+{ar:"نُوحٌ",tr:"Нух"},
+{ar:"لُوطٌ",tr:"Лут"},
+{ar:"يُوسُفُ",tr:"Юсуф"},
+{ar:"يَعْقُوبُ",tr:"Якуб"},
+{ar:"إِسْحَاقُ",tr:"Исхак"},
+{ar:"الْيَسَع",tr:"аль-Яса'"},
+{ar:"هُودٌ",tr:"Худ"},
+{ar:"يُونُسُ",tr:"Юнус"},
+{ar:"صَالِحٌ",tr:"Салих"},
+{ar:"شُعَيْبٌ",tr:"Шуайб"},
+{ar:"دَاوُۥدُ",tr:"Дауд"},
+{ar:"يَحْيَى",tr:"Яхья"},
+{ar:"زَكَرِيَّا",tr:"Закариййа"},
+{ar:"ذُو الْكِفْلِ",tr:"Зуль-Кифл"},
+{ar:"سُلَيْمَانُ",tr:"Сулейман"},
+{ar:"هَارُونُ",tr:"Харун"}
 ];
 
 /* =====================================================
@@ -2332,6 +2333,7 @@ function renderProphetsGrid(){
     return `<div class="card" style="animation-delay:${Math.min(pos*14,300)}ms">
       <div class="idx">${pos+1}</div>
       <div class="ar">${n.ar}</div>
+      <div class="salam">ﷺ</div>
       <div class="tr">${n.tr}</div>
     </div>`;
   }).join('');
