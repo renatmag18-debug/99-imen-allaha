@@ -5127,7 +5127,29 @@ function updateProfileUI(){
 async function loadOwnProfile(){
   if(!state.profile || !state.profile.authenticated) return;
   const result = await apiGetProfile(state.profile.username);
-  if(result.error) return;
+  if(result.error){
+    // "user not found" means this account only ever existed in this
+    // browser's localStorage — created by the register handler's offline
+    // fallback (server unreachable at signup time) — and the person never
+    // logged out/in again to trigger the self-heal in the login handler.
+    // They still look fully logged in (profile card, zikr counters, etc.),
+    // so nothing prompts them to do anything: retry registration here,
+    // on every app load, using whichever credentials we have cached.
+    if(result.error === 'user not found'){
+      const auth = typeof getAuthCredentials === 'function' && getAuthCredentials();
+      if(auth && auth.username && auth.password){
+        const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
+        const matchKey = Object.keys(allUsers).find(k => k.toLowerCase() === auth.username.toLowerCase());
+        const localUser = matchKey ? allUsers[matchKey] : null;
+        const migrated = await apiRegister(auth.username, auth.password, localUser && localUser.securityQuestion, localUser && localUser.securityAnswer);
+        if(migrated && !migrated.error){
+          if(typeof showToast === 'function') showToast('Аккаунт синхронизирован с сервером');
+          return loadOwnProfile();
+        }
+      }
+    }
+    return;
+  }
   state.profile.avatar = result.avatar;
   state.profile.joinedAt = result.joinedAt;
   renderAvatarInto(document.getElementById('ownAvatarCircle'), state.profile.avatar, state.profile.username);
