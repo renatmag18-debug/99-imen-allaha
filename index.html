@@ -444,6 +444,7 @@ body{
 .opt.wrong{ border-color:var(--rose); background:var(--rose-soft); }
 .opt.disabled{ pointer-events:none; opacity:.55; }
 .opt.correct.disabled, .opt.wrong.disabled{ opacity:1; }
+.opt.opt-dontknow{ border-style:dashed; color:var(--ivory-dim); text-align:center; }
 
 .result-wrap{ text-align:center; padding-top:10px;}
 .score-ring{ width:150px;height:150px; margin:6px auto 16px; position:relative;}
@@ -1016,7 +1017,7 @@ body{
           <input id="searchInput" type="search" inputmode="search" placeholder="Поиск по имени или номеру…" autocomplete="off">
         </div>
         <div class="scroll">
-          <button class="btn btn-primary" id="browseTrainBtn" style="width:100%;margin-bottom:16px;">Тренировка</button>
+          <button class="btn btn-primary" id="browseTrainBtn" style="width:100%;margin-bottom:16px;">Тестирование</button>
           <div class="section-title">99 имён</div>
           <div class="grid" id="grid"></div>
           <div class="empty-hint" id="emptyHint" style="display:none">Ничего не найдено. Попробуйте другой запрос.</div>
@@ -1049,10 +1050,36 @@ body{
       </div>
 
       <div id="prophetsWrap" style="display:none">
-        <div class="scroll">
-          <div class="section-title">Имена Пророков</div>
-          <div class="section-desc">(25 Пророков упомянутых в Коране)</div>
-          <div class="grid" id="prophetsGrid"></div>
+        <div id="prophetsListWrap" style="display:contents">
+          <div class="scroll">
+            <div class="section-title">Имена Пророков</div>
+            <div class="section-desc">(25 Пророков упомянутых в Коране)</div>
+            <button class="btn btn-primary" id="prophetsTestBtn" style="width:100%;margin-bottom:16px;">Тестирование</button>
+            <div class="grid" id="prophetsGrid"></div>
+          </div>
+        </div>
+
+        <div id="prophetsQuizWrap" style="display:none">
+          <div class="scroll">
+            <div class="q-card" id="prophetsQCard">
+              <button class="btn-back" id="prophetsQuizExitBtn">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Список пророков
+              </button>
+              <div class="q-eyebrow" id="prophetsQProgress">Вопрос 1 из 25</div>
+              <div class="q-ar" id="prophetsQAr">مُحَمَّدٌ</div>
+              <div class="q-tr" id="prophetsQSalam">ﷺ</div>
+              <div class="options" id="prophetsQOptions"></div>
+            </div>
+            <div class="result-wrap" id="prophetsResultWrap" style="display:none">
+              <div class="result-title">Тест завершён!</div>
+              <div class="result-sub">Правильных ответов: <b id="prophetsResultScore" style="color:var(--gold-soft)">0</b> из 25</div>
+              <div class="cta-row">
+                <button class="btn btn-primary" id="prophetsRetryBtn">Пройти ещё раз</button>
+                <button class="btn btn-ghost" id="prophetsBackToListBtn">К списку</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -2346,6 +2373,80 @@ function renderProphetsGrid(){
 }
 renderProphetsGrid();
 
+/* =====================================================
+   STUDY: ТЕСТ ПО ИМЕНАМ ПРОРОКОВ
+===================================================== */
+const prophetsListWrap = document.getElementById('prophetsListWrap');
+const prophetsQuizWrap = document.getElementById('prophetsQuizWrap');
+const prophetsQCard = document.getElementById('prophetsQCard');
+const prophetsResultWrap = document.getElementById('prophetsResultWrap');
+let prophetsQuizQueue = [];
+let prophetsQuizIndex = 0;
+let prophetsQuizScore = 0;
+let prophetsQuizCorrectIdx = null;
+let prophetsQuizAnswered = false;
+
+function showProphetsList(){
+  prophetsQuizWrap.style.display = 'none';
+  prophetsListWrap.style.display = 'contents';
+}
+function startProphetsQuiz(){
+  prophetsQuizQueue = shuffleArr(PROPHETS.map((n,i)=>i));
+  prophetsQuizIndex = 0;
+  prophetsQuizScore = 0;
+  prophetsListWrap.style.display = 'none';
+  prophetsQuizWrap.style.display = 'contents';
+  prophetsQCard.style.display = 'block';
+  prophetsResultWrap.style.display = 'none';
+  showProphetsQuizQuestion();
+}
+function showProphetsQuizQuestion(){
+  if(prophetsQuizIndex >= prophetsQuizQueue.length){
+    showProphetsQuizResult();
+    return;
+  }
+  prophetsQuizAnswered = false;
+  prophetsQuizCorrectIdx = prophetsQuizQueue[prophetsQuizIndex];
+  const correct = PROPHETS[prophetsQuizCorrectIdx];
+  document.getElementById('prophetsQProgress').textContent = 'Вопрос '+(prophetsQuizIndex+1)+' из '+prophetsQuizQueue.length+' · верно '+prophetsQuizScore;
+  document.getElementById('prophetsQAr').textContent = correct.ar;
+
+  const others = PROPHETS.map((n,i)=>i).filter(i=>i!==prophetsQuizCorrectIdx);
+  const wrongIdxs = shuffleArr(others).slice(0,3);
+  const nameOptions = shuffleArr([prophetsQuizCorrectIdx, ...wrongIdxs]);
+
+  const wrap = document.getElementById('prophetsQOptions');
+  wrap.innerHTML = nameOptions.map(i=>`<button class="opt" data-i="${i}">${PROPHETS[i].tr}</button>`).join('')
+    + `<button class="opt opt-dontknow" data-i="dontknow">Не помню</button>`;
+  wrap.querySelectorAll('.opt').forEach(btn=>{
+    btn.addEventListener('click', onProphetsQuizAnswer);
+  });
+}
+function onProphetsQuizAnswer(e){
+  if(prophetsQuizAnswered) return;
+  prophetsQuizAnswered = true;
+  const chosenBtn = e.currentTarget;
+  if(chosenBtn.dataset.i === String(prophetsQuizCorrectIdx)) prophetsQuizScore++;
+  document.getElementById('prophetsQOptions').querySelectorAll('.opt').forEach(btn=>{
+    btn.classList.add('disabled');
+    if(btn.dataset.i === String(prophetsQuizCorrectIdx)) btn.classList.add('correct');
+    else if(btn===chosenBtn) btn.classList.add('wrong');
+  });
+  setTimeout(()=>{
+    prophetsQuizIndex++;
+    showProphetsQuizQuestion();
+  }, 900);
+}
+function showProphetsQuizResult(){
+  prophetsQCard.style.display = 'none';
+  document.getElementById('prophetsResultScore').textContent = prophetsQuizScore;
+  prophetsResultWrap.style.display = 'block';
+}
+document.getElementById('prophetsTestBtn').addEventListener('click', startProphetsQuiz);
+document.getElementById('prophetsQuizExitBtn').addEventListener('click', showProphetsList);
+document.getElementById('prophetsBackToListBtn').addEventListener('click', showProphetsList);
+document.getElementById('prophetsRetryBtn').addEventListener('click', startProphetsQuiz);
+
 document.getElementById('searchInput').addEventListener('input', (e)=>{
   const q = e.target.value.trim().toLowerCase();
   if(!q){ state.filtered = NAMES.map((n,i)=>i); }
@@ -2423,6 +2524,7 @@ function enterStudyMode(mode){
     showPracticeCard();
   } else if(mode==='prophets'){
     prophetsWrap.style.display='contents';
+    showProphetsList();
   } else {
     browseWrap.style.display='contents';
   }
