@@ -1018,6 +1018,7 @@ body{
           <input id="searchInput" type="search" inputmode="search" placeholder="Поиск по имени или номеру…" autocomplete="off">
         </div>
         <div class="scroll">
+          <button class="btn btn-primary" id="browseTrainBtn" style="width:100%;margin-bottom:16px;">Тренировка</button>
           <div class="section-title">99 имён</div>
           <div class="grid" id="grid"></div>
           <div class="empty-hint" id="emptyHint" style="display:none">Ничего не найдено. Попробуйте другой запрос.</div>
@@ -2430,6 +2431,9 @@ document.querySelectorAll('#studySegment .seg-btn').forEach(btn=>{
       browseWrap.style.display='contents';
     }
   });
+});
+document.getElementById('browseTrainBtn').addEventListener('click', ()=>{
+  document.querySelector('#studySegment .seg-btn[data-mode="practice"]').click();
 });
 
 /* =====================================================
