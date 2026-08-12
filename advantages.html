@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0a2129">
+<title>Асма-уль-Хусна — чем это устроено иначе</title>
+<meta name="description" content="99 имён Аллаха и 25 пророков — с толкованиями, сообществом, синхронизацией между устройствами и без рекламы. Чем это отличается от типичного справочника.">
+<meta property="og:title" content="Асма-уль-Хусна — чем это устроено иначе">
+<meta property="og:description" content="99 имён Аллаха и 25 пророков — с толкованиями, сообществом, синхронизацией между устройствами и без рекламы.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+@font-face{
+  font-family:'KFGQPC Uthmanic Script HAFS';
+  src:url('fonts/KFGQPC-Uthmanic-Script-HAFS-Regular.otf') format('opentype');
+  font-weight:normal; font-style:normal; font-display:swap;
+}
+
+:root{
+  --bg:#0a2129;
+  --bg2:#0f313c;
+  --surface: rgba(255,255,255,0.035);
+  --surface-hover: rgba(255,255,255,0.06);
+  --line: rgba(228,200,120,0.18);
+  --line-soft: rgba(228,200,120,0.10);
+  --gold:#cba135;
+  --gold-soft:#e4c878;
+  --ivory:#f3ecdd;
+  --ivory-dim: rgba(243,236,221,0.66);
+  --ivory-faint: rgba(243,236,221,0.4);
+  --jade:#2e8a72;
+  --jade-soft: rgba(46,138,114,0.16);
+  --jade-text: #7cd3b7;
+  --rose:#b4543a;
+  --rose-soft: rgba(180,84,58,0.14);
+  --rose-text: #e0947f;
+  --font-display:'Cormorant Garamond', 'Georgia', serif;
+  --font-body:'Manrope', -apple-system, sans-serif;
+  --font-ar:'KFGQPC Uthmanic Script HAFS', 'Amiri', serif;
+  --ease: cubic-bezier(.22,1,.36,1);
+  --star-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cg fill='none' stroke='%23e4c878' stroke-width='0.6'%3E%3Cpath d='M96 62A36 36 0 1 1 55.5 15 28 28 0 0 0 96 62z'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+*{ box-sizing:border-box; }
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; }
+}
+
+body{
+  margin:0;
+  background:
+    radial-gradient(ellipse 90% 50% at 50% -10%, rgba(203,161,53,0.14), transparent 60%),
+    radial-gradient(ellipse 70% 45% at 100% 8%, rgba(46,138,114,0.10), transparent 60%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+  background-attachment: fixed;
+  color: var(--ivory);
+  font-family: var(--font-body);
+  font-size:16px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+
+.veil{
+  position:fixed; inset:0; pointer-events:none; z-index:0;
+  background-image: var(--star-tile);
+  background-size: 120px 120px;
+  opacity:0.05;
+}
+
+a{ color: var(--gold-soft); }
+a:focus-visible, button:focus-visible{ outline: 2px solid var(--gold-soft); outline-offset: 3px; border-radius:4px; }
+
+.wrap{ position:relative; z-index:1; max-width:920px; margin:0 auto; padding: 64px 24px 40px; }
+
+.eyebrow{
+  font-family:var(--font-body); font-size:11.5px; letter-spacing:.22em; text-transform:uppercase;
+  color:var(--gold); opacity:.9; margin-bottom:14px; display:flex; align-items:center; gap:10px;
+}
+.eyebrow::before{ content:""; width:22px; height:1px; background:var(--gold); opacity:.6; }
+
+/* ---------- brand mark ---------- */
+.brandmark{ display:flex; align-items:center; gap:10px; font-family:var(--font-display); font-size:16px; letter-spacing:.03em; color:var(--gold-soft); margin-bottom:56px; }
+.brandmark svg{ width:22px; height:22px; animation: moon-glow 4.5s ease-in-out infinite; }
+@keyframes moon-glow{ 0%,100%{ transform:scale(1) rotate(-6deg); opacity:.92; } 50%{ transform:scale(1.045) rotate(-6deg); opacity:1; } }
+
+/* ---------- hero ---------- */
+.hero{ position:relative; padding: 8px 0 64px; border-bottom:1px solid var(--line-soft); margin-bottom:56px; }
+.hero-ar{
+  position:absolute; top:-40px; right:-10px; font-family:var(--font-ar); font-size:220px; color:var(--gold);
+  opacity:0.06; direction:rtl; line-height:1; pointer-events:none; user-select:none;
+  animation: rise-fade 1.4s var(--ease) both;
+}
+@keyframes rise-fade{ from{ opacity:0; transform:translateY(14px);} to{ opacity:0.06; transform:none; } }
+h1{
+  font-family:var(--font-display); font-weight:600; margin:0 0 22px; color:var(--ivory);
+  font-size:clamp(34px, 6vw, 54px); line-height:1.12; text-wrap:balance; max-width:15ch;
+}
+h1 em{ font-style:italic; color:var(--gold-soft); font-weight:500; }
+.hero-lead{ font-size:17px; line-height:1.75; color:var(--ivory-dim); max-width:56ch; margin:0 0 28px; }
+.hero-lead b{ color:var(--ivory); font-weight:600; }
+.hero-tags{ display:flex; flex-wrap:wrap; gap:10px; }
+.tag{
+  font-size:12px; letter-spacing:.03em; padding:7px 14px; border-radius:999px; border:1px solid var(--line);
+  color:var(--ivory-dim); background:var(--surface);
+}
+
+/* ---------- section heading ---------- */
+.section-head{ margin: 0 0 32px; }
+.section-head h2{
+  font-family:var(--font-display); font-weight:600; font-size:clamp(24px,3.4vw,32px); margin:0 0 10px; color:var(--ivory);
+  text-wrap:balance;
+}
+.section-head p{ color:var(--ivory-dim); font-size:15px; line-height:1.7; max-width:60ch; margin:0; }
+
+section{ margin-bottom: 76px; }
+
+/* ---------- feature folios ---------- */
+.folios{ display:grid; grid-template-columns: repeat(2, 1fr); gap:18px; }
+@media (max-width: 680px){ .folios{ grid-template-columns: 1fr; } }
+.folio{
+  border:1px solid var(--line); border-radius:18px; padding:26px 24px;
+  background:linear-gradient(160deg, rgba(255,255,255,0.04), rgba(255,255,255,0));
+  transition: border-color .25s var(--ease), background .25s var(--ease), transform .25s var(--ease);
+}
+.folio:hover{ border-color:var(--gold); background:rgba(255,255,255,0.06); transform:translateY(-2px); }
+.folio .eyebrow{ margin-bottom:12px; }
+.folio h3{ font-family:var(--font-display); font-weight:600; font-size:21px; margin:0 0 10px; color:var(--gold-soft); }
+.folio p{ font-size:14.5px; line-height:1.72; color:var(--ivory-dim); margin:0; }
+.folio p + p{ margin-top:10px; }
+.folio .from-code{
+  display:inline-block; margin-top:14px; font-size:11px; color:var(--ivory-faint); font-style:italic;
+  border-top:1px dashed var(--line); padding-top:10px; width:100%;
+}
+
+/* ---------- comparison ---------- */
+.compare-wrap{ overflow-x:auto; border:1px solid var(--line); border-radius:18px; background:var(--surface); }
+table.compare{ border-collapse:collapse; width:100%; min-width:560px; font-size:14px; }
+table.compare th, table.compare td{ padding:16px 18px; text-align:left; border-bottom:1px solid var(--line-soft); vertical-align:top; }
+table.compare thead th{
+  font-family:var(--font-body); font-weight:800; font-size:11.5px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--ivory-faint); border-bottom:1px solid var(--line);
+}
+table.compare thead th.us{ color:var(--gold-soft); }
+table.compare tbody tr:last-child td{ border-bottom:none; }
+table.compare td.row-label{ font-family:var(--font-display); font-size:16px; color:var(--ivory); white-space:nowrap; }
+table.compare td.typical{ color:var(--ivory-faint); }
+table.compare td.us{ color:var(--ivory); }
+.mark{ display:inline-flex; align-items:center; gap:8px; }
+.mark svg{ width:15px; height:15px; flex-shrink:0; }
+.mark.good{ color:var(--jade-text); }
+.mark.bad{ color:var(--rose-text); }
+
+/* ---------- pull quote ---------- */
+.pull{
+  font-family:var(--font-display); font-style:italic; font-size:clamp(22px,3vw,28px); line-height:1.5;
+  color:var(--gold-soft); text-align:center; max-width:44ch; margin:0 auto; text-wrap:balance;
+}
+.pull-wrap{ padding:20px 0 8px; text-align:center; }
+.pull-wrap .divider{ margin-bottom:28px; opacity:.7; }
+
+.divider{ display:flex; justify-content:center; }
+.divider svg{ width:20px; height:20px; color:var(--gold); }
+
+/* ---------- footer ---------- */
+footer{ border-top:1px solid var(--line-soft); padding-top:32px; text-align:center; }
+footer .brandmark{ justify-content:center; margin-bottom:14px; }
+footer p{ color:var(--ivory-faint); font-size:12.5px; line-height:1.7; max-width:52ch; margin:0 auto; }
+footer a{ color:var(--gold-soft); text-decoration:none; border-bottom:1px solid var(--line); }
+footer a:hover{ border-color:var(--gold-soft); }
+
+@media (max-width: 480px){
+  .wrap{ padding: 44px 18px 32px; }
+  .hero-ar{ font-size:140px; top:-16px; right:-6px; }
+}
+
+</style>
+</head>
+<body>
+
+
+<div class="veil"></div>
+<div class="wrap">
+
+  <div class="brandmark">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M21 12.9A9 9 0 1111.1 3 7 7 0 0021 12.9z" stroke="#e4c878" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/><path d="M18.6 4.2l.55 1.5 1.5.55-1.5.55-.55 1.5-.55-1.5-1.5-.55 1.5-.55z" fill="#cba135"/></svg>
+    Асма-уль-Хусна
+  </div>
+
+  <div class="hero">
+    <div class="hero-ar" aria-hidden="true">الله</div>
+    <div class="eyebrow">сайт и приложение · 99ism.ru</div>
+    <h1>Список имён у всех один и тот же.<br>Дальше — <em>начинается разница</em>.</h1>
+    <p class="hero-lead">
+      «Асма-уль-Хусна» учит 99 именам Аллаха и 25 пророкам, упомянутым в Коране —
+      но большая часть того, что здесь есть, обычные справочники даже не пытаются делать:
+      <b>живое сообщество, аккаунт на всех устройствах, обновления без переустановки</b>
+      и приложение, которое чинит собственные ошибки само, тихо, пока вы просто им пользуетесь.
+    </p>
+    <div class="hero-tags">
+      <span class="tag">99 имён + толкования</span>
+      <span class="tag">25 пророков · тест по событиям</span>
+      <span class="tag">Дуэли и рейтинг</span>
+      <span class="tag">Веб + Android, один аккаунт</span>
+      <span class="tag">Без рекламы</span>
+    </div>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <h2>Толкования, а не карточки</h2>
+      <p>Большинство приложений умещают значение имени в одну строку. Здесь — развёрнутое толкование по классической книге, с разбором того, как это имя применить к себе.</p>
+    </div>
+    <div class="folios">
+      <div class="folio">
+        <div class="eyebrow">99 имён</div>
+        <h3>Толкование, а не перевод</h3>
+        <p>Каждое имя раскрыто по книге «Шарх аль-Асма аль-Хусна» аш-Шейха ас-Сануси — не короткий перевод слова, а разбор смысла и того, что раб должен осознать и делать, познав это имя.</p>
+      </div>
+      <div class="folio">
+        <div class="eyebrow">25 пророков</div>
+        <h3>События, а не только имена</h3>
+        <p>Отдельный раздел о пророках, упомянутых в Коране — с описанием ключевого события из жизни каждого. Тест устроен так же: показывает событие и спрашивает «с кем из пророков это произошло», а не заучивание одного имени.</p>
+        <span class="from-code">пять вариантов ответа, один из которых честно «не помню»</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="pull-wrap">
+    <div class="divider"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2l2 7h7l-5.5 4.5L17.5 21 12 16.5 6.5 21l2-7.5L3 9h7z" stroke="currentColor"/></svg></div>
+    <p class="pull">Справочник закрывают, дочитав. Систему — открывают снова.</p>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <h2>То, что не помещается в справочник</h2>
+      <p>Изучение здесь не заканчивается на чтении — вокруг него выстроен слой, которого в обычных приложениях этого жанра просто нет.</p>
+    </div>
+    <div class="folios">
+      <div class="folio">
+        <div class="eyebrow">Сообщество</div>
+        <h3>Дуэли, рейтинг, зикр вместе</h3>
+        <p>Живые дуэли с друзьями (обычная и «на вылет»), общий рейтинг, комнаты зикра, где счётчик общий на всех участников, и еженедельные командные испытания.</p>
+      </div>
+      <div class="folio">
+        <div class="eyebrow">Один аккаунт</div>
+        <h3>Сайт и приложение — одно целое</h3>
+        <p>Общий Firebase-бэкенд у веб-версии и Android-приложения: друг с iPhone через браузер и друг с Android видят один и тот же прогресс, рейтинг и статус дружбы.</p>
+        <p>На iPhone отдельного приложения и не нужно: Safari позволяет добавить сайт на экран «Домой» («Поделиться» → «На экран Домой») — и он открывается как обычное приложение, со своей иконкой, без адресной строки.</p>
+      </div>
+      <div class="folio">
+        <div class="eyebrow">Обновления</div>
+        <h3>Без похода в магазин приложений</h3>
+        <p>Android-приложение при каждом запуске подтягивает свежую версию сайта поверх встроенной копии — контентные изменения доходят до пользователей сами, без публикации новой версии APK.</p>
+      </div>
+      <div class="folio">
+        <div class="eyebrow">Надёжность</div>
+        <h3>Чинит себя само</h3>
+        <p>Если аккаунт создался при плохом интернете, он не теряется — при следующем открытии приложение незаметно досоздаёт его на сервере, и человек сам появляется в общем рейтинге, не совершая для этого ни одного лишнего действия.</p>
+      </div>
+      <div class="folio">
+        <div class="eyebrow">Зикр</div>
+        <h3>Считать, не глядя на экран</h3>
+        <p>На Android — плавающий счётчик поверх других приложений и счёт кнопками громкости. На любой платформе — экспорт и импорт резервной копии прогресса.</p>
+      </div>
+      <div class="folio">
+        <div class="eyebrow">Никакой рекламы</div>
+        <h3>Бесплатно — и без баннеров</h3>
+        <p>В коде нет ни одной рекламной интеграции. Монетизации через рекламу нет вообще — редкость для бесплатного приложения в этом жанре.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>В цифрах, если коротко</h2>
+      <p>Как это выглядит рядом с типичным приложением того же жанра.</p>
+    </div>
+    <div class="compare-wrap">
+      <table class="compare">
+        <thead>
+          <tr><th>Что важно</th><th>Типичный справочник</th><th class="us">Асма-уль-Хусна</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="row-label">Толкования имён</td>
+            <td class="typical">1–2 строки перевода</td>
+            <td class="us"><span class="mark good"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>развёрнутое толкование + применение</span></td>
+          </tr>
+          <tr>
+            <td class="row-label">Раздел о пророках</td>
+            <td class="typical"><span class="mark bad"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>обычно отсутствует</span></td>
+            <td class="us">25 пророков + тест по событиям</td>
+          </tr>
+          <tr>
+            <td class="row-label">Сообщество и рейтинг</td>
+            <td class="typical"><span class="mark bad"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>нет</span></td>
+            <td class="us"><span class="mark good"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>друзья, дуэли, комнаты зикра</span></td>
+          </tr>
+          <tr>
+            <td class="row-label">Аккаунт между устройствами</td>
+            <td class="typical"><span class="mark bad"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>прогресс только локально</span></td>
+            <td class="us"><span class="mark good"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>сайт и приложение — один аккаунт</span></td>
+          </tr>
+          <tr>
+            <td class="row-label">Обновление контента</td>
+            <td class="typical">новая версия в сторе</td>
+            <td class="us"><span class="mark good"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>подтягивается сама при запуске</span></td>
+          </tr>
+          <tr>
+            <td class="row-label">Реклама</td>
+            <td class="typical">часто есть</td>
+            <td class="us"><span class="mark good"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>нет вообще</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <div class="brandmark">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M21 12.9A9 9 0 1111.1 3 7 7 0 0021 12.9z" stroke="#e4c878" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/><path d="M18.6 4.2l.55 1.5 1.5.55-1.5.55-.55 1.5-.55-1.5-1.5-.55 1.5-.55z" fill="#cba135"/></svg>
+      Асма-уль-Хусна
+    </div>
+    <p>Описание основано на действительном функционале сайта и приложения «Асма-уль-Хусна». <a href="index.html">Открыть само приложение →</a></p>
+  </footer>
+
+</div>
+
+</body>
+</html>
