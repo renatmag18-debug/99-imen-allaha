@@ -7001,7 +7001,7 @@ async function checkForAppUpdate(){
   try{
     const lastCheckTime = parseInt(localStorage.getItem('lastAppUpdateCheck')||'0', 10);
     const now = Date.now();
-    if(now - lastCheckTime < 3600000) return; // check only once per hour
+    if(now - lastCheckTime < 300000) return; // check at most once per 5 minutes
 
     localStorage.setItem('lastAppUpdateCheck', now.toString());
     const resp = await fetch('https://99ism.ru/version.json', {cache:'no-store'});
