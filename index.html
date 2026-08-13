@@ -859,9 +859,15 @@ body{
 <script>
 // AndroidApp is injected by MainActivity before any page script runs, so
 // this check is synchronous — regular web visitors never see the splash
-// markup rendered, not even for a frame.
-if (window.AndroidApp && !sessionStorage.getItem('splashShown')) {
-  sessionStorage.setItem('splashShown','1');
+// markup rendered, not even for a frame. shouldShowSplash() (native side,
+// MainActivity.splashEligible) is a per-process in-memory flag rather than
+// sessionStorage — sessionStorage is disk-backed in Android WebView and
+// survives app restarts *and* APK updates, so a page-side flag would get
+// stuck true forever after the first-ever launch instead of resetting per
+// cold start. The `&&` short-circuit also makes this safe on app versions
+// older than v41, which don't expose shouldShowSplash at all.
+if (window.AndroidApp && window.AndroidApp.shouldShowSplash && window.AndroidApp.shouldShowSplash()) {
+  // splash stays visible
 } else {
   document.documentElement.classList.add('skip-splash');
 }
