@@ -239,7 +239,7 @@ body{
    own document even loaded. v38 fixed that by painting the bundled copy
    synchronously in onCreate(), so this now runs as originally intended.) */
 #splashScreen{
-  position:fixed; inset:0; z-index:9999;
+  position:fixed; inset:0; z-index:9999; pointer-events:none;
   display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px;
   background:linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
   animation: splashOut .5s ease-in 2.6s forwards;
@@ -262,7 +262,7 @@ body{
 @keyframes splashGlowIn{ to{ opacity:1; } }
 @keyframes splashSparkleIn{ 0%{ opacity:0; transform:scale(.2) rotate(-20deg); } 60%{ opacity:1; transform:scale(1.3) rotate(6deg); } 100%{ opacity:1; transform:scale(1) rotate(0deg); } }
 @keyframes splashTitleIn{ to{ opacity:1; transform:translateY(0) scale(1); } }
-@keyframes splashOut{ to{ opacity:0; visibility:hidden; } }
+@keyframes splashOut{ to{ opacity:0; } }
 .eyebrow{
   font-family:var(--font-body); font-size:11.5px; letter-spacing:.22em; text-transform:uppercase;
   color:var(--gold); opacity:.85; margin-bottom:10px;
