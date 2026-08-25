@@ -21,7 +21,7 @@
 <meta name="apple-mobile-web-app-title" content="99 Имён">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="99 Имён">
-<meta name="theme-color" content="#0a2129">
+<meta name="theme-color" content="#140f24">
 <title>99 имён Аллаха — Асма-уль-Хусна</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
@@ -47,19 +47,19 @@
   font-weight:normal; font-style:normal; font-display:swap;
 }
 :root{
-  --bg:#0a2129;
-  --bg2:#0f313c;
-  --panel:#123a46;
-  --panel-2:#164450;
-  --line: rgba(228,200,120,0.16);
-  --gold:#cba135;
-  --gold-soft:#e4c878;
-  --ivory:#f3ecdd;
-  --ivory-dim: rgba(243,236,221,0.62);
-  --jade:#2e8a72;
-  --jade-soft: rgba(46,138,114,0.18);
-  --rose:#b4543a;
-  --rose-soft: rgba(180,84,58,0.18);
+  --bg:#140f24;
+  --bg2:#1c1533;
+  --panel:#241c3f;
+  --panel-2:#2c2250;
+  --line: rgba(240,201,138,0.16);
+  --gold:#e0a458;
+  --gold-soft:#f0c98a;
+  --ivory:#f1ecff;
+  --ivory-dim: rgba(241,236,255,0.62);
+  --jade:#3fae82;
+  --jade-soft: rgba(63,174,130,0.18);
+  --rose:#c9435c;
+  --rose-soft: rgba(201,67,92,0.18);
   --font-display:'Marcellus', serif;
   --font-ar:'KFGQPC Uthmanic Script HAFS', 'Amiri', serif;
   --font-body:'Manrope', sans-serif;
@@ -93,8 +93,8 @@ body{
      fallback for the first paint. */
   display:flex; flex-direction:column;
   background:
-    radial-gradient(ellipse 90% 60% at 50% -10%, rgba(203,161,53,0.12), transparent 60%),
-    radial-gradient(ellipse 70% 50% at 100% 110%, rgba(46,138,114,0.10), transparent 60%),
+    radial-gradient(ellipse 90% 60% at 50% -10%, rgba(224,164,88,0.12), transparent 60%),
+    radial-gradient(ellipse 70% 50% at 100% 110%, rgba(63,174,130,0.10), transparent 60%),
     linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
 }
 /* ---------- ambient geometric pattern ---------- */
@@ -134,34 +134,38 @@ body{
 }
 .screen.active{ opacity:1; transform:none; pointer-events:auto; }
 .screen.exit-left{ transform:translateX(-24px) scale(.98); }
-.scroll{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding: 4px 20px calc(24px + var(--safe-bottom)); }
+.scroll{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding: 4px 20px calc(96px + var(--safe-bottom)); }
 
-/* ---------- bottom nav (mobile) ---------- */
+/* ---------- bottom nav (mobile) — floating capsule ---------- */
 .tabbar{
-  position:relative; z-index:6; flex-shrink:0;
-  display:flex; gap:6px;
-  padding: 8px 16px calc(10px + var(--safe-bottom));
-  border-top:1px solid var(--line);
-  background:rgba(10,33,41,0.75);
+  position:absolute; z-index:6; left:50%; bottom:calc(22px + var(--safe-bottom)); transform:translateX(-50%);
+  display:flex; align-items:center; gap:4px;
+  padding:8px; border-radius:100px;
+  border:1px solid rgba(240,201,138,0.3);
+  background:rgba(36,28,63,0.88);
   backdrop-filter: blur(16px);
+  box-shadow: 0 14px 32px -10px rgba(0,0,0,0.55);
 }
 .tab{
-  flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;
-  padding:8px 4px 6px; border-radius:14px; cursor:pointer; color:var(--ivory-dim);
-  transition: color .25s var(--ease), background .25s var(--ease), transform .2s var(--ease);
+  position:relative; flex:0 0 auto; display:flex; flex-direction:row; align-items:center; justify-content:center; gap:7px;
+  width:42px; height:42px; padding:0; border-radius:100px; cursor:pointer; color:var(--ivory-dim); overflow:hidden;
+  transition: color .25s var(--ease), background .3s var(--ease), width .3s var(--ease), padding .3s var(--ease);
   background:none; border:none; font-family:var(--font-body);
 }
-.tab svg{width:21px;height:21px; transition:transform .3s var(--ease);}
-.tab span{font-size:10.5px; letter-spacing:.03em; font-weight:600;}
-.tab.active{ color:var(--gold-soft); }
-.tab.active svg{ transform:translateY(-2px); }
+.tab svg{width:19px;height:19px; flex-shrink:0;}
+.tab span{
+  font-size:12px; letter-spacing:.02em; font-weight:700; white-space:nowrap;
+  max-width:0; opacity:0; transition:max-width .3s var(--ease), opacity .2s var(--ease);
+}
+.tab.active{ width:auto; padding:0 16px 0 12px; color:#241004; background:linear-gradient(135deg, var(--gold-soft), var(--gold)); }
+.tab.active span{ max-width:100px; opacity:1; }
 .tab:active{ transform:scale(.94); }
 
 /* ================= HOME ================= */
 .android-app-banner{
   display:none; align-items:center; justify-content:center; gap:9px; text-decoration:none;
   border:1px solid var(--gold); border-radius:14px; padding:10px 14px; margin-bottom:14px;
-  background:linear-gradient(160deg, rgba(203,161,53,0.14), rgba(203,161,53,0.02));
+  background:linear-gradient(160deg, rgba(224,164,88,0.14), rgba(224,164,88,0.02));
   color:var(--gold-soft); font-size:12.5px; font-weight:700;
 }
 .android-app-banner.show{ display:flex; }
@@ -169,7 +173,7 @@ body{
 .ios-app-banner{
   display:none; align-items:center; gap:9px;
   border:1px solid var(--gold); border-radius:14px; padding:10px 14px; margin-bottom:14px;
-  background:linear-gradient(160deg, rgba(203,161,53,0.14), rgba(203,161,53,0.02));
+  background:linear-gradient(160deg, rgba(224,164,88,0.14), rgba(224,164,88,0.02));
   color:var(--ivory); font-size:12px; line-height:1.5; text-align:left;
 }
 .ios-app-banner.show{ display:flex; }
@@ -178,7 +182,7 @@ body{
 .update-banner{
   display:none; flex-direction:column;
   border:1px solid var(--gold); border-radius:14px; margin-bottom:14px; overflow:hidden;
-  background:linear-gradient(160deg, rgba(203,161,53,0.14), rgba(203,161,53,0.02));
+  background:linear-gradient(160deg, rgba(224,164,88,0.14), rgba(224,164,88,0.02));
 }
 .update-banner.show{ display:flex; }
 .update-banner-main{ display:flex; align-items:center; gap:10px; padding:12px 12px 12px 14px; }
@@ -191,7 +195,7 @@ body{
 .update-banner-action{
   font-family:var(--font-body); font-weight:700; font-size:12.5px; white-space:nowrap; flex-shrink:0;
   border-radius:10px; padding:8px 14px; border:none; cursor:pointer;
-  background:linear-gradient(145deg, var(--gold-soft), var(--gold)); color:#1a1204;
+  background:linear-gradient(145deg, var(--gold-soft), var(--gold)); color:#241004;
   transition:transform .2s var(--ease), opacity .2s var(--ease);
 }
 .update-banner-action:active{ transform:scale(.94); }
@@ -222,11 +226,11 @@ body{
 .zikr-sync-banner-form button{
   font-family:var(--font-body); font-weight:700; font-size:12.5px; white-space:nowrap; flex-shrink:0;
   border-radius:8px; padding:8px 12px; border:none; cursor:pointer;
-  background:linear-gradient(145deg, var(--gold-soft), var(--gold)); color:#1a1204;
+  background:linear-gradient(145deg, var(--gold-soft), var(--gold)); color:#241004;
 }
 .zikr-sync-banner-form button:disabled{ opacity:.65; cursor:default; }
 .hero{ display:flex; flex-direction:column; align-items:center; text-align:center; padding-top:6px;}
-.hero-star{ width:150px; height:150px; margin:8px auto 6px; animation: moon-glow 4.5s ease-in-out infinite; filter:drop-shadow(0 0 20px rgba(228,200,120,0.35));}
+.hero-star{ width:150px; height:150px; margin:8px auto 6px; animation: moon-glow 4.5s ease-in-out infinite; filter:drop-shadow(0 0 20px rgba(240,201,138,0.35));}
 @keyframes moon-glow{ 0%,100%{ transform:scale(1) rotate(-6deg); opacity:.92; } 50%{ transform:scale(1.045) rotate(-6deg); opacity:1; } }
 /* Cold-start splash — Android app only (see inline script in body, gated on
    window.AndroidApp). Draws the same crescent-moon glyph as .hero-star
@@ -247,10 +251,10 @@ body{
 .skip-splash #splashScreen{ display:none !important; }
 .splash-glow{
   position:absolute; width:220px; height:220px; border-radius:50%;
-  background:radial-gradient(circle, rgba(203,161,53,0.24) 0%, rgba(203,161,53,0) 70%);
+  background:radial-gradient(circle, rgba(224,164,88,0.24) 0%, rgba(224,164,88,0) 70%);
   opacity:0; animation: splashGlowIn .6s ease-out .1s forwards;
 }
-.splash-hero-star{ width:150px; height:150px; filter:drop-shadow(0 0 16px rgba(228,200,120,0.3)); }
+.splash-hero-star{ width:150px; height:150px; filter:drop-shadow(0 0 16px rgba(240,201,138,0.3)); }
 .splash-moon{ stroke-dasharray:100; stroke-dashoffset:100; animation: splashDraw 1s ease-out .05s forwards; }
 .splash-spark{ opacity:0; transform-box:fill-box; transform-origin:center; animation: splashSparkleIn .4s cubic-bezier(.2,1.4,.4,1) 1.1s forwards; }
 .splash-title{
@@ -281,8 +285,8 @@ body{
   transition: transform .2s var(--ease), box-shadow .2s var(--ease), background .25s var(--ease), border-color .25s var(--ease);
 }
 .btn:active{ transform:scale(.96); }
-.btn-primary{ background:linear-gradient(145deg, var(--gold-soft), var(--gold)); color:#1a1204; box-shadow:0 8px 24px -8px rgba(203,161,53,0.55);}
-.btn-primary:hover{ box-shadow:0 10px 28px -6px rgba(203,161,53,0.7); }
+.btn-primary{ background:linear-gradient(145deg, var(--gold-soft), var(--gold)); color:#241004; box-shadow:0 8px 24px -8px rgba(224,164,88,0.55);}
+.btn-primary:hover{ box-shadow:0 10px 28px -6px rgba(224,164,88,0.7); }
 .btn-ghost{ background:rgba(255,255,255,0.03); color:var(--ivory); border-color:var(--line); }
 .btn-ghost:hover{ background:rgba(255,255,255,0.07); border-color:var(--gold);}
 .btn svg{width:16px;height:16px;}
@@ -298,7 +302,7 @@ body{
 
 .hadith-card{
   position:relative; border:1px solid var(--line); border-radius:22px; padding:30px 26px 24px; margin-bottom:20px;
-  background:linear-gradient(160deg, rgba(203,161,53,0.09), rgba(255,255,255,0.02));
+  background:linear-gradient(160deg, rgba(224,164,88,0.09), rgba(255,255,255,0.02));
   text-align:center; overflow:hidden;
 }
 .hadith-card::before{
@@ -347,7 +351,7 @@ body{
   padding:10px 6px; border-radius:11px; cursor:pointer; transition:all .25s var(--ease);
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
-.seg-btn.active{ background:linear-gradient(145deg, var(--gold-soft), var(--gold)); color:#1a1204; }
+.seg-btn.active{ background:linear-gradient(145deg, var(--gold-soft), var(--gold)); color:#241004; }
 
 .practice-card{ text-align:center; padding-top:10px; max-width:420px; margin:0 auto; }
 .practice-eyebrow{ font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--jade); margin-bottom:16px;}
@@ -382,7 +386,7 @@ body{
 .card .ar{ font-family:var(--font-ar); font-size:24px; color:var(--gold-soft); direction:rtl; margin-bottom:5px; line-height:1.1;}
 .card .salam{ font-family:var(--font-ar); font-size:12px; color:var(--gold-soft); direction:rtl; margin-bottom:5px; line-height:1.1;}
 .card .tr{ font-size:10.5px; color:var(--ivory-dim); line-height:1.3; }
-.card.learned{ border-color: rgba(46,138,114,0.5); }
+.card.learned{ border-color: rgba(63,174,130,0.5); }
 .card.learned::after{ content:"✓"; position:absolute; }
 @keyframes rise{ from{ opacity:0; transform:translateY(10px);} to{opacity:1; transform:none;} }
 .empty-hint{ text-align:center; color:var(--ivory-dim); font-size:13px; padding:30px 10px;}
@@ -397,7 +401,7 @@ body{
 
 /* ---------- detail sheet ---------- */
 .sheet-backdrop{
-  position:fixed; inset:0; background:rgba(4,12,15,0.6); backdrop-filter:blur(6px); z-index:20;
+  position:fixed; inset:0; background:rgba(8,5,18,0.6); backdrop-filter:blur(6px); z-index:20;
   opacity:0; pointer-events:none; transition:opacity .35s var(--ease);
 }
 .sheet-backdrop.show{ opacity:1; pointer-events:auto; }
@@ -456,7 +460,7 @@ body{
 .q-count{ font-family:var(--font-num); font-size:14px; color:var(--ivory-dim); white-space:nowrap;}
 
 .quiz-intro{ text-align:center; padding-top:10px;}
-.quiz-intro .big-star{ width:96px;height:96px; margin:6px auto 18px; opacity:.92; filter:drop-shadow(0 0 14px rgba(228,200,120,0.3));}
+.quiz-intro .big-star{ width:96px;height:96px; margin:6px auto 18px; opacity:.92; filter:drop-shadow(0 0 14px rgba(240,201,138,0.3));}
 .quiz-intro h2{ font-family:var(--font-display); font-size:26px; margin:0 0 10px;}
 .quiz-intro p{ color:var(--ivory-dim); font-size:14px; line-height:1.6; max-width:340px; margin:0 auto 22px;}
 .len-choice{ display:flex; gap:8px; justify-content:center; margin-bottom:24px; flex-wrap:wrap;}
@@ -464,7 +468,7 @@ body{
   padding:9px 16px; border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,0.03);
   font-size:13px; color:var(--ivory-dim); cursor:pointer; transition:all .2s var(--ease);
 }
-.len-chip.active{ border-color:var(--gold); color:var(--gold-soft); background:rgba(203,161,53,0.1);}
+.len-chip.active{ border-color:var(--gold); color:var(--gold-soft); background:rgba(224,164,88,0.1);}
 
 .q-card{ text-align:center; padding-top:6px; }
 .q-eyebrow{ font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--jade); margin-bottom:14px;}
@@ -519,7 +523,7 @@ body{
 
 .waiting-spinner{
   width:56px; height:56px; margin:10px auto 0; border-radius:50%;
-  border:3px solid rgba(228,200,120,0.15); border-top-color:var(--gold-soft);
+  border:3px solid rgba(240,201,138,0.15); border-top-color:var(--gold-soft);
   animation: spin-wait 1s linear infinite;
 }
 @keyframes spin-wait{ to{ transform:rotate(360deg); } }
@@ -554,7 +558,7 @@ body{
 .duel-timerbar-wrap{ display:flex; align-items:center; gap:10px; padding:0 20px 12px; flex-shrink:0; }
 .duel-timerbar-track{ flex:1; height:9px; border-radius:5px; background:rgba(255,255,255,0.08); overflow:hidden; border:1px solid var(--line);}
 .duel-timerbar-fill{ height:100%; border-radius:5px; background:linear-gradient(90deg, var(--jade), var(--gold-soft)); width:100%; transform-origin:left; will-change:transform; }
-.duel-timerbar-fill.low{ background:linear-gradient(90deg, var(--rose), #e0704f); animation: timer-pulse .5s ease-in-out infinite; }
+.duel-timerbar-fill.low{ background:linear-gradient(90deg, var(--rose), #e8536f); animation: timer-pulse .5s ease-in-out infinite; }
 .duel-timerbar-num{ font-family:var(--font-num); font-size:16px; font-weight:700; color:var(--ivory); min-width:22px; text-align:right; flex-shrink:0;}
 @keyframes timer-pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.55; } }
 .live-word{ color:var(--rose); animation: live-blink 2.2s ease-in-out infinite; }
@@ -584,8 +588,8 @@ body{
 .result-actions{ display:flex; flex-direction:column; gap:10px;}
 .result-actions-row{ display:flex; gap:10px;}
 .toast{
-  position:fixed; left:50%; bottom:calc(90px + var(--safe-bottom)); transform:translateX(-50%) translateY(20px);
-  background:var(--gold-soft); color:#1a1204; padding:11px 20px; border-radius:14px; font-size:13px; font-weight:700;
+  position:fixed; left:50%; bottom:calc(104px + var(--safe-bottom)); transform:translateX(-50%) translateY(20px);
+  background:var(--gold-soft); color:#241004; padding:11px 20px; border-radius:14px; font-size:13px; font-weight:700;
   z-index:40; opacity:0; transition:all .3s var(--ease); pointer-events:none; white-space:nowrap;
 }
 .toast.show{ opacity:1; transform:translateX(-50%) translateY(0);}
@@ -593,7 +597,7 @@ body{
 /* challenge intro overlay */
 .challenge-card{
   border:1px solid var(--gold); border-radius:20px; padding:22px; text-align:center; margin-bottom:18px;
-  background:linear-gradient(160deg, rgba(203,161,53,0.12), rgba(203,161,53,0.02));
+  background:linear-gradient(160deg, rgba(224,164,88,0.12), rgba(224,164,88,0.02));
 }
 .challenge-card .cc-icon{ width:40px;height:40px; margin:0 auto 12px; color:var(--gold-soft);}
 .challenge-card b{ color:var(--gold-soft); }
@@ -612,7 +616,7 @@ body{
 .dhikr-title{ font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--jade); font-weight:700; }
 .dhikr-count{
   flex-shrink:0; font-family:var(--font-num); font-size:13px; font-weight:700; color:var(--gold-soft);
-  background:rgba(203,161,53,0.12); border:1px solid var(--line); border-radius:10px; padding:3px 11px;
+  background:rgba(224,164,88,0.12); border:1px solid var(--line); border-radius:10px; padding:3px 11px;
 }
 .dhikr-top-right{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
 .dhikr-play-btn{
@@ -621,14 +625,14 @@ body{
   cursor:pointer; font-size:13px; transition:all .2s var(--ease);
 }
 .dhikr-play-btn:active{ transform:scale(.9); }
-.dhikr-play-btn.playing{ border-color:var(--jade); color:var(--jade); background:rgba(46,138,114,0.12); }
+.dhikr-play-btn.playing{ border-color:var(--jade); color:var(--jade); background:rgba(63,174,130,0.12); }
 .dhikr-fav-btn{
   flex-shrink:0; width:30px; height:30px; border-radius:10px; border:1px solid var(--line);
   background:rgba(255,255,255,0.03); color:var(--ivory-dim); display:flex; align-items:center; justify-content:center;
   cursor:pointer; font-size:15px; transition:all .2s var(--ease);
 }
 .dhikr-fav-btn:active{ transform:scale(.9); }
-.dhikr-fav-btn.active{ border-color:var(--gold); color:var(--gold-soft); background:rgba(203,161,53,0.12); }
+.dhikr-fav-btn.active{ border-color:var(--gold); color:var(--gold-soft); background:rgba(224,164,88,0.12); }
 .dhikr-share-btn{
   flex-shrink:0; width:30px; height:30px; border-radius:10px; border:1px solid var(--line);
   background:rgba(255,255,255,0.03); color:var(--ivory-dim); display:flex; align-items:center; justify-content:center;
@@ -639,7 +643,7 @@ body{
 
 .weekly-challenge-card{
   border:1px solid var(--gold); border-radius:18px; padding:16px 18px; margin:0 auto 14px; cursor:pointer;
-  background:linear-gradient(160deg, rgba(203,161,53,0.14), rgba(203,161,53,0.02));
+  background:linear-gradient(160deg, rgba(224,164,88,0.14), rgba(224,164,88,0.02));
   max-width:90%;
 }
 .weekly-challenge-top{ display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; }
@@ -649,11 +653,11 @@ body{
 .weekly-progress-bar{ height:8px; border-radius:5px; background:rgba(255,255,255,0.08); overflow:hidden; margin-bottom:6px; }
 .weekly-progress-fill{ height:100%; width:100%; transform:scaleX(0); background:linear-gradient(90deg, var(--jade), var(--gold-soft)); border-radius:5px; transform-origin:left; will-change:transform; transition:transform .4s var(--ease); }
 .weekly-challenge-count-label{ font-size:11.5px; color:var(--ivory-dim); text-align:center; }
-@keyframes chip-live{0%{box-shadow:0 0 0 0 rgba(255,196,80,0.5);}70%{box-shadow:0 0 0 6px rgba(255,196,80,0);}100%{box-shadow:0 0 0 0 rgba(255,196,80,0);}}
+@keyframes chip-live{0%{box-shadow:0 0 0 0 rgba(224,164,88,0.5);}70%{box-shadow:0 0 0 6px rgba(224,164,88,0);}100%{box-shadow:0 0 0 0 rgba(224,164,88,0);}}
 .duel-participant-chip.live-now{border-color:var(--gold) !important;animation:chip-live 1s ease-out 2;}
 @keyframes remote-num-pop{0%{transform:scale(1);}40%{transform:scale(1.12);color:var(--jade);}100%{transform:scale(1);}}
 .counter-circle.remote-pop .counter-num{animation:remote-num-pop 0.45s ease-out;}
-.btn-float-dhikr{background:linear-gradient(135deg,rgba(203,161,53,0.18),rgba(203,161,53,0.06));border:1px solid var(--gold);color:var(--gold-soft);font-size:13px;font-weight:600;border-radius:12px;padding:10px 18px;width:100%;margin-top:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .2s;}
+.btn-float-dhikr{background:linear-gradient(135deg,rgba(224,164,88,0.18),rgba(224,164,88,0.06));border:1px solid var(--gold);color:var(--gold-soft);font-size:13px;font-weight:600;border-radius:12px;padding:10px 18px;width:100%;margin-top:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .2s;}
 .btn-float-dhikr:active{opacity:.7;}
 .dhikr-ar{ font-family:var(--font-ar); font-size:23px; color:var(--gold-soft); direction:rtl; line-height:1.85; margin-bottom:12px; text-align:right; }
 .dhikr-tr{ font-size:13.5px; color:var(--ivory); font-weight:700; margin-bottom:6px; line-height:1.5; }
@@ -669,11 +673,11 @@ body{
 .counter-circle{
   width:150px; height:150px; margin:22px auto 6px; border-radius:50%; cursor:pointer; user-select:none;
   display:flex; align-items:center; justify-content:center; border:2px solid var(--gold);
-  background:radial-gradient(circle at 30% 30%, rgba(203,161,53,0.18), rgba(255,255,255,0.02));
+  background:radial-gradient(circle at 30% 30%, rgba(224,164,88,0.18), rgba(255,255,255,0.02));
   transition: transform .12s var(--ease), border-color .25s var(--ease), background .25s var(--ease);
 }
 .counter-circle:active{ transform:scale(.93); }
-.counter-circle.done{ border-color:var(--jade); background:radial-gradient(circle at 30% 30%, rgba(46,138,114,0.25), rgba(255,255,255,0.02)); }
+.counter-circle.done{ border-color:var(--jade); background:radial-gradient(circle at 30% 30%, rgba(63,174,130,0.25), rgba(255,255,255,0.02)); }
 .counter-num{ font-family:var(--font-num); font-size:52px; font-weight:700; color:var(--gold-soft); line-height:1; }
 .counter-circle.done .counter-num{ color:var(--jade); }
 .counter-target{ text-align:center; font-size:12px; color:var(--ivory-dim); letter-spacing:.05em; margin-bottom:10px; }
@@ -726,7 +730,7 @@ body{
 .friend-row .duel-invite{ margin-left:48px; }
 .friend-avatar{
   flex-shrink:0; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center;
-  background:linear-gradient(145deg, var(--gold-soft), var(--gold)); color:#1a1204; font-family:var(--font-display); font-size:15px; font-weight:700;
+  background:linear-gradient(145deg, var(--gold-soft), var(--gold)); color:#241004; font-family:var(--font-display); font-size:15px; font-weight:700;
 }
 .avatar-wrap{ position:relative; flex-shrink:0; display:inline-flex; cursor:pointer; }
 .avatar-wrap.static{ cursor:default; }
@@ -742,14 +746,14 @@ body{
   width:100%; aspect-ratio:1; border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,0.03);
   display:flex; align-items:center; justify-content:center; font-size:19px; cursor:pointer;
 }
-.avatar-pick-emoji.active{ border-color:var(--gold); background:rgba(203,161,53,0.14); }
+.avatar-pick-emoji.active{ border-color:var(--gold); background:rgba(224,164,88,0.14); }
 .avatar-pick-color{
   width:100%; aspect-ratio:1; border-radius:50%; cursor:pointer; border:2px solid transparent;
 }
 .avatar-pick-color.active{ border-color:var(--ivory); }
 .profile-view-avatar{
   width:72px; height:72px; border-radius:50%; display:flex; align-items:center; justify-content:center;
-  font-size:32px; margin:0 auto; color:#1a1204; font-family:var(--font-display); font-weight:700;
+  font-size:32px; margin:0 auto; color:#241004; font-family:var(--font-display); font-weight:700;
 }
 .profile-stat-grid{ display:grid; grid-template-columns:1fr; gap:10px; margin-top:18px; }
 .profile-stat-tile{
@@ -761,7 +765,7 @@ body{
 .profile-view-add-friend{
   display:flex; align-items:center; justify-content:center; gap:6px; margin:14px auto 0;
   padding:10px 22px; border-radius:999px; border:none; cursor:pointer;
-  background:linear-gradient(145deg, var(--gold-soft), var(--gold)); color:#1a1204;
+  background:linear-gradient(145deg, var(--gold-soft), var(--gold)); color:#241004;
   font-family:var(--font-body); font-weight:700; font-size:13px;
   transition:transform .2s var(--ease), opacity .2s var(--ease);
 }
@@ -793,7 +797,7 @@ body{
 
 .invite-banner{
   border:1px solid var(--gold); border-radius:16px; padding:14px 16px; margin-bottom:12px;
-  background:linear-gradient(160deg, rgba(203,161,53,0.12), rgba(203,161,53,0.02));
+  background:linear-gradient(160deg, rgba(224,164,88,0.12), rgba(224,164,88,0.02));
 }
 .invite-banner p{ margin:0 0 10px; font-size:13px; color:var(--ivory); line-height:1.5; }
 .invite-banner b{ color:var(--gold-soft); }
@@ -810,15 +814,14 @@ body{
   display:flex;align-items:center;justify-content:center; transition:border-color .15s var(--ease), background .15s var(--ease);
 }
 .friend-pick-row.selected .friend-pick-check{ background:var(--gold-soft); border-color:var(--gold-soft); }
-.friend-pick-check svg{ width:13px;height:13px; color:#1a1204; opacity:0; transition:opacity .15s var(--ease); }
+.friend-pick-check svg{ width:13px;height:13px; color:#241004; opacity:0; transition:opacity .15s var(--ease); }
 .friend-pick-row.selected .friend-pick-check svg{ opacity:1; }
 .friend-pick-name{ flex:1; font-size:14px; font-weight:600; color:var(--ivory); }
 
 .tab-badge{
-  position:absolute; top:2px; right:calc(50% - 20px); width:8px; height:8px; border-radius:50%;
-  background:var(--rose); border:1.5px solid var(--bg);
+  position:absolute; top:2px; right:2px; width:8px; height:8px; border-radius:50%;
+  background:var(--rose); border:1.5px solid var(--panel-2);
 }
-.tab{ position:relative; }
 
 /* ---------- responsive: desktop ---------- */
 @media (min-width:860px){
@@ -828,11 +831,13 @@ body{
   .topbar{ position:fixed; top:0; left:0; right:0; padding:20px 40px; z-index:30; }
   .tabbar{
     position:fixed; left:0; top:0; bottom:0; width:210px; flex-direction:column; justify-content:flex-start;
-    gap:6px; padding:110px 16px 20px; border-top:none; border-right:1px solid var(--line);
-    background:rgba(10,33,41,0.5);
+    gap:6px; padding:110px 16px 20px; border:none; border-right:1px solid var(--line);
+    background:rgba(20,15,36,0.5); border-radius:0; box-shadow:none; backdrop-filter:none; transform:none;
   }
-  .tab{ flex-direction:row; justify-content:flex-start; gap:12px; padding:12px 14px; }
-  .tab span{ font-size:13px; }
+  .tab{ flex-direction:row; justify-content:flex-start; gap:12px; width:auto; height:auto; padding:12px 14px; border-radius:14px; }
+  .tab span{ font-size:13px; max-width:none; opacity:1; }
+  .tab.active{ width:auto; padding:12px 14px; background:rgba(240,201,138,0.14); color:var(--gold-soft); }
+  .tab-badge{ top:8px; right:auto; left:32px; }
   .stage{ margin-left:210px; margin-top:0; padding-top:78px; height:100vh; }
   .scroll{ max-width:640px; margin:0 auto; padding:20px 30px 60px;}
   .grid{ grid-template-columns:repeat(5,1fr); gap:14px;}
@@ -846,7 +851,7 @@ body{
 @media (min-width:860px) and (max-width:1023px){ .stage{ margin-left:0; } .tabbar{ display:none;} .topbar{ padding-left:20px;} .scroll{max-width:600px;} }
 
 ::-webkit-scrollbar{ width:6px; }
-::-webkit-scrollbar-thumb{ background:rgba(228,200,120,0.25); border-radius:3px; }
+::-webkit-scrollbar-thumb{ background:rgba(240,201,138,0.25); border-radius:3px; }
 
 @media (prefers-reduced-motion: reduce){
   *{ animation-duration:0.001ms !important; transition-duration:0.001ms !important; }
@@ -875,8 +880,8 @@ if (window.AndroidApp && window.AndroidApp.shouldShowSplash && window.AndroidApp
 <div id="splashScreen">
   <div class="splash-glow"></div>
   <svg class="splash-hero-star" viewBox="0 0 24 24" fill="none">
-    <path class="splash-moon" pathLength="100" d="M21 12.9A9 9 0 1111.1 3 7 7 0 0021 12.9z" stroke="#e4c878" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path class="splash-spark" d="M18.6 4.2l.55 1.5 1.5.55-1.5.55-.55 1.5-.55-1.5-1.5-.55 1.5-.55z" fill="#cba135"/>
+    <path class="splash-moon" pathLength="100" d="M21 12.9A9 9 0 1111.1 3 7 7 0 0021 12.9z" stroke="#f0c98a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path class="splash-spark" d="M18.6 4.2l.55 1.5 1.5.55-1.5.55-.55 1.5-.55-1.5-1.5-.55 1.5-.55z" fill="#e0a458"/>
   </svg>
   <div class="splash-title">99 имён<br>Аллаха</div>
 </div>
@@ -916,7 +921,7 @@ if (window.AndroidApp && window.AndroidApp.shouldShowSplash && window.AndroidApp
 
           <!-- Save / active state -->
           <div style="padding:0 16px 10px;display:flex;gap:6px;align-items:center;">
-            <button id="reminderSaveBtn" style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:var(--gold);color:#1a0f00;font-family:var(--font-body);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;">Сохранить</button>
+            <button id="reminderSaveBtn" style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:var(--gold);color:#241004;font-family:var(--font-body);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;">Сохранить</button>
             <button id="reminderOffBtn" style="display:none;padding:7px 10px;border-radius:8px;border:1px solid var(--rose);background:none;color:var(--rose);font-family:var(--font-body);font-size:13px;cursor:pointer;transition:all .2s;">Выключить</button>
           </div>
 
@@ -927,7 +932,7 @@ if (window.AndroidApp && window.AndroidApp.shouldShowSplash && window.AndroidApp
 
           <div style="padding:10px 16px 6px;font-size:12px;color:var(--ivory-dim);">💾 Данные приложения</div>
           <div style="padding:0 16px 10px;display:flex;gap:6px;align-items:center;">
-            <button id="exportBackupBtn" style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:var(--gold);color:#1a0f00;font-family:var(--font-body);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;">Сохранить (Бэкап)</button>
+            <button id="exportBackupBtn" style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:var(--gold);color:#241004;font-family:var(--font-body);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;">Сохранить (Бэкап)</button>
             <button id="importBackupBtn" style="flex:1;padding:7px 10px;border-radius:8px;border:1px solid var(--gold);background:none;color:var(--gold);font-family:var(--font-body);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;">Восстановить</button>
           </div>
 
@@ -1016,8 +1021,8 @@ if (window.AndroidApp && window.AndroidApp.shouldShowSplash && window.AndroidApp
 
         <div class="hero">
           <svg class="hero-star" viewBox="0 0 24 24" fill="none">
-            <path d="M21 12.9A9 9 0 1111.1 3 7 7 0 0021 12.9z" stroke="#e4c878" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-            <path d="M18.6 4.2l.55 1.5 1.5.55-1.5.55-.55 1.5-.55-1.5-1.5-.55 1.5-.55z" fill="#cba135"/>
+            <path d="M21 12.9A9 9 0 1111.1 3 7 7 0 0021 12.9z" stroke="#f0c98a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+            <path d="M18.6 4.2l.55 1.5 1.5.55-1.5.55-.55 1.5-.55-1.5-1.5-.55 1.5-.55z" fill="#e0a458"/>
           </svg>
           <div class="eyebrow">Асма-уль-Хусна</div>
           <h1>99 <em>прекрасных</em><br>имён Аллаха</h1>
@@ -1256,7 +1261,7 @@ if (window.AndroidApp && window.AndroidApp.shouldShowSplash && window.AndroidApp
           <p style="color:var(--ivory-dim);font-size:13.5px;margin-bottom:16px;" id="duelWaitSub">Приглашённые друзья получат уведомление в приложении — как только они присоединятся, хост сможет начать игру для всех одновременно.</p>
           <div class="duel-participants" id="duelParticipants"></div>
           <button class="btn btn-primary" id="duelInviteMoreBtn" style="max-width:280px;margin:14px auto 10px;">👥 Пригласить ещё друзей</button>
-          <button class="btn btn-primary" id="duelStartBtn" style="max-width:280px;margin:0 auto;display:none;background:linear-gradient(145deg, var(--jade), #1f6653);color:#fff;">Начать игру для всех</button>
+          <button class="btn btn-primary" id="duelStartBtn" style="max-width:280px;margin:0 auto;display:none;background:linear-gradient(145deg, var(--jade), #256e54);color:#fff;">Начать игру для всех</button>
           <p id="duelGuestWaitNote" style="display:none;color:var(--ivory-dim);font-size:12.5px;margin-top:10px;">Хост начнёт игру, когда все будут готовы.</p>
           <button class="btn-back" id="duelWaitBackBtn" style="margin:16px auto 0;">
             <svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -1324,7 +1329,7 @@ if (window.AndroidApp && window.AndroidApp.shouldShowSplash && window.AndroidApp
         <div class="result-wrap" id="resultWrap" style="display:none">
           <div class="score-ring">
             <svg viewBox="0 0 120 120">
-              <defs><linearGradient id="scoreGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#2e8a72"/><stop offset="100%" stop-color="#e4c878"/></linearGradient></defs>
+              <defs><linearGradient id="scoreGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#3fae82"/><stop offset="100%" stop-color="#f0c98a"/></linearGradient></defs>
               <circle class="bg" cx="60" cy="60" r="52"/>
               <circle class="fg" id="scoreCircle" cx="60" cy="60" r="52" stroke-dasharray="327" stroke-dashoffset="327"/>
             </svg>
@@ -1393,13 +1398,13 @@ if (window.AndroidApp && window.AndroidApp.shouldShowSplash && window.AndroidApp
           <div class="weekly-challenge-count-label" id="salavat_weeklyLabel"></div>
         </div>
         <!-- ISTIGHFAR card (Fri 20:00 - next Fri 20:00) -->
-        <div id="istighfar_weeklyCard" class="weekly-challenge-card" style="flex:1;min-width:0;cursor:pointer;border-color:var(--jade);background:linear-gradient(160deg,rgba(46,138,114,0.14),rgba(46,138,114,0.02));" onclick="openWeeklyChallengeSheet('istighfar')">
+        <div id="istighfar_weeklyCard" class="weekly-challenge-card" style="flex:1;min-width:0;cursor:pointer;border-color:var(--jade);background:linear-gradient(160deg,rgba(63,174,130,0.14),rgba(63,174,130,0.02));" onclick="openWeeklyChallengeSheet('istighfar')">
           <div class="weekly-challenge-top">
             <span class="weekly-challenge-badge" style="color:var(--jade);" id="istighfar_weeklyBadge">Зикр недели</span>
           </div>
           <div class="weekly-challenge-title" style="font-size:13px;">🤲 Истигфар</div>
           <div style="font-size:11px;color:var(--ivory-dim);margin-bottom:6px;" id="istighfar_weeklyTimer"></div>
-          <div class="weekly-progress-bar"><div class="weekly-progress-fill" style="background:linear-gradient(90deg,var(--jade),#5efad0);" id="istighfar_weeklyFill"></div></div>
+          <div class="weekly-progress-bar"><div class="weekly-progress-fill" style="background:linear-gradient(90deg,var(--jade),#7ce8bb);" id="istighfar_weeklyFill"></div></div>
           <div class="weekly-challenge-count-label" id="istighfar_weeklyLabel"></div>
         </div>
       </div>
@@ -1804,7 +1809,7 @@ if (window.AndroidApp && window.AndroidApp.shouldShowSplash && window.AndroidApp
       <div class="counter-circle" id="istighfarWeeklyCircle" style="border-color:var(--jade);"><span class="counter-num" id="istighfarWeeklyNum" style="color:var(--jade);">0</span></div>
       <p class="counter-hint">Общий счёт всех участников — нажимайте вместе</p>
       <button class="btn-float-dhikr" id="istighfarFloatBtn" onclick="toggleFloatingCounter('weekly_istighfar', this)" style="display:none;border-color:var(--jade);color:var(--jade);">📿 Плавающий счётчик</button>
-      <div class="weekly-progress-bar"><div class="weekly-progress-fill" style="background:linear-gradient(90deg,var(--jade),#5efad0);" id="istighfarWeeklyFillSheet"></div></div>
+      <div class="weekly-progress-bar"><div class="weekly-progress-fill" style="background:linear-gradient(90deg,var(--jade),#7ce8bb);" id="istighfarWeeklyFillSheet"></div></div>
       <div class="weekly-challenge-count-label" id="istighfarWeeklyCountLabel"></div>
       <p style="font-size:12px;color:var(--ivory-dim);margin-top:14px;">Ваш вклад: <b id="istighfarWeeklyMyCount" style="color:var(--jade);">0</b></p>
       <div style="margin-top:18px;text-align:left;border-top:1px solid rgba(255,255,255,0.08);padding-top:14px;">
@@ -2872,9 +2877,9 @@ function drawDhikrMark(ctx, cx, cy, size){
   ctx.translate(cx - size/2, cy - size/2);
   ctx.scale(scale, scale);
   ctx.lineWidth = 1.3/scale;
-  ctx.strokeStyle = '#e4c878';
+  ctx.strokeStyle = '#f0c98a';
   ctx.stroke(new Path2D('M21 12.9A9 9 0 1111.1 3 7 7 0 0021 12.9z'));
-  ctx.fillStyle = '#cba135';
+  ctx.fillStyle = '#e0a458';
   ctx.fill(new Path2D('M18.6 4.2l.55 1.5 1.5.55-1.5.55-.55 1.5-.55-1.5-1.5-.55 1.5-.55z'));
   ctx.restore();
 }
@@ -2932,10 +2937,10 @@ async function generateDhikrShareImage(data){
   // Flat fill, no gradient — a gradient (even a subtle one) has nowhere to
   // band once a messaging app recompresses the shared PNG to JPEG. A flat
   // colour has nothing to band, full stop.
-  ctx.fillStyle = '#0a2129';
+  ctx.fillStyle = '#140f24';
   ctx.fill(roundRectPath(0,0,W,H,60));
 
-  ctx.strokeStyle = 'rgba(228,200,120,0.28)';
+  ctx.strokeStyle = 'rgba(240,201,138,0.28)';
   ctx.lineWidth = 2;
   ctx.stroke(roundRectPath(50,50,W-100,H-100,40));
 
@@ -2943,7 +2948,7 @@ async function generateDhikrShareImage(data){
   drawDhikrMark(ctx, W/2, 132, 56);
   ctx.textAlign = 'center';
   ctx.direction = 'ltr';
-  ctx.fillStyle = 'rgba(228,200,120,0.85)';
+  ctx.fillStyle = 'rgba(240,201,138,0.85)';
   ctx.font = 'italic 600 30px "Cormorant Garamond", serif';
   ctx.fillText('99ism.ru', W/2, 210);
 
@@ -2952,7 +2957,7 @@ async function generateDhikrShareImage(data){
   if(headingLines.length){
     ctx.direction = 'ltr';
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#2e8a72';
+    ctx.fillStyle = '#3fae82';
     ctx.font = '700 23px "Manrope", sans-serif';
     if('letterSpacing' in ctx) ctx.letterSpacing = '1.5px';
     headingLines.forEach(line=>{ ctx.fillText(line, W/2, y); y += 30; });
@@ -2963,37 +2968,37 @@ async function generateDhikrShareImage(data){
   // ---- arabic (rtl) ----
   ctx.direction = 'rtl';
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#e4c878';
+  ctx.fillStyle = '#f0c98a';
   ctx.font = `400 ${arFontSize}px "KFGQPC Uthmanic Script HAFS", "Amiri", serif`;
   arLines.forEach(line=>{ ctx.fillText(line, W/2, y + arFontSize*0.78); y += arLineHeight; });
   y += 26;
 
   // ---- divider ----
-  ctx.strokeStyle = 'rgba(228,200,120,0.7)';
+  ctx.strokeStyle = 'rgba(240,201,138,0.7)';
   ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.moveTo(W/2-48,y); ctx.lineTo(W/2+48,y); ctx.stroke();
   y += 46;
 
   // ---- transliteration ----
   ctx.direction = 'ltr';
-  ctx.fillStyle = '#f3ecdd';
+  ctx.fillStyle = '#f1ecff';
   ctx.font = 'italic 500 33px "Cormorant Garamond", serif';
   trLines.forEach(line=>{ ctx.fillText(line, W/2, y); y += 40; });
   y += 20;
 
   // ---- meaning ----
-  ctx.fillStyle = 'rgba(243,236,221,0.78)';
+  ctx.fillStyle = 'rgba(241,236,255,0.78)';
   ctx.font = '500 26px "Manrope", sans-serif';
   mLines.forEach(line=>{ ctx.fillText(line, W/2, y); y += 36; });
 
   // ---- note ----
   if(noteLines.length){
     y += 26;
-    ctx.strokeStyle = 'rgba(228,200,120,0.16)';
+    ctx.strokeStyle = 'rgba(240,201,138,0.16)';
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(W/2-110,y); ctx.lineTo(W/2+110,y); ctx.stroke();
     y += 30;
-    ctx.fillStyle = 'rgba(243,236,221,0.45)';
+    ctx.fillStyle = 'rgba(241,236,255,0.45)';
     ctx.font = '500 21px "Manrope", sans-serif';
     noteLines.forEach(line=>{ ctx.fillText(line, W/2, y); y += 30; });
   }
@@ -5017,9 +5022,9 @@ state.dhikrInvites = [];       // [{roomId, fromUid, fromName, zikrTr}]
 /* ---------------- avatars ---------------- */
 const AVATAR_EMOJIS = ['🌙','⭐','📿','🕌','🤲','📖','🌸','🦋','🍃','⚡','💎','🌊','🏔️','🦅','🐪','✨'];
 const AVATAR_COLORS = {
-  gold:  ['#e4c878', '#cba135'],
-  jade:  ['#5dcaa5', '#2e8a72'],
-  rose:  ['#e0937a', '#b4543a'],
+  gold:  ['#f0c98a', '#e0a458'],
+  jade:  ['#5dcaa5', '#3fae82'],
+  rose:  ['#e0937a', '#c9435c'],
   teal:  ['#6fd6d6', '#2a8f8f'],
   plum:  ['#c79bd6', '#7a4a96'],
   amber: ['#f5c26b', '#c47f1f'],
@@ -5856,7 +5861,7 @@ function updateReminderUI(){
   document.querySelectorAll('.reminder-freq-btn').forEach(b => {
     const active = saved && String(b.dataset.freq) === String(saved);
     b.style.background   = active ? 'var(--gold)'  : 'var(--panel)';
-    b.style.color        = active ? '#1a0f00'       : 'var(--ivory)';
+    b.style.color        = active ? '#241004'       : 'var(--ivory)';
     b.style.borderColor  = active ? 'var(--gold)'   : 'var(--line)';
     b.style.fontWeight   = active ? '700'           : '400';
   });
@@ -5881,7 +5886,7 @@ document.querySelectorAll('.reminder-freq-btn').forEach(btn => {
     document.querySelectorAll('.reminder-freq-btn').forEach(b => {
       const sel = String(b.dataset.freq) === String(reminderSelectedFreq);
       b.style.background   = sel ? 'var(--gold)'  : 'var(--panel)';
-      b.style.color        = sel ? '#1a0f00'       : 'var(--ivory)';
+      b.style.color        = sel ? '#241004'       : 'var(--ivory)';
       b.style.borderColor  = sel ? 'var(--gold)'   : 'var(--line)';
       b.style.fontWeight   = sel ? '700'           : '400';
     });
@@ -5934,7 +5939,7 @@ if (weeklyToggle) {
       bg.style.backgroundColor = 'var(--gold)';
       bg.style.borderColor = 'var(--gold)';
       knob.style.transform = 'translateX(16px)';
-      knob.style.backgroundColor = '#1a0f00';
+      knob.style.backgroundColor = '#241004';
     } else {
       bg.style.backgroundColor = 'rgba(255,255,255,0.1)';
       bg.style.borderColor = 'var(--line)';
@@ -6772,7 +6777,7 @@ document.querySelectorAll('[data-nav="friends"]').forEach(btn => {
 ===================================================== */
 (function initPattern(){
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'>
-    <g fill='none' stroke='%23e4c878' stroke-width='0.6'>
+    <g fill='none' stroke='%23f0c98a' stroke-width='0.6'>
       <path d='M96 62A36 36 0 1 1 55.5 15 28 28 0 0 0 96 62z'/>
     </g></svg>`;
   document.getElementById('patternVeil').style.setProperty('--x','1');
