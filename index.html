@@ -21,7 +21,7 @@
 <meta name="apple-mobile-web-app-title" content="99 Имён">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="99 Имён">
-<meta name="theme-color" content="#140f24">
+<meta name="theme-color" content="#f7f0df">
 <title>99 имён Аллаха — Асма-уль-Хусна</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
@@ -40,6 +40,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Marcellus&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+// Applied before any CSS paints, so a returning user who chose dark mode
+// never sees a flash of the (now-default) light theme first.
+try{
+  if(localStorage.getItem('themePref') === 'dark') document.documentElement.setAttribute('data-theme','dark');
+}catch(e){}
+</script>
 <style>
 @font-face{
   font-family:'KFGQPC Uthmanic Script HAFS';
@@ -47,6 +54,37 @@
   font-weight:normal; font-style:normal; font-display:swap;
 }
 :root{
+  /* Light — «Светлый манускрипт» (default theme) */
+  --bg:#f7f0df;
+  --bg2:#efe2c0;
+  --panel:#fffcf5;
+  --panel-2:#f7efdc;
+  --line: rgba(20,58,63,0.14);
+  --gold:#a9782a;
+  --gold-soft:#c9a24a;
+  --ivory:#1f3b3f;
+  --ivory-dim: rgba(31,59,63,0.62);
+  --jade:#3f7a5c;
+  --jade-soft: rgba(63,122,92,0.14);
+  --rose:#a8453f;
+  --rose-soft: rgba(168,69,63,0.14);
+  --glow-a: rgba(169,120,42,0.10);
+  --glow-b: rgba(63,122,92,0.08);
+  --nav-bg: rgba(255,252,245,0.85);
+  --nav-border: rgba(20,58,63,0.22);
+  --nav-active-tint: rgba(169,120,42,0.14);
+  --scrollbar-thumb: rgba(169,120,42,0.35);
+  --pattern-stroke: %230f4a52;
+  --font-display:'Marcellus', serif;
+  --font-ar:'KFGQPC Uthmanic Script HAFS', 'Amiri', serif;
+  --font-body:'Manrope', sans-serif;
+  --font-num:'Cormorant Garamond', serif;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --ease: cubic-bezier(.22,1,.36,1);
+}
+:root[data-theme="dark"]{
+  /* Dark — «Ночной самоцвет» */
   --bg:#140f24;
   --bg2:#1c1533;
   --panel:#241c3f;
@@ -60,13 +98,13 @@
   --jade-soft: rgba(63,174,130,0.18);
   --rose:#c9435c;
   --rose-soft: rgba(201,67,92,0.18);
-  --font-display:'Marcellus', serif;
-  --font-ar:'KFGQPC Uthmanic Script HAFS', 'Amiri', serif;
-  --font-body:'Manrope', sans-serif;
-  --font-num:'Cormorant Garamond', serif;
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --ease: cubic-bezier(.22,1,.36,1);
+  --glow-a: rgba(224,164,88,0.12);
+  --glow-b: rgba(63,174,130,0.10);
+  --nav-bg: rgba(36,28,63,0.88);
+  --nav-border: rgba(240,201,138,0.3);
+  --nav-active-tint: rgba(240,201,138,0.14);
+  --scrollbar-thumb: rgba(240,201,138,0.25);
+  --pattern-stroke: %23f0c98a;
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
 html,body{ height:100%; height:-webkit-fill-available; }
@@ -80,6 +118,7 @@ body{
   overflow:hidden;
   overscroll-behavior:none;
   -webkit-font-smoothing:antialiased;
+  transition: background-color .45s var(--ease), color .45s var(--ease);
 }
 #app{
   position:relative;
@@ -93,10 +132,15 @@ body{
      fallback for the first paint. */
   display:flex; flex-direction:column;
   background:
-    radial-gradient(ellipse 90% 60% at 50% -10%, rgba(224,164,88,0.12), transparent 60%),
-    radial-gradient(ellipse 70% 50% at 100% 110%, rgba(63,174,130,0.10), transparent 60%),
+    radial-gradient(ellipse 90% 60% at 50% -10%, var(--glow-a), transparent 60%),
+    radial-gradient(ellipse 70% 50% at 100% 110%, var(--glow-b), transparent 60%),
     linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
 }
+/* Theme toggle is wrapped in document.startViewTransition() (same API the
+   screen-switch already uses below) — it cross-fades the whole rendered
+   frame, which is the only way to get a smooth transition across gradient
+   backgrounds that plain CSS `transition` can't interpolate. */
+::view-transition-old(root), ::view-transition-new(root){ animation-duration:.5s; }
 /* ---------- ambient geometric pattern ---------- */
 .pattern-veil{
   position:absolute; inset:0; pointer-events:none; opacity:0.05; z-index:0;
@@ -123,6 +167,10 @@ body{
 .icon-btn:active{ transform:scale(.92); }
 .icon-btn:hover{ background:rgba(255,255,255,0.06); border-color:var(--gold); }
 .icon-btn svg{width:18px;height:18px;}
+#themeToggleBtn .icon-sun{ display:none; }
+#themeToggleBtn .icon-moon{ display:block; }
+:root[data-theme="dark"] #themeToggleBtn .icon-sun{ display:block; }
+:root[data-theme="dark"] #themeToggleBtn .icon-moon{ display:none; }
 
 /* ---------- screens stack ---------- */
 .stage{ position:relative; flex:1; min-height:0; z-index:1;}
@@ -141,10 +189,10 @@ body{
   position:absolute; z-index:6; left:50%; bottom:calc(22px + var(--safe-bottom)); transform:translateX(-50%);
   display:flex; align-items:center; gap:4px;
   padding:8px; border-radius:100px;
-  border:1px solid rgba(240,201,138,0.3);
-  background:rgba(36,28,63,0.88);
+  border:1px solid var(--nav-border);
+  background:var(--nav-bg);
   backdrop-filter: blur(16px);
-  box-shadow: 0 14px 32px -10px rgba(0,0,0,0.55);
+  box-shadow: 0 14px 32px -10px rgba(0,0,0,0.3);
 }
 .tab{
   position:relative; flex:0 0 auto; display:flex; flex-direction:row; align-items:center; justify-content:center; gap:7px;
@@ -832,11 +880,11 @@ body{
   .tabbar{
     position:fixed; left:0; top:0; bottom:0; width:210px; flex-direction:column; justify-content:flex-start;
     gap:6px; padding:110px 16px 20px; border:none; border-right:1px solid var(--line);
-    background:rgba(20,15,36,0.5); border-radius:0; box-shadow:none; backdrop-filter:none; transform:none;
+    background:var(--nav-bg); border-radius:0; box-shadow:none; backdrop-filter:none; transform:none;
   }
   .tab{ flex-direction:row; justify-content:flex-start; gap:12px; width:auto; height:auto; padding:12px 14px; border-radius:14px; }
   .tab span{ font-size:13px; max-width:none; opacity:1; }
-  .tab.active{ width:auto; padding:12px 14px; background:rgba(240,201,138,0.14); color:var(--gold-soft); }
+  .tab.active{ width:auto; padding:12px 14px; background:var(--nav-active-tint); color:var(--gold-soft); }
   .tab-badge{ top:8px; right:auto; left:32px; }
   .stage{ margin-left:210px; margin-top:0; padding-top:78px; height:100vh; }
   .scroll{ max-width:640px; margin:0 auto; padding:20px 30px 60px;}
@@ -851,7 +899,7 @@ body{
 @media (min-width:860px) and (max-width:1023px){ .stage{ margin-left:0; } .tabbar{ display:none;} .topbar{ padding-left:20px;} .scroll{max-width:600px;} }
 
 ::-webkit-scrollbar{ width:6px; }
-::-webkit-scrollbar-thumb{ background:rgba(240,201,138,0.25); border-radius:3px; }
+::-webkit-scrollbar-thumb{ background:var(--scrollbar-thumb); border-radius:3px; }
 
 @media (prefers-reduced-motion: reduce){
   *{ animation-duration:0.001ms !important; transition-duration:0.001ms !important; }
@@ -880,8 +928,8 @@ if (window.AndroidApp && window.AndroidApp.shouldShowSplash && window.AndroidApp
 <div id="splashScreen">
   <div class="splash-glow"></div>
   <svg class="splash-hero-star" viewBox="0 0 24 24" fill="none">
-    <path class="splash-moon" pathLength="100" d="M21 12.9A9 9 0 1111.1 3 7 7 0 0021 12.9z" stroke="#f0c98a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-    <path class="splash-spark" d="M18.6 4.2l.55 1.5 1.5.55-1.5.55-.55 1.5-.55-1.5-1.5-.55 1.5-.55z" fill="#e0a458"/>
+    <path class="splash-moon" pathLength="100" d="M21 12.9A9 9 0 1111.1 3 7 7 0 0021 12.9z" stroke="var(--gold-soft)" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+    <path class="splash-spark" d="M18.6 4.2l.55 1.5 1.5.55-1.5.55-.55 1.5-.55-1.5-1.5-.55 1.5-.55z" fill="var(--jade)"/>
   </svg>
   <div class="splash-title">99 имён<br>Аллаха</div>
 </div>
@@ -902,7 +950,11 @@ if (window.AndroidApp && window.AndroidApp.shouldShowSplash && window.AndroidApp
       <svg viewBox="0 0 24 24" fill="none"><path d="M20.2 13.1A8.2 8.2 0 1110.9 3.8a6.3 6.3 0 009.3 9.3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/></svg>
       Асма-уль-Хусна
     </div>
-    <div style="position:relative;">
+    <div style="position:relative;display:flex;align-items:center;gap:8px;">
+      <button class="icon-btn" id="themeToggleBtn" title="Сменить тему" style="display:none;">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.6"/><path d="M12 2.5v2.5M12 19v2.5M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2.5 12H5M19 12h2.5M4.2 19.8L6 18M18 6l1.8-1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none"><path d="M20.2 13.1A8.2 8.2 0 1110.9 3.8a6.3 6.3 0 009.3 9.3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>
+      </button>
       <button class="icon-btn" id="profileMenuBtn" title="Настройки" style="display:none;">
         <svg viewBox="0 0 24 24" fill="none"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="1.5"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
@@ -1021,8 +1073,8 @@ if (window.AndroidApp && window.AndroidApp.shouldShowSplash && window.AndroidApp
 
         <div class="hero">
           <svg class="hero-star" viewBox="0 0 24 24" fill="none">
-            <path d="M21 12.9A9 9 0 1111.1 3 7 7 0 0021 12.9z" stroke="#f0c98a" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
-            <path d="M18.6 4.2l.55 1.5 1.5.55-1.5.55-.55 1.5-.55-1.5-1.5-.55 1.5-.55z" fill="#e0a458"/>
+            <path d="M21 12.9A9 9 0 1111.1 3 7 7 0 0021 12.9z" stroke="var(--gold-soft)" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+            <path d="M18.6 4.2l.55 1.5 1.5.55-1.5.55-.55 1.5-.55-1.5-1.5-.55 1.5-.55z" fill="var(--jade)"/>
           </svg>
           <div class="eyebrow">Асма-уль-Хусна</div>
           <h1>99 <em>прекрасных</em><br>имён Аллаха</h1>
@@ -1329,7 +1381,7 @@ if (window.AndroidApp && window.AndroidApp.shouldShowSplash && window.AndroidApp
         <div class="result-wrap" id="resultWrap" style="display:none">
           <div class="score-ring">
             <svg viewBox="0 0 120 120">
-              <defs><linearGradient id="scoreGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#3fae82"/><stop offset="100%" stop-color="#f0c98a"/></linearGradient></defs>
+              <defs><linearGradient id="scoreGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="var(--jade)"/><stop offset="100%" stop-color="var(--gold-soft)"/></linearGradient></defs>
               <circle class="bg" cx="60" cy="60" r="52"/>
               <circle class="fg" id="scoreCircle" cx="60" cy="60" r="52" stroke-dasharray="327" stroke-dashoffset="327"/>
             </svg>
@@ -3939,6 +3991,8 @@ document.getElementById('brandBtn').addEventListener('click', ()=>go('home'));
 function updateSettingsGearVisibility(){
   const show = state.screen === 'friends' && state.profile && state.profile.authenticated;
   document.getElementById('profileMenuBtn').style.display = show ? 'flex' : 'none';
+  const themeBtn = document.getElementById('themeToggleBtn');
+  if(themeBtn) themeBtn.style.display = state.screen === 'home' ? 'flex' : 'none';
 }
 
 /* =====================================================
@@ -6775,14 +6829,85 @@ document.querySelectorAll('[data-nav="friends"]').forEach(btn => {
 /* =====================================================
    GEOMETRIC BACKGROUND PATTERN (inline SVG data-uri)
 ===================================================== */
-(function initPattern(){
+function applyPatternStroke(){
+  const stroke = getComputedStyle(document.documentElement).getPropertyValue('--pattern-stroke').trim() || '%23f0c98a';
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'>
-    <g fill='none' stroke='%23f0c98a' stroke-width='0.6'>
+    <g fill='none' stroke='${stroke}' stroke-width='0.6'>
       <path d='M96 62A36 36 0 1 1 55.5 15 28 28 0 0 0 96 62z'/>
     </g></svg>`;
-  document.getElementById('patternVeil').style.setProperty('--x','1');
-  document.querySelector(':root');
-  document.documentElement.style.setProperty('--star-tile', `url("data:image/svg+xml,${svg.replace(/\n/g,'').replace(/#/g,'%23')}")`);
+  document.documentElement.style.setProperty('--star-tile', `url("data:image/svg+xml,${svg.replace(/\n/g,'')}")`);
+}
+applyPatternStroke();
+
+/* =====================================================
+   THEME TOGGLE (light «Светлый манускрипт» / dark «Ночной самоцвет»)
+===================================================== */
+function applyThemeMeta(){
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.setAttribute('content', isDark ? '#140f24' : '#f7f0df');
+}
+applyThemeMeta();
+document.getElementById('themeToggleBtn').addEventListener('click', ()=>{
+  const toDark = document.documentElement.getAttribute('data-theme') !== 'dark';
+  const apply = () => {
+    if(toDark) document.documentElement.setAttribute('data-theme', 'dark');
+    else document.documentElement.removeAttribute('data-theme');
+    try{ localStorage.setItem('themePref', toDark ? 'dark' : 'light'); }catch(e){}
+    applyThemeMeta();
+    applyPatternStroke();
+  };
+  if(document.startViewTransition){ document.startViewTransition(apply); }
+  else { apply(); }
+});
+updateSettingsGearVisibility();
+
+/* =====================================================
+   SWIPE BETWEEN SCREENS
+   Horizontal drag anywhere on the stage moves to the adjacent tab. Guards
+   against false triggers: ignores multi-touch, the left edge (reserved for
+   the existing history-back gesture), open sheets, and any gesture that
+   turns out to be a vertical scroll (axis is locked from the first ~10px
+   of movement and never revisited, so a swipe can't "convert" mid-scroll).
+===================================================== */
+(function initStageSwipe(){
+  const stageEl = document.getElementById('stage');
+  if(!stageEl) return;
+  const TAB_ORDER = Array.from(tabs).map(t => t.dataset.nav);
+  let sx = 0, sy = 0, axis = null, tracking = false;
+
+  stageEl.addEventListener('touchstart', (e) => {
+    tracking = false; axis = null;
+    if(e.touches.length !== 1) return;
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+    if(sx < 44) return; // left edge is the history-back gesture
+    if(e.target.closest('.sheet, input, textarea, .tabbar')) return;
+    if(document.querySelector('.sheet.show')) return;
+    tracking = true;
+  }, {passive:true});
+
+  stageEl.addEventListener('touchmove', (e) => {
+    if(!tracking || e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - sx;
+    const dy = e.touches[0].clientY - sy;
+    if(axis === null && (Math.abs(dx) > 10 || Math.abs(dy) > 10)){
+      axis = Math.abs(dx) > Math.abs(dy) * 1.4 ? 'x' : 'y';
+    }
+    if(axis === 'x') e.preventDefault();
+  }, {passive:false});
+
+  stageEl.addEventListener('touchend', (e) => {
+    if(!tracking || axis !== 'x'){ tracking = false; axis = null; return; }
+    tracking = false;
+    const dx = e.changedTouches[0].clientX - sx;
+    if(Math.abs(dx) < 70) return;
+    const i = TAB_ORDER.indexOf(state.screen);
+    if(i < 0) return;
+    const next = dx < 0 ? i + 1 : i - 1;
+    if(next >= 0 && next < TAB_ORDER.length) go(TAB_ORDER[next]);
+  }, {passive:true});
+
+  stageEl.addEventListener('touchcancel', () => { tracking = false; axis = null; }, {passive:true});
 })();
 
 updateHomeStats();
