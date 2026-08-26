@@ -3271,20 +3271,18 @@ function wrapCanvasText(ctx, text, maxWidth){
   return lines;
 }
 
-function drawDhikrMark(ctx, cx, cy, size){
-  const scale = size/24;
+// Draws the app's actual logo (the "٩٩" Amiri calligraphy mark used
+// everywhere else — topbar, hero, app icon), not the old decorative
+// rosette this card used to show before that mark existed.
+async function drawDhikrMark(ctx, cx, cy, size){
+  await document.fonts.load(`700 ${size}px "Amiri"`).catch(()=>{});
   ctx.save();
-  ctx.translate(cx - size/2, cy - size/2);
-  ctx.scale(scale, scale);
-  ctx.lineWidth = 1.3/scale;
-  ctx.strokeStyle = '#7FE3D6';
-  ctx.lineCap = 'round';
-  ctx.stroke(new Path2D('M5.6 6.4a9 9 0 000 11.2'));
-  ctx.stroke(new Path2D('M18.4 6.4a9 9 0 010 11.2'));
-  ctx.stroke(new Path2D('M8.6 8.9a5.2 5.2 0 000 6.2'));
-  ctx.stroke(new Path2D('M15.4 8.9a5.2 5.2 0 010 6.2'));
-  ctx.fillStyle = '#7FE3D6';
-  ctx.fill(new Path2D('M12 9.4a2.6 2.6 0 100 5.2 2.6 2.6 0 000-5.2z'));
+  ctx.direction = 'rtl';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `700 ${size}px "Amiri", serif`;
+  ctx.fillStyle = '#9FD3C7';
+  ctx.fillText('٩٩', cx, cy + size*0.06);
   ctx.restore();
 }
 
@@ -3321,7 +3319,7 @@ async function generateDhikrShareImage(data){
   ctx.font = '500 21px "Manrope", sans-serif';
   const noteLines = data.note ? wrapCanvasText(ctx, data.note, W - 300) : [];
 
-  const topZone = 250; // icon + wordmark
+  const topZone = 210; // icon only
   let contentHeight = 0;
   if(headingLines.length) contentHeight += headingLines.length*30 + 26;
   contentHeight += arLines.length*arLineHeight + 60 /* divider gap */
@@ -3348,13 +3346,9 @@ async function generateDhikrShareImage(data){
   ctx.lineWidth = 2;
   ctx.stroke(roundRectPath(50,50,W-100,H-100,40));
 
-  // ---- icon + wordmark ----
-  drawDhikrMark(ctx, W/2, 132, 56);
-  ctx.textAlign = 'center';
-  ctx.direction = 'ltr';
-  ctx.fillStyle = 'rgba(127,227,214,0.85)';
-  ctx.font = '600 30px "Manrope", sans-serif';
-  ctx.fillText('99ism.ru', W/2, 210);
+  // ---- icon (no "99ism.ru" text label — the card already names the site
+  // at the bottom via its note/source line, so the top just carries the mark) ----
+  await drawDhikrMark(ctx, W/2, 160, 64);
 
   // ---- heading: category + specific occasion, e.g. "ДУА · ВЫХОДЯ ИЗ ТУАЛЕТА" ----
   let y = startY;
@@ -7446,6 +7440,18 @@ function setFloatBtnActive(btn, type, isActive){
   }
 }
 
+// Native overlay (FloatingButtonService) is drawn outside the WebView, so it
+// can't see our CSS — reads the current skin's accent/background straight off
+// :root's resolved custom properties so the floating bubble always matches
+// whichever theme is active, instead of being hard-coded to the old
+// Классика gold.
+function currentFloatingColors(type){
+  const cs = getComputedStyle(document.documentElement);
+  const accent = (cs.getPropertyValue(type === 'weekly_istighfar' ? '--jade' : '--gold') || '').trim() || '#CBA135';
+  const bg = (cs.getPropertyValue('--bg2') || cs.getPropertyValue('--bg') || '').trim() || '#1A1208';
+  return { accent, bg };
+}
+
 window.toggleFloatingCounter = function(type, btn){
   if(typeof window.AndroidApp === 'undefined') return;
   try{
@@ -7473,8 +7479,12 @@ window.toggleFloatingCounter = function(type, btn){
         initialCount = (me && me.count) || 0;
       }
 
-      // Pass initialCount to Android (if supported, otherwise it ignores the 2nd param or we fallback)
-      if (window.AndroidApp.startFloatingCounterWithCount) {
+      // Pass initialCount + current theme colors to Android (older installed
+      // APKs may not have these bridge methods yet — fall back gracefully).
+      const { accent, bg } = currentFloatingColors(type);
+      if (window.AndroidApp.startFloatingCounterWithStyle) {
+          window.AndroidApp.startFloatingCounterWithStyle(type, initialCount, accent, bg);
+      } else if (window.AndroidApp.startFloatingCounterWithCount) {
           window.AndroidApp.startFloatingCounterWithCount(type, initialCount);
       } else {
           window.AndroidApp.startFloatingCounter(type); // fallback for older versions
