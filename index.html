@@ -197,15 +197,26 @@ body{
 .tab{
   position:relative; flex:0 0 auto; display:flex; flex-direction:row; align-items:center; justify-content:center; gap:7px;
   width:42px; height:42px; padding:0; border-radius:100px; cursor:pointer; color:var(--ivory-dim); overflow:hidden;
-  transition: color .25s var(--ease), background .3s var(--ease), width .3s var(--ease), padding .3s var(--ease);
+  transition: color .32s var(--ease), width .32s var(--ease), padding .32s var(--ease);
   background:none; border:none; font-family:var(--font-body);
 }
+/* The gold fill lives on its own layer so switching tabs cross-fades it
+   in/out (opacity animates smoothly) instead of snapping — a plain
+   `background` transition can't interpolate between "none" and a
+   gradient, so it would otherwise just pop. */
+.tab::before{
+  content:''; position:absolute; inset:0; border-radius:inherit; z-index:0;
+  background:linear-gradient(135deg, var(--gold-soft), var(--gold));
+  opacity:0; transition:opacity .32s var(--ease);
+}
+.tab svg, .tab span{ position:relative; z-index:1; }
 .tab svg{width:19px;height:19px; flex-shrink:0;}
 .tab span{
   font-size:12px; letter-spacing:.02em; font-weight:700; white-space:nowrap;
-  max-width:0; opacity:0; transition:max-width .3s var(--ease), opacity .2s var(--ease);
+  max-width:0; opacity:0; transition:max-width .32s var(--ease), opacity .22s var(--ease);
 }
-.tab.active{ width:auto; padding:0 16px 0 12px; color:#241004; background:linear-gradient(135deg, var(--gold-soft), var(--gold)); }
+.tab.active{ width:auto; padding:0 16px 0 12px; color:#241004; }
+.tab.active::before{ opacity:1; }
 .tab.active span{ max-width:100px; opacity:1; }
 .tab:active{ transform:scale(.94); }
 
