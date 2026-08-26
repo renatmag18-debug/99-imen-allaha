@@ -179,7 +179,7 @@ body{
   font-family:var(--font-display); font-size:10px; font-weight:500;
   letter-spacing:.3em; text-transform:uppercase; color:var(--gold);
 }
-.brand svg{width:22px;height:22px;flex-shrink:0;}
+.brand-mark{ font-family:'Amiri',var(--font-ar); font-weight:700; font-size:26px; line-height:1; direction:rtl; flex-shrink:0; color:var(--gold); }
 .icon-btn{
   width:38px;height:38px; border-radius:50%; border:1px solid var(--line);
   background:var(--glass); color:var(--ivory); display:flex; align-items:center; justify-content:center;
@@ -300,7 +300,11 @@ body{
 .zikr-sync-banner-form button:disabled{ opacity:.65; cursor:default; }
 .hero{ display:flex; flex-direction:column; align-items:center; text-align:center; padding-top:6px;}
 /* «Дыхание» — герб медленно расширяется и сжимается, как вдох-выдох. */
-.hero-star{ width:132px; height:132px; margin:10px auto 4px; color:var(--gold); animation: breathe 7s ease-in-out infinite; }
+.hero-star{
+  display:block; width:auto; margin:8px auto 2px; color:var(--gold);
+  font-family:'Amiri',var(--font-ar); font-weight:700; font-size:150px; line-height:1; direction:rtl;
+  text-shadow:var(--ink-halo); animation: breathe 7s ease-in-out infinite;
+}
 @keyframes breathe{ 0%,100%{ transform:scale(1); opacity:.82; } 50%{ transform:scale(1.06); opacity:1; } }
 .eyebrow{
   font-family:var(--font-body); font-size:10px; letter-spacing:.3em; text-transform:uppercase;
@@ -930,14 +934,9 @@ body{
 <div id="app">
   <div class="topbar">
     <div class="brand" id="brandBtn">
-      <!-- «Нафас» — концентрические дуги: вдох, задержка, выдох. -->
-      <svg viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="2.6" fill="currentColor"/>
-        <path d="M5.6 6.4a9 9 0 000 11.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-        <path d="M18.4 6.4a9 9 0 010 11.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-        <path d="M8.6 8.9a5.2 5.2 0 000 6.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".65"/>
-        <path d="M15.4 8.9a5.2 5.2 0 010 6.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".65"/>
-      </svg>
+      <!-- Логотип — «٩٩» арабскими цифрами, тем же каллиграфическим шрифтом,
+           что и коранические аяты. -->
+      <span class="brand-mark">٩٩</span>
       Асма-уль-Хусна
     </div>
     <div style="position:relative;display:flex;align-items:center;gap:8px;">
@@ -1062,15 +1061,7 @@ body{
         </div>
 
         <div class="hero">
-          <svg class="hero-star" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="1.9" fill="currentColor"/>
-            <path d="M4.2 5.2a10.6 10.6 0 000 13.6" stroke="currentColor" stroke-width=".8" stroke-linecap="round" opacity=".35"/>
-            <path d="M19.8 5.2a10.6 10.6 0 010 13.6" stroke="currentColor" stroke-width=".8" stroke-linecap="round" opacity=".35"/>
-            <path d="M7.2 7.4a7 7 0 000 9.2" stroke="currentColor" stroke-width=".9" stroke-linecap="round" opacity=".6"/>
-            <path d="M16.8 7.4a7 7 0 010 9.2" stroke="currentColor" stroke-width=".9" stroke-linecap="round" opacity=".6"/>
-            <path d="M9.7 9.5a3.6 3.6 0 000 5" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
-            <path d="M14.3 9.5a3.6 3.6 0 010 5" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
-          </svg>
+          <div class="hero-star">٩٩</div>
           <div class="eyebrow">Асма-уль-Хусна</div>
           <h1>99 <em>прекрасных</em><br>имён Аллаха</h1>
           <p class="lead">Изучайте значения и толкования имён Всевышнего, а затем проверьте знания в викторине — соло или на пару с другом по ссылке.</p>
