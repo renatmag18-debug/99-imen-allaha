@@ -39,12 +39,14 @@
 <meta name="robots" content="index, follow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Manrope:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Manrope:wght@200;300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Jost:wght@300;400;500;600;700&family=Rubik:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Marcellus&family=Cormorant+Garamond:ital,wght@0,600;1,500&display=swap" rel="stylesheet">
 <script>
 // Applied before any CSS paints, so a returning user who chose dark mode
 // never sees a flash of the (now-default) light theme first.
 try{
   if(localStorage.getItem('themePref') === 'dark') document.documentElement.setAttribute('data-theme','dark');
+  const savedSkin = localStorage.getItem('skinPref');
+  if(savedSkin && savedSkin !== 'nafas') document.documentElement.setAttribute('data-skin', savedSkin);
 }catch(e){}
 </script>
 <style>
@@ -100,6 +102,10 @@ try{
   --accent-tint-soft: rgba(21,128,111,0.03);
   --brand: #3B8C79;
   --brand-halo: 0 2px 18px rgba(59,140,121,0.14);
+  --r-pill: 100px;
+  --r-card: 20px;
+  --r-sheet: 26px;
+  --r-input: 12px;
   --ease: cubic-bezier(.22,1,.36,1);
 }
 :root[data-theme="dark"]{
@@ -136,6 +142,115 @@ try{
   --accent-tint-soft: rgba(127,227,214,0.03);
   --brand: #9FD3C7;
   --brand-halo: 0 0 30px rgba(159,211,199,0.24), 0 0 64px rgba(159,211,199,0.10);
+}
+
+/* =============================================================
+   ДОПОЛНИТЕЛЬНЫЕ ОФОРМЛЕНИЯ («скины»)
+   Переключаются атрибутом data-skin на <html>, независимо от
+   data-theme (день/ночь). У «нафас» (по умолчанию, без атрибута)
+   и «классика» есть обе темы; «ночь-редакция», «сафар» и «матн» —
+   однорежимные, поэтому переключатель дня/ночи в настройках для
+   них скрывается через JS.
+   ============================================================= */
+
+/* ---------- КЛАССИКА — тема, которая была в приложении до
+   редизайна «Нафас». День — новая светлая половина того же языка. ---------- */
+:root[data-skin="classic"]{
+  --bg:#F7F0DF; --bg2:#EFE4C9; --panel:#FFFBF2; --panel-2:#F7F0DF;
+  --line: rgba(30,42,38,0.14); --glass: rgba(255,251,242,0.75);
+  --gold:#A67A1E; --gold-soft:#8C6417; --on-accent:#FFFBF2;
+  --ivory:#1E2A26; --ivory-dim: rgba(30,42,38,0.60);
+  --jade:#1F7A5E; --jade-soft: rgba(31,122,94,0.12);
+  --rose:#A03F27; --rose-soft: rgba(160,63,39,0.12);
+  --wash-a: rgba(166,122,30,0.08); --wash-b: rgba(31,122,94,0.05); --wash-c: rgba(160,63,39,0.04);
+  --ink-halo: 0 2px 14px rgba(30,42,38,0.12);
+  --nav-bg: rgba(255,251,242,0.9); --nav-border: rgba(30,42,38,0.14);
+  --nav-active-tint: rgba(166,122,30,0.14); --scrollbar-thumb: rgba(30,42,38,0.20);
+  --font-display:'Marcellus', serif; --font-body:'Manrope', sans-serif; --font-num:'Cormorant Garamond', serif;
+  --fill-1: rgba(30,42,38,0.035); --fill-2: rgba(30,42,38,0.06); --fill-3: rgba(30,42,38,0.09);
+  --fill-sunken: rgba(30,42,38,0.05);
+  --accent-rgb: 166,122,30; --accent-tint: rgba(166,122,30,0.10); --accent-tint-soft: rgba(166,122,30,0.03);
+  --brand: #8C6417; --brand-halo: 0 2px 12px rgba(140,100,23,0.14);
+  --r-pill: 14px; --r-card: 16px; --r-sheet: 22px; --r-input: 10px;
+}
+:root[data-skin="classic"][data-theme="dark"]{
+  --bg:#0a2129; --bg2:#0f313c; --panel:#123a46; --panel-2:#164450;
+  --line: rgba(228,200,120,0.16); --glass: rgba(255,255,255,0.04);
+  --gold:#cba135; --gold-soft:#e4c878; --on-accent:#1a1204;
+  --ivory:#f3ecdd; --ivory-dim: rgba(243,236,221,0.62);
+  --jade:#2e8a72; --jade-soft: rgba(46,138,114,0.18);
+  --rose:#b4543a; --rose-soft: rgba(180,84,58,0.18);
+  --wash-a: rgba(203,161,53,0.10); --wash-b: rgba(46,138,114,0.05); --wash-c: rgba(180,84,58,0.04);
+  --ink-halo: 0 0 20px rgba(228,200,120,0.30);
+  --nav-bg: rgba(10,33,41,0.75); --nav-border: rgba(228,200,120,0.16);
+  --nav-active-tint: rgba(203,161,53,0.15); --scrollbar-thumb: rgba(228,200,120,0.25);
+  --fill-1: rgba(243,236,221,0.04); --fill-2: rgba(243,236,221,0.07); --fill-3: rgba(243,236,221,0.10);
+  --fill-sunken: rgba(0,0,0,0.20);
+  --accent-rgb: 203,161,53; --accent-tint: rgba(203,161,53,0.12); --accent-tint-soft: rgba(203,161,53,0.04);
+  --brand: #e4c878; --brand-halo: 0 0 22px rgba(228,200,120,0.32); --r-input: 10px;
+}
+
+/* ---------- Б · НОЧЬ — тёмный редакционный: тонкие линейки вместо
+   карточек, Playfair Display + Jost, шафрановый акцент. ---------- */
+:root[data-skin="noch"]{
+  --bg:#12120F; --bg2:#1C1B16; --panel:#1C1B16; --panel-2:#232019;
+  --line: rgba(242,239,230,0.14); --glass: rgba(242,239,230,0.05);
+  --gold:#E8853A; --gold-soft:#F0A05E; --on-accent:#12120F;
+  --ivory:#F2EFE6; --ivory-dim: rgba(242,239,230,0.55);
+  --jade:#8CA37A; --jade-soft: rgba(140,163,122,0.16);
+  --rose:#C1503D; --rose-soft: rgba(193,80,61,0.16);
+  --wash-a: rgba(0,0,0,0); --wash-b: rgba(0,0,0,0); --wash-c: rgba(0,0,0,0);
+  --ink-halo: none;
+  --nav-bg: rgba(28,27,22,0.92); --nav-border: rgba(242,239,230,0.14);
+  --nav-active-tint: rgba(232,133,58,0.14); --scrollbar-thumb: rgba(242,239,230,0.22);
+  --font-display:'Playfair Display', serif; --font-body:'Jost', sans-serif; --font-num:'Jost', sans-serif;
+  --fill-1: rgba(242,239,230,0.04); --fill-2: rgba(242,239,230,0.07); --fill-3: rgba(242,239,230,0.10);
+  --fill-sunken: rgba(0,0,0,0.25);
+  --accent-rgb: 232,133,58; --accent-tint: rgba(232,133,58,0.12); --accent-tint-soft: rgba(232,133,58,0.04);
+  --brand: #E8853A; --brand-halo: none;
+  --r-pill: 4px; --r-card: 0px; --r-sheet: 0px; --r-input: 0px;
+}
+
+/* ---------- Д · САФАР — светлый и дружелюбный: крупные скруглённые
+   карточки, индиго + манго + нефрит, шрифт Rubik. ---------- */
+:root[data-skin="safar"]{
+  --bg:#FDFBF7; --bg2:#F5F1E8; --panel:#FFFFFF; --panel-2:#F8F7FB;
+  --line: rgba(31,32,51,0.10); --glass: rgba(255,255,255,0.72);
+  --gold:#4338CA; --gold-soft:#362CAA; --on-accent:#FFFFFF;
+  --ivory:#1F2033; --ivory-dim: rgba(31,32,51,0.55);
+  --jade:#059669; --jade-soft: rgba(5,150,105,0.12);
+  --rose:#F59E0B; --rose-soft: rgba(245,158,11,0.14);
+  --wash-a: rgba(67,56,202,0.06); --wash-b: rgba(245,158,11,0.05); --wash-c: rgba(5,150,105,0.05);
+  --ink-halo: 0 2px 10px rgba(31,32,51,0.10);
+  --nav-bg: rgba(255,255,255,0.88); --nav-border: rgba(31,32,51,0.08);
+  --nav-active-tint: rgba(67,56,202,0.12); --scrollbar-thumb: rgba(31,32,51,0.18);
+  --font-display:'Rubik', sans-serif; --font-body:'Rubik', sans-serif; --font-num:'Rubik', sans-serif;
+  --fill-1: rgba(31,32,51,0.03); --fill-2: rgba(31,32,51,0.05); --fill-3: rgba(31,32,51,0.08);
+  --fill-sunken: rgba(31,32,51,0.04);
+  --accent-rgb: 67,56,202; --accent-tint: rgba(67,56,202,0.10); --accent-tint-soft: rgba(67,56,202,0.03);
+  --brand: #4338CA; --brand-halo: 0 2px 10px rgba(67,56,202,0.14);
+  --r-pill: 100px; --r-card: 24px; --r-sheet: 28px; --r-input: 14px;
+}
+
+/* ---------- Е · МАТН — белый технический справочник: жёсткая
+   сетка, ноль скруглений, один сигнальный цвет — вермильон. ---------- */
+:root[data-skin="matn"]{
+  --bg:#FFFFFF; --bg2:#FFFFFF; --panel:#FFFFFF; --panel-2:#F6F6F4;
+  --line: #E4E4E4; --glass: rgba(255,255,255,0.94);
+  --gold:#FF3B00; --gold-soft:#D93000; --on-accent:#FFFFFF;
+  --ivory:#000000; --ivory-dim: #767676;
+  --jade:#767676; --jade-soft: rgba(0,0,0,0.06);
+  --rose:#FF3B00; --rose-soft: rgba(255,59,0,0.10);
+  --wash-a: rgba(0,0,0,0); --wash-b: rgba(0,0,0,0); --wash-c: rgba(0,0,0,0);
+  --ink-halo: none;
+  --nav-bg: #FFFFFF; --nav-border: #E4E4E4;
+  --nav-active-tint: rgba(255,59,0,0.08); --scrollbar-thumb: #CFCFCF;
+  --font-display:'IBM Plex Sans', sans-serif; --font-body:'IBM Plex Sans', sans-serif; --font-num:'IBM Plex Mono', monospace;
+  --fill-1: #F6F6F4; --fill-2: #F0F0EE; --fill-3: #EAEAEA;
+  --fill-sunken: #F6F6F4;
+  --accent-rgb: 255,59,0; --accent-tint: rgba(255,59,0,0.08); --accent-tint-soft: rgba(255,59,0,0.03);
+  --brand: #FF3B00; --brand-halo: none;
+  --r-pill: 0px; --r-card: 0px; --r-sheet: 0px; --r-input: 0px;
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
 html,body{ height:100%; height:-webkit-fill-available; }
@@ -183,7 +298,7 @@ body{
   font-family:var(--font-display); font-size:10px; font-weight:500;
   letter-spacing:.3em; text-transform:uppercase; color:var(--gold);
 }
-.brand-mark{ font-family:'Amiri',var(--font-ar); font-weight:700; font-size:26px; line-height:1; direction:rtl; flex-shrink:0; color:var(--brand); }
+.brand-mark{ font-family:'Amiri',serif; font-weight:700; font-size:26px; line-height:1; direction:rtl; flex-shrink:0; color:var(--brand); }
 .icon-btn{
   width:38px;height:38px; border-radius:50%; border:1px solid var(--line);
   background:var(--glass); color:var(--ivory); display:flex; align-items:center; justify-content:center;
@@ -213,7 +328,7 @@ body{
 .tabbar{
   position:absolute; z-index:6; left:50%; bottom:calc(24px + var(--safe-bottom)); transform:translateX(-50%);
   display:flex; align-items:center; gap:8px;
-  padding:10px; border-radius:100px;
+  padding:10px; border-radius:var(--r-pill);
   border:1px solid var(--nav-border);
   background:var(--nav-bg);
   backdrop-filter: blur(20px);
@@ -237,7 +352,7 @@ body{
 /* ================= HOME ================= */
 .android-app-banner{
   display:none; align-items:center; justify-content:center; gap:9px; text-decoration:none;
-  border:1px solid var(--gold); border-radius:14px; padding:10px 14px; margin-bottom:14px;
+  border:1px solid var(--gold); border-radius:var(--r-card); padding:10px 14px; margin-bottom:14px;
   background:linear-gradient(160deg, var(--accent-tint), var(--accent-tint-soft));
   color:var(--gold-soft); font-size:12.5px; font-weight:700;
 }
@@ -245,7 +360,7 @@ body{
 .android-app-banner svg{ width:18px; height:18px; flex-shrink:0; }
 .ios-app-banner{
   display:none; align-items:center; gap:9px;
-  border:1px solid var(--gold); border-radius:14px; padding:10px 14px; margin-bottom:14px;
+  border:1px solid var(--gold); border-radius:var(--r-card); padding:10px 14px; margin-bottom:14px;
   background:linear-gradient(160deg, var(--accent-tint), var(--accent-tint-soft));
   color:var(--ivory); font-size:12px; line-height:1.5; text-align:left;
 }
@@ -254,7 +369,7 @@ body{
 .ios-app-banner b{ color:var(--gold-soft); }
 .update-banner{
   display:none; flex-direction:column;
-  border:1px solid var(--gold); border-radius:14px; margin-bottom:14px; overflow:hidden;
+  border:1px solid var(--gold); border-radius:var(--r-card); margin-bottom:14px; overflow:hidden;
   background:linear-gradient(160deg, var(--accent-tint), var(--accent-tint-soft));
 }
 .update-banner.show{ display:flex; }
@@ -267,7 +382,7 @@ body{
 .update-banner-sub{ font-size:11.5px; color:var(--ivory-dim); margin-top:2px; }
 .update-banner-action{
   font-family:var(--font-body); font-weight:700; font-size:12.5px; white-space:nowrap; flex-shrink:0;
-  border-radius:10px; padding:8px 14px; border:none; cursor:pointer;
+  border-radius:var(--r-input); padding:8px 14px; border:none; cursor:pointer;
   background:var(--gold); color:var(--on-accent);
   transition:transform .2s var(--ease), opacity .2s var(--ease);
 }
@@ -306,7 +421,7 @@ body{
 /* «Дыхание» — герб медленно расширяется и сжимается, как вдох-выдох. */
 .hero-star{
   display:block; width:auto; margin:8px auto 2px; color:var(--brand);
-  font-family:'Amiri',var(--font-ar); font-weight:700; font-size:150px; line-height:1; direction:rtl;
+  font-family:'Amiri',serif; font-weight:700; font-size:150px; line-height:1; direction:rtl;
   text-shadow:var(--brand-halo); animation: breathe 7s ease-in-out infinite;
 }
 @keyframes breathe{ 0%,100%{ transform:scale(1); opacity:.82; } 50%{ transform:scale(1.06); opacity:1; } }
@@ -323,7 +438,7 @@ body{
 .cta-row{ display:flex; gap:10px; width:100%; max-width:420px; margin:0 auto; }
 .btn{
   font-family:var(--font-body); font-weight:700; font-size:14px; letter-spacing:.01em;
-  border-radius:100px; padding:15px 20px; border:1px solid transparent; cursor:pointer;
+  border-radius:var(--r-pill); padding:15px 20px; border:1px solid transparent; cursor:pointer;
   display:flex; align-items:center; justify-content:center; gap:8px; flex:1;
   transition: transform .2s var(--ease), box-shadow .2s var(--ease), background .25s var(--ease), border-color .25s var(--ease);
 }
@@ -344,7 +459,7 @@ body{
 .divider svg{width:14px;height:14px;}
 
 .hadith-card{
-  position:relative; border:1px solid var(--line); border-radius:22px; padding:30px 26px 24px; margin-bottom:20px;
+  position:relative; border:1px solid var(--line); border-radius:var(--r-card); padding:30px 26px 24px; margin-bottom:20px;
   background:linear-gradient(160deg, var(--accent-tint), var(--fill-1));
   text-align:center; overflow:hidden;
 }
@@ -364,7 +479,7 @@ body{
 .hadith-ref{ font-size:11px; color:var(--ivory-dim); letter-spacing:.05em; text-transform:uppercase; }
 
 .name-of-day{
-  border:1px solid var(--line); border-radius:20px; padding:18px 20px; text-align:center;
+  border:1px solid var(--line); border-radius:var(--r-card); padding:18px 20px; text-align:center;
   background:linear-gradient(160deg, var(--fill-1), rgba(255,255,255,0));
   margin-bottom:16px; cursor:pointer;
 }
@@ -378,7 +493,7 @@ body{
 /* ================= STUDY ================= */
 .search-wrap{ position:relative; margin-bottom:14px; flex-shrink:0; padding:0 20px;}
 .search-wrap input{
-  width:100%; background:var(--glass); backdrop-filter:blur(12px); border:1px solid var(--line); border-radius:100px;
+  width:100%; background:var(--glass); backdrop-filter:blur(12px); border:1px solid var(--line); border-radius:var(--r-pill);
   padding:13px 18px 13px 42px; color:var(--ivory); font-family:var(--font-body); font-size:14px; font-weight:300; outline:none;
   transition:border-color .2s var(--ease), background .2s var(--ease);
 }
@@ -392,18 +507,38 @@ body{
 .theme-picker{ display:flex; gap:8px; margin-bottom:24px; }
 .theme-picker-opt{
   flex:1; display:flex; flex-direction:column; align-items:center; gap:8px;
-  padding:16px 10px; border-radius:20px; border:1px solid var(--line); background:var(--glass);
+  padding:16px 10px; border-radius:var(--r-card); border:1px solid var(--line); background:var(--glass);
   color:var(--ivory-dim); font-family:var(--font-body); font-size:13px; font-weight:500; cursor:pointer;
   transition: all .2s var(--ease);
 }
 .theme-picker-opt svg{ width:20px; height:20px; }
 .theme-picker-opt.active{ border-color:var(--gold); color:var(--gold); background:var(--accent-tint); }
+/* Скины без ночного режима (Классика — нет; Ночь/Сафар/Матн — да)
+   прячут переключатель дня/ночи целиком, а не просто гасят его. */
+#themePicker.theme-picker-disabled, #themeSectionLabel.theme-picker-disabled{ display:none; }
+
+.skin-picker{ display:flex; flex-direction:column; gap:8px; margin-bottom:24px; }
+.skin-picker-opt{
+  display:flex; align-items:center; gap:14px; padding:14px 16px; border-radius:var(--r-card);
+  border:1px solid var(--line); background:var(--glass); cursor:pointer; transition:all .2s var(--ease);
+  text-align:left;
+}
+.skin-picker-swatch{
+  width:34px; height:34px; border-radius:50%; flex-shrink:0; border:1px solid var(--line);
+  background: linear-gradient(135deg, var(--sw-a), var(--sw-b) 55%, var(--sw-c));
+}
+.skin-picker-text{ flex:1; min-width:0; }
+.skin-picker-name{ font-size:14px; font-weight:600; color:var(--ivory); }
+.skin-picker-desc{ font-size:12px; color:var(--ivory-dim); margin-top:2px; }
+.skin-picker-check{ width:20px; height:20px; flex-shrink:0; color:var(--gold); opacity:0; }
+.skin-picker-opt.active{ border-color:var(--gold); background:var(--accent-tint); }
+.skin-picker-opt.active .skin-picker-check{ opacity:1; }
 
 .segmented-wrap{ flex-shrink:0; padding:0 20px 14px; }
-.segmented{ display:flex; gap:4px; border:1px solid var(--line); border-radius:100px; padding:4px; background:var(--glass); backdrop-filter:blur(12px); overflow:hidden; }
+.segmented{ display:flex; gap:4px; border:1px solid var(--line); border-radius:var(--r-pill); padding:4px; background:var(--glass); backdrop-filter:blur(12px); overflow:hidden; }
 .seg-btn{
   flex:1; min-width:0; border:none; background:none; color:var(--ivory-dim); font-family:var(--font-body); font-weight:500; font-size:12.5px;
-  padding:11px 6px; border-radius:100px; cursor:pointer; transition:all .25s var(--ease);
+  padding:11px 6px; border-radius:var(--r-pill); cursor:pointer; transition:all .25s var(--ease);
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 .seg-btn.active{ background:var(--gold); color:var(--on-accent); font-weight:600; }
@@ -414,13 +549,13 @@ body{
 .practice-tr{ font-family:var(--font-display); font-size:23px; font-weight:200; color:var(--ivory); margin-bottom:26px;}
 .practice-reveal{ animation: rise .4s var(--ease) both; margin-bottom:18px;}
 .practice-m{ font-size:15px; color:var(--gold); font-weight:500; margin-bottom:12px;}
-.practice-d{ font-size:13.5px; font-weight:300; line-height:1.75; color:var(--ivory-dim); text-align:left; padding:16px 20px; border-radius:22px; background:var(--fill-sunken); border:1px solid var(--line);}
+.practice-d{ font-size:13.5px; font-weight:300; line-height:1.75; color:var(--ivory-dim); text-align:left; padding:16px 20px; border-radius:var(--r-card); background:var(--fill-sunken); border:1px solid var(--line);}
 .practice-actions{ display:flex; gap:10px; margin-top:4px; }
 .practice-progress{ margin-top:22px; font-size:12px; color:var(--ivory-dim); }
 .practice-progress b{ color:var(--gold-soft); }
 
 .skip-btn{
-  width:100%; margin-top:6px; padding:13px; border-radius:100px; border:1px dashed var(--line);
+  width:100%; margin-top:6px; padding:13px; border-radius:var(--r-pill); border:1px dashed var(--line);
   background:none; color:var(--ivory-dim); font-family:var(--font-body); font-size:13px; cursor:pointer;
   transition:all .2s var(--ease);
 }
@@ -430,7 +565,7 @@ body{
   display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; padding-bottom:6px;
 }
 .card{
-  border:1px solid var(--line); border-radius:20px; padding:15px 8px 13px; text-align:center; cursor:pointer;
+  border:1px solid var(--line); border-radius:var(--r-card); padding:15px 8px 13px; text-align:center; cursor:pointer;
   background:var(--glass); backdrop-filter:blur(10px);
   transition: transform .2s var(--ease), border-color .2s var(--ease), background .2s var(--ease);
   animation: rise .5s var(--ease) both;
@@ -464,7 +599,7 @@ body{
   position:fixed; left:0; right:0; bottom:0; z-index:21; max-width:560px; margin:0 auto;
   background:linear-gradient(180deg, var(--panel-2), var(--panel));
   border:1px solid var(--line); border-bottom:none;
-  border-radius:26px 26px 0 0; padding:14px 22px calc(26px + var(--safe-bottom));
+  border-radius:var(--r-sheet) var(--r-sheet) 0 0; padding:14px 22px calc(26px + var(--safe-bottom));
   transform:translateY(105%); transition:transform .45s var(--ease), opacity .35s var(--ease);
   max-height:86vh; display:flex; flex-direction:column;
   box-shadow: 0 -20px 60px -10px rgba(0,0,0,0.5);
@@ -485,7 +620,7 @@ body{
 #profileViewSheet{
   left:50%; right:auto; bottom:auto; top:50%; margin:0;
   width:calc(100% - 64px); max-width:300px; max-height:80vh;
-  border-radius:22px; border-bottom:1px solid var(--line);
+  border-radius:var(--r-card); border-bottom:1px solid var(--line);
   padding:22px 20px calc(22px + var(--safe-bottom));
   transform:translate(-50%,-50%) scale(.94); opacity:0; pointer-events:none;
   transition:transform .3s var(--ease), opacity .25s var(--ease);
@@ -500,7 +635,7 @@ body{
 .sheet-salam{ font-family:var(--font-ar); font-size:29px; color:var(--gold); direction:rtl; margin-bottom:8px; line-height:1.1;}
 .sheet-tr{ font-family:var(--font-display); font-size:25px; font-weight:200; margin-bottom:6px;}
 .sheet-m{ font-size:15px; color:var(--gold); font-weight:500; margin-bottom:18px;}
-.sheet-d{ font-size:14px; font-weight:300; line-height:1.75; color:var(--ivory-dim); text-align:left; padding:18px 20px; border-radius:22px; background:var(--fill-sunken); border:1px solid var(--line);}
+.sheet-d{ font-size:14px; font-weight:300; line-height:1.75; color:var(--ivory-dim); text-align:left; padding:18px 20px; border-radius:var(--r-card); background:var(--fill-sunken); border:1px solid var(--line);}
 .sheet-actions{ display:flex; gap:10px; margin-top:16px; flex-shrink:0;}
 .sheet-actions .btn{ padding:12px; font-size:13px;}
 .sheet-nav{ display:flex; justify-content:space-between; margin-top:14px; flex-shrink:0;}
@@ -519,7 +654,7 @@ body{
 .quiz-intro p{ color:var(--ivory-dim); font-size:14px; line-height:1.6; max-width:340px; margin:0 auto 22px;}
 .len-choice{ display:flex; gap:8px; justify-content:center; margin-bottom:24px; flex-wrap:wrap;}
 .len-chip{
-  padding:10px 18px; border-radius:100px; border:1px solid var(--line); background:var(--glass);
+  padding:10px 18px; border-radius:var(--r-pill); border:1px solid var(--line); background:var(--glass);
   font-size:13px; color:var(--ivory-dim); cursor:pointer; transition:all .2s var(--ease);
 }
 .len-chip.active{ border-color:transparent; color:var(--on-accent); background:var(--gold);}
@@ -534,7 +669,7 @@ body{
 .opt.opt-name .opt-tr{ font-size:13px; color:var(--ivory-dim); }
 .options{ display:flex; flex-direction:column; gap:10px;}
 .opt{
-  text-align:left; padding:16px 20px; border-radius:100px; border:1px solid var(--line);
+  text-align:left; padding:16px 20px; border-radius:var(--r-pill); border:1px solid var(--line);
   background:var(--glass); backdrop-filter:blur(10px); color:var(--ivory); font-family:var(--font-body); font-size:14px;
   cursor:pointer; transition: all .25s var(--ease); line-height:1.4;
 }
@@ -556,7 +691,7 @@ body{
 .score-num span{ font-size:11px; color:var(--ivory-dim); letter-spacing:.05em;}
 .result-title{ font-family:var(--font-display); font-size:24px; margin:0 0 6px;}
 .result-sub{ color:var(--ivory-dim); font-size:13.5px; margin-bottom:22px; line-height:1.6;}
-.vs-box{ border:1px solid var(--line); border-radius:16px; padding:14px 16px; margin-bottom:18px; display:flex; justify-content:space-around; align-items:center; background:var(--fill-1);}
+.vs-box{ border:1px solid var(--line); border-radius:var(--r-card); padding:14px 16px; margin-bottom:18px; display:flex; justify-content:space-around; align-items:center; background:var(--fill-1);}
 .vs-side{ text-align:center;}
 .vs-side b{ font-family:var(--font-num); font-size:24px; display:block; color:var(--gold-soft);}
 .vs-side span{ font-size:10.5px; color:var(--ivory-dim); text-transform:uppercase; letter-spacing:.05em;}
@@ -583,7 +718,7 @@ body{
 @keyframes spin-wait{ to{ transform:rotate(360deg); } }
 
 .duel-opp-panel{
-  border:1px solid var(--line); border-radius:16px; padding:12px 14px; margin-bottom:20px;
+  border:1px solid var(--line); border-radius:var(--r-card); padding:12px 14px; margin-bottom:20px;
   background:var(--fill-1); text-align:left;
 }
 .duel-opp-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:11.5px; font-weight:700; color:var(--jade); text-transform:uppercase; letter-spacing:.05em;}
@@ -596,7 +731,7 @@ body{
 .duel-lb-done{ font-size:10px; color:var(--jade); }
 
 .duel-participants{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; max-width:340px; margin:0 auto; }
-.duel-participant-chip{ padding:7px 13px; border-radius:12px; border:1px solid var(--line); background:var(--fill-1); font-size:12.5px; color:var(--ivory); }
+.duel-participant-chip{ padding:7px 13px; border-radius:var(--r-input); border:1px solid var(--line); background:var(--fill-1); font-size:12.5px; color:var(--ivory); }
 .duel-participant-chip.me{ border-color:var(--gold-soft); color:var(--gold-soft); }
 .duel-participant-chip.host::after{ content:" · хост"; color:var(--jade); font-size:10.5px; }
 
@@ -618,7 +753,7 @@ body{
 .live-word{ color:var(--rose); animation: live-blink 2.2s ease-in-out infinite; }
 @keyframes live-blink{ 0%,100%{ opacity:1; } 50%{ opacity:.45; } }
 
-.duel-result-board{ border:1px solid var(--line); border-radius:16px; padding:14px 16px; margin-bottom:18px; text-align:left; background:var(--fill-1);}
+.duel-result-board{ border:1px solid var(--line); border-radius:var(--r-card); padding:14px 16px; margin-bottom:18px; text-align:left; background:var(--fill-1);}
 .duel-result-title{ font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--jade); font-weight:700; margin-bottom:10px; text-align:center;}
 .duel-result-row{ display:flex; align-items:center; gap:10px; padding:8px 0; }
 .duel-result-row + .duel-result-row{ border-top:1px solid var(--fill-2); }
@@ -627,7 +762,7 @@ body{
 .duel-result-name.is-me{ color:var(--gold-soft); }
 .duel-result-score{ font-family:var(--font-num); font-size:15px; color:var(--ivory); flex-shrink:0;}
 .duel-result-pending{ font-size:10.5px; color:var(--ivory-dim); flex-shrink:0;}
-.mistakes-board{ border:1px solid var(--line); border-radius:16px; padding:14px 16px; margin-bottom:18px; text-align:left; background:var(--fill-1);}
+.mistakes-board{ border:1px solid var(--line); border-radius:var(--r-card); padding:14px 16px; margin-bottom:18px; text-align:left; background:var(--fill-1);}
 .mistakes-title{ font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--rose); font-weight:700; margin-bottom:10px; text-align:center;}
 .mistakes-list{ max-height:280px; overflow-y:auto; }
 .mistake-row{ padding:9px 0; }
@@ -637,7 +772,7 @@ body{
 .mistake-detail b.wrong{ color:var(--rose); font-weight:700;}
 .mistake-detail b.right{ color:var(--jade); font-weight:700;}
 .name-field{ margin-bottom:16px;}
-.name-field input{ width:100%; text-align:center; background:var(--fill-1); border:1px solid var(--line); border-radius:12px; padding:11px; color:var(--ivory); font-family:var(--font-body); font-size:14px; outline:none;}
+.name-field input{ width:100%; text-align:center; background:var(--fill-1); border:1px solid var(--line); border-radius:var(--r-input); padding:11px; color:var(--ivory); font-family:var(--font-body); font-size:14px; outline:none;}
 .name-field input:focus{ border-color:var(--gold);}
 .result-actions{ display:flex; flex-direction:column; gap:10px;}
 .result-actions-row{ display:flex; gap:10px;}
@@ -650,7 +785,7 @@ body{
 
 /* challenge intro overlay */
 .challenge-card{
-  border:1px solid var(--gold); border-radius:20px; padding:22px; text-align:center; margin-bottom:18px;
+  border:1px solid var(--gold); border-radius:var(--r-card); padding:22px; text-align:center; margin-bottom:18px;
   background:linear-gradient(160deg, var(--accent-tint), var(--accent-tint-soft));
 }
 .challenge-card .cc-icon{ width:40px;height:40px; margin:0 auto 12px; color:var(--gold-soft);}
@@ -662,7 +797,7 @@ body{
 .search-group-label{ font-family:var(--font-display); font-size:14px; color:var(--gold-soft); padding:14px 2px 2px; }
 .search-group-label:first-child{ padding-top:0; }
 .dhikr-card{
-  border:1px solid var(--line); border-radius:18px; padding:18px 18px 16px;
+  border:1px solid var(--line); border-radius:var(--r-card); padding:18px 18px 16px;
   background:linear-gradient(160deg, var(--fill-1), rgba(255,255,255,0));
   animation: rise .5s var(--ease) both;
 }
@@ -670,7 +805,7 @@ body{
 .dhikr-title{ font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--jade); font-weight:700; }
 .dhikr-count{
   flex-shrink:0; font-family:var(--font-num); font-size:13px; font-weight:700; color:var(--gold-soft);
-  background:var(--accent-tint); border:1px solid var(--line); border-radius:10px; padding:3px 11px;
+  background:var(--accent-tint); border:1px solid var(--line); border-radius:var(--r-input); padding:3px 11px;
 }
 .dhikr-top-right{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
 .dhikr-play-btn{
@@ -696,7 +831,7 @@ body{
 .dhikr-share-btn:disabled{ opacity:.6; cursor:default; transform:none; }
 
 .weekly-challenge-card{
-  border:1px solid var(--gold); border-radius:24px; padding:16px 18px; margin:0 auto 14px; cursor:pointer;
+  border:1px solid var(--gold); border-radius:var(--r-card); padding:16px 18px; margin:0 auto 14px; cursor:pointer;
   background:linear-gradient(160deg, var(--accent-tint), var(--accent-tint-soft));
   max-width:90%;
 }
@@ -711,7 +846,7 @@ body{
 .duel-participant-chip.live-now{border-color:var(--gold) !important;animation:chip-live 1s ease-out 2;}
 @keyframes remote-num-pop{0%{transform:scale(1);}40%{transform:scale(1.12);color:var(--jade);}100%{transform:scale(1);}}
 .counter-circle.remote-pop .counter-num{animation:remote-num-pop 0.45s ease-out;}
-.btn-float-dhikr{background:var(--glass);backdrop-filter:blur(12px);border:1px solid var(--gold);color:var(--gold);font-size:13px;font-weight:500;border-radius:100px;padding:10px 18px;width:100%;margin-top:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .2s;}
+.btn-float-dhikr{background:var(--glass);backdrop-filter:blur(12px);border:1px solid var(--gold);color:var(--gold);font-size:13px;font-weight:500;border-radius:var(--r-pill);padding:10px 18px;width:100%;margin-top:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .2s;}
 .btn-float-dhikr:active{opacity:.7;}
 .dhikr-ar{ font-family:var(--font-ar); font-size:24px; color:var(--ivory); direction:rtl; line-height:1.85; margin-bottom:12px; text-align:right; }
 .dhikr-tr{ font-size:14px; color:var(--ivory); font-weight:500; margin-bottom:6px; line-height:1.5; }
@@ -739,7 +874,7 @@ body{
 
 /* ================= FRIENDS ================= */
 .profile-card{
-  border:1px solid var(--line); border-radius:20px; padding:18px 20px; margin-bottom:18px;
+  border:1px solid var(--line); border-radius:var(--r-card); padding:18px 20px; margin-bottom:18px;
   background:linear-gradient(160deg, var(--fill-1), rgba(255,255,255,0));
 }
 .profile-name-field{ margin-bottom:14px; }
@@ -747,7 +882,7 @@ body{
   display:block; font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--jade); margin-bottom:7px;
 }
 .profile-name-field input{
-  width:100%; background:var(--fill-1); border:1px solid var(--line); border-radius:12px;
+  width:100%; background:var(--fill-1); border:1px solid var(--line); border-radius:var(--r-input);
   padding:11px 13px; color:var(--ivory); font-family:var(--font-body); font-size:14px; outline:none;
 }
 .profile-name-field input:focus{ border-color:var(--gold); }
@@ -756,13 +891,13 @@ body{
   font-family:var(--font-num); font-size:24px; font-weight:700; letter-spacing:.14em; color:var(--gold-soft);
 }
 .code-copy-btn{
-  flex-shrink:0; width:38px;height:38px;border-radius:12px;border:1px solid var(--line);
+  flex-shrink:0; width:38px;height:38px;border-radius:var(--r-input);border:1px solid var(--line);
   background:var(--fill-1); color:var(--ivory); display:flex;align-items:center;justify-content:center;cursor:pointer;
 }
 .code-copy-btn:active{ transform:scale(.92); }
 .add-friend-form{ display:flex; gap:8px; }
 .add-friend-form input{
-  flex:1; background:var(--fill-1); border:1px solid var(--line); border-radius:12px;
+  flex:1; background:var(--fill-1); border:1px solid var(--line); border-radius:var(--r-input);
   padding:11px 13px; color:var(--ivory); font-family:var(--font-body); font-size:14px; letter-spacing:.08em; outline:none;
 }
 .add-friend-form input:focus{ border-color:var(--gold); }
@@ -800,7 +935,7 @@ body{
 .avatar-picker-grid{ display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin:10px 0 16px; }
 .avatar-color-grid{ display:grid; grid-template-columns:repeat(8,1fr); gap:8px; margin:10px 0 16px; }
 .avatar-pick-emoji{
-  width:100%; aspect-ratio:1; border-radius:12px; border:1px solid var(--line); background:var(--fill-1);
+  width:100%; aspect-ratio:1; border-radius:var(--r-input); border:1px solid var(--line); background:var(--fill-1);
   display:flex; align-items:center; justify-content:center; font-size:19px; cursor:pointer;
 }
 .avatar-pick-emoji.active{ border-color:var(--gold); background:var(--jade-soft); }
@@ -814,7 +949,7 @@ body{
 }
 .profile-stat-grid{ display:grid; grid-template-columns:1fr; gap:10px; margin-top:18px; }
 .profile-stat-tile{
-  background:var(--fill-1); border-radius:12px; padding:12px; text-align:center;
+  background:var(--fill-1); border-radius:var(--r-input); padding:12px; text-align:center;
 }
 .profile-stat-tile b{ display:block; font-family:var(--font-num); font-size:19px; color:var(--gold-soft); transition:opacity .25s var(--ease); }
 .profile-stat-tile.loading b{ opacity:.35; }
@@ -834,7 +969,7 @@ body{
 .friend-name{ flex:1; font-size:13.5px; font-weight:700; color:var(--ivory); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .friend-actions{ display:flex; gap:6px; flex-shrink:0; }
 .friend-action-btn{
-  width:34px; height:34px; border-radius:11px; border:1px solid var(--line); background:var(--fill-1);
+  width:34px; height:34px; border-radius:var(--r-input); border:1px solid var(--line); background:var(--fill-1);
   color:var(--ivory); display:flex; align-items:center; justify-content:center; cursor:pointer;
 }
 .friend-action-btn svg{ width:16px;height:16px; }
@@ -845,7 +980,7 @@ body{
 .friend-menu-wrap{ position:relative; }
 .friend-menu{
   display:none; position:absolute; top:40px; right:0; background:var(--panel); border:1px solid var(--line);
-  border-radius:12px; padding:6px 0; min-width:150px; box-shadow:0 4px 12px rgba(0,0,0,0.3); z-index:100;
+  border-radius:var(--r-input); padding:6px 0; min-width:150px; box-shadow:0 4px 12px rgba(0,0,0,0.3); z-index:100;
 }
 .friend-menu button{
   display:block; width:100%; text-align:left; padding:9px 14px; background:none; border:none; color:var(--rose);
@@ -853,7 +988,7 @@ body{
 }
 
 .invite-banner{
-  border:1px solid var(--gold); border-radius:16px; padding:14px 16px; margin-bottom:12px;
+  border:1px solid var(--gold); border-radius:var(--r-card); padding:14px 16px; margin-bottom:12px;
   background:linear-gradient(160deg, var(--accent-tint), var(--accent-tint-soft));
 }
 .invite-banner p{ margin:0 0 10px; font-size:13px; color:var(--ivory); line-height:1.5; }
@@ -863,7 +998,7 @@ body{
 
 .friend-picker-list{ max-height:44vh; overflow-y:auto; margin:4px 0 4px; }
 .friend-pick-row{
-  display:flex; align-items:center; gap:12px; padding:10px 4px; border-radius:12px; cursor:pointer;
+  display:flex; align-items:center; gap:12px; padding:10px 4px; border-radius:var(--r-input); cursor:pointer;
 }
 .friend-pick-row:active{ background:var(--fill-1); }
 .friend-pick-check{
@@ -890,7 +1025,7 @@ body{
 .pod .pod-nm{ font-size:12.5px; font-weight:400; margin-top:10px; color:var(--ivory); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .pod .pod-sc{ font-size:11.5px; font-weight:300; color:var(--ivory-dim); margin-top:2px; font-variant-numeric:tabular-nums; }
 .pod .pod-bar{
-  border-radius:16px 16px 0 0; margin-top:11px; display:flex; align-items:flex-start; justify-content:center;
+  border-radius:var(--r-card) var(--r-card) 0 0; margin-top:11px; display:flex; align-items:flex-start; justify-content:center;
   padding-top:9px; font-size:13px; font-weight:300; color:var(--ivory-dim);
   border:1px solid var(--line); border-bottom:none; background:var(--glass);
 }
@@ -908,6 +1043,74 @@ body{
   background:var(--rose); border:1.5px solid var(--panel-2);
 }
 
+/* =============================================================
+   ПРАВКИ НАВИГАЦИИ И КАРТОЧЕК ПО СКИНАМ
+   Форму (радиусы) уже несут токены --r-pill/--r-card/--r-sheet;
+   здесь — только то, что различается по СТРУКТУРЕ: где стоит
+   док (плавающий/сплошной/из края в край) и видны ли подписи.
+   ============================================================= */
+
+/* Классика и Б·Ночь — подписи рядом с иконками, как в исходном
+   таббаре и в редакционном макете (текстовый нижний ряд). */
+:root[data-skin="classic"] .tab span,
+:root[data-skin="noch"] .tab span{
+  position:static; width:auto; height:auto; margin:0; overflow:visible; clip-path:none;
+  font-size:11.5px; font-weight:700; letter-spacing:.01em;
+}
+:root[data-skin="classic"] .tab,
+:root[data-skin="noch"] .tab{
+  width:auto; height:auto; padding:8px 12px; border-radius:var(--r-pill); flex-direction:column; gap:3px;
+}
+
+/* Классика — сплошная панель во всю ширину, как было исторически,
+   а не плавающий остров. */
+:root[data-skin="classic"] .tabbar{
+  left:0; right:0; bottom:0; transform:none; width:100%; max-width:none;
+  border-radius:0; border-top:1px solid var(--nav-border); border-left:none; border-right:none;
+  padding:8px 10px calc(8px + var(--safe-bottom)); justify-content:space-around;
+  box-shadow:none;
+}
+
+/* Б·Ночь — простой ряд без панели-подложки: только верхняя линейка. */
+:root[data-skin="noch"] .tabbar{
+  left:0; right:0; bottom:0; transform:none; width:100%; max-width:none;
+  background:var(--bg); border-radius:0; border:none; border-top:1px solid var(--nav-border);
+  padding:10px 10px calc(10px + var(--safe-bottom)); justify-content:space-around;
+  backdrop-filter:none; box-shadow:none;
+}
+:root[data-skin="noch"] .tab.active{ background:none; color:var(--gold); }
+
+/* Е·Матн — из края в край, пять равных колонок сетки, подписи видны. */
+:root[data-skin="matn"] .tabbar{
+  left:0; right:0; bottom:0; transform:none; width:100%; max-width:none;
+  display:grid; grid-template-columns:repeat(5,1fr); gap:0;
+  background:var(--nav-bg); border-radius:0; border:none; border-top:1px solid var(--nav-border);
+  padding:0 0 var(--safe-bottom); backdrop-filter:none; box-shadow:none;
+}
+:root[data-skin="matn"] .tab{
+  width:auto; height:auto; padding:10px 4px; border-radius:0; flex-direction:column; gap:4px;
+  border-right:1px solid var(--nav-border);
+}
+:root[data-skin="matn"] .tab:last-child{ border-right:none; }
+:root[data-skin="matn"] .tab span{
+  position:static; width:auto; height:auto; margin:0; overflow:visible; clip-path:none;
+  font-size:10px; font-weight:600; font-family:var(--font-num);
+}
+:root[data-skin="matn"] .tab.active{ background:var(--fill-2); color:var(--gold); }
+
+/* Б·Ночь — тонкие линейки вместо карточек в сетке имён. */
+:root[data-skin="noch"] .card{
+  background:none; border:none; border-bottom:1px solid var(--line); border-radius:0;
+  padding:14px 4px; text-align:left;
+}
+
+/* Е·Матн — карточки-ячейки внутри общей сетки, с рамкой со всех сторон. */
+:root[data-skin="matn"] .card{
+  background:var(--panel); border:1px solid var(--line); box-shadow:none;
+}
+:root[data-skin="matn"] .grid{ gap:0; }
+:root[data-skin="matn"] .card{ margin:-1px 0 0 -1px; }
+
 /* ---------- responsive: desktop ---------- */
 @media (min-width:860px){
   body{ overflow:auto; }
@@ -920,14 +1123,14 @@ body{
   }
   /* На широком экране док разворачивается в боковое меню — подписи
      возвращаются из визуально скрытого состояния мобильного дока. */
-  .tab{ flex-direction:row; justify-content:flex-start; gap:12px; width:auto; height:auto; padding:12px 16px; border-radius:100px; }
+  .tab{ flex-direction:row; justify-content:flex-start; gap:12px; width:auto; height:auto; padding:12px 16px; border-radius:var(--r-pill); }
   .tab span{ position:static; width:auto; height:auto; margin:0; overflow:visible; clip-path:none; font-size:13px; font-weight:500; }
   .tab.active{ background:var(--nav-active-tint); color:var(--gold); }
   .tab-badge{ top:8px; right:auto; left:32px; }
   .stage{ margin-left:210px; margin-top:0; padding-top:78px; height:100vh; }
   .scroll{ max-width:640px; margin:0 auto; padding:20px 30px 60px;}
   .grid{ grid-template-columns:repeat(5,1fr); gap:14px;}
-  .sheet{ max-width:520px; border-radius:26px; bottom:auto; top:50%; left:50%; transform:translate(-50%,-42%) scale(.94); opacity:0; transition:all .4s var(--ease); border-bottom:1px solid var(--line); pointer-events:none;}
+  .sheet{ max-width:520px; border-radius:var(--r-card); bottom:auto; top:50%; left:50%; transform:translate(-50%,-42%) scale(.94); opacity:0; transition:all .4s var(--ease); border-bottom:1px solid var(--line); pointer-events:none;}
   .sheet.show{ transform:translate(-50%,-50%) scale(1); opacity:1; pointer-events:auto;}
   .sheet-backdrop{ }
   .options{ max-width:480px; margin:0 auto; width:100%;}
@@ -1524,7 +1727,7 @@ body{
 
             <div class="profile-name-field">
               <label>Контрольный вопрос</label>
-              <select id="securityQuestionInput" style="width:100%;padding:12px 14px;background:var(--fill-1);border:1px solid var(--line);border-radius:14px;color:var(--ivory);font-family:var(--font-body);font-size:14px;outline:none;">
+              <select id="securityQuestionInput" style="width:100%;padding:12px 14px;background:var(--fill-1);border:1px solid var(--line);border-radius:var(--r-input);color:var(--ivory);font-family:var(--font-body);font-size:14px;outline:none;">
                 <option value="">Выберите вопрос</option>
                 <option value="favorite_name">Какое твоё любимое имя Аллаха?</option>
                 <option value="birth_city">Город твоего рождения?</option>
@@ -1630,7 +1833,51 @@ body{
           <div class="section-title" style="padding:0;">Настройки</div>
         </div>
 
-        <div class="section-label">Тема</div>
+        <div class="section-label">Оформление</div>
+        <div class="skin-picker" id="skinPicker">
+          <button class="skin-picker-opt" data-skin-choice="nafas" style="--sw-a:#06171C;--sw-b:#7FE3D6;--sw-c:#0A2228;">
+            <span class="skin-picker-swatch"></span>
+            <span class="skin-picker-text">
+              <span class="skin-picker-name">Нафас</span>
+              <span class="skin-picker-desc">Текущее — чернильные разводы, бирюза, день и ночь</span>
+            </span>
+            <svg class="skin-picker-check" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="skin-picker-opt" data-skin-choice="classic" style="--sw-a:#0a2129;--sw-b:#cba135;--sw-c:#123a46;">
+            <span class="skin-picker-swatch"></span>
+            <span class="skin-picker-text">
+              <span class="skin-picker-name">Классика</span>
+              <span class="skin-picker-desc">Тема до редизайна — тёмно-бирюзовый и золото, день и ночь</span>
+            </span>
+            <svg class="skin-picker-check" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="skin-picker-opt" data-skin-choice="noch" style="--sw-a:#12120F;--sw-b:#E8853A;--sw-c:#1C1B16;">
+            <span class="skin-picker-swatch"></span>
+            <span class="skin-picker-text">
+              <span class="skin-picker-name">Ночь</span>
+              <span class="skin-picker-desc">Редакционный тёмный — уголь, крем, шафран</span>
+            </span>
+            <svg class="skin-picker-check" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="skin-picker-opt" data-skin-choice="safar" style="--sw-a:#FDFBF7;--sw-b:#4338CA;--sw-c:#F59E0B;">
+            <span class="skin-picker-swatch"></span>
+            <span class="skin-picker-text">
+              <span class="skin-picker-name">Сафар</span>
+              <span class="skin-picker-desc">Светлый и дружелюбный — индиго, манго, нефрит</span>
+            </span>
+            <svg class="skin-picker-check" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="skin-picker-opt" data-skin-choice="matn" style="--sw-a:#FFFFFF;--sw-b:#FF3B00;--sw-c:#E4E4E4;">
+            <span class="skin-picker-swatch"></span>
+            <span class="skin-picker-text">
+              <span class="skin-picker-name">Матн</span>
+              <span class="skin-picker-desc">Белый технический справочник — сетка, вермильон</span>
+            </span>
+            <svg class="skin-picker-check" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+
+        <div class="section-label" id="themeSectionLabel">Тема</div>
         <div class="theme-picker" id="themePicker">
           <button class="theme-picker-opt" data-theme-choice="light">
             <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.6"/><path d="M12 2.5v2.5M12 19v2.5M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2.5 12H5M19 12h2.5M4.2 19.8L6 18M18 6l1.8-1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
@@ -1645,9 +1892,9 @@ body{
         <div id="reminderMenuSection" style="display:none;">
           <div class="section-label">Напоминания об учёбе</div>
           <div id="reminderFreqRow" style="display:flex;gap:8px;margin-bottom:12px;">
-            <button class="reminder-freq-btn" data-freq="1" style="flex:1;padding:12px 0;border-radius:100px;border:1px solid var(--line);background:var(--glass);color:var(--ivory);font-family:var(--font-body);font-size:14px;cursor:pointer;transition:all .2s;">1×</button>
-            <button class="reminder-freq-btn" data-freq="2" style="flex:1;padding:12px 0;border-radius:100px;border:1px solid var(--line);background:var(--glass);color:var(--ivory);font-family:var(--font-body);font-size:14px;cursor:pointer;transition:all .2s;">2×</button>
-            <button class="reminder-freq-btn" data-freq="3" style="flex:1;padding:12px 0;border-radius:100px;border:1px solid var(--line);background:var(--glass);color:var(--ivory);font-family:var(--font-body);font-size:14px;cursor:pointer;transition:all .2s;">3×</button>
+            <button class="reminder-freq-btn" data-freq="1" style="flex:1;padding:12px 0;border-radius:var(--r-pill);border:1px solid var(--line);background:var(--glass);color:var(--ivory);font-family:var(--font-body);font-size:14px;cursor:pointer;transition:all .2s;">1×</button>
+            <button class="reminder-freq-btn" data-freq="2" style="flex:1;padding:12px 0;border-radius:var(--r-pill);border:1px solid var(--line);background:var(--glass);color:var(--ivory);font-family:var(--font-body);font-size:14px;cursor:pointer;transition:all .2s;">2×</button>
+            <button class="reminder-freq-btn" data-freq="3" style="flex:1;padding:12px 0;border-radius:var(--r-pill);border:1px solid var(--line);background:var(--glass);color:var(--ivory);font-family:var(--font-body);font-size:14px;cursor:pointer;transition:all .2s;">3×</button>
           </div>
           <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
             <button id="reminderSaveBtn" class="btn btn-primary" style="flex:1;">Сохранить</button>
@@ -2035,6 +2282,22 @@ let fbAuthReady = (async () => {
 fbAuthReady.then(()=>{ if(typeof updateNotifUI === 'function') updateNotifUI(); });
 </script>
 <script>
+
+// Объявлено первым делом: initProfile() ниже по файлу вызывает
+// updateSettingsGearVisibility(), которая ссылается на SKINS ещё до
+// того как выполнение дошло бы до блока «ОФОРМЛЕНИЕ» дальше в файле —
+// const не поднимается, поэтому объявление обязано идти раньше
+// первого обращения.
+const SKINS = {
+  nafas:   { name: 'Нафас',    supportsDark: true  },
+  classic: { name: 'Классика', supportsDark: true  },
+  noch:    { name: 'Ночь',     supportsDark: false },
+  safar:   { name: 'Сафар',    supportsDark: false },
+  matn:    { name: 'Матн',     supportsDark: false },
+};
+function currentSkin(){
+  return document.documentElement.getAttribute('data-skin') || 'nafas';
+}
 
 /* =====================================================
    SHEET HISTORY MANAGER
@@ -4023,7 +4286,10 @@ function updateSettingsGearVisibility(){
   const show = state.screen === 'friends' && state.profile && state.profile.authenticated;
   document.getElementById('profileMenuBtn').style.display = show ? 'flex' : 'none';
   const themeBtn = document.getElementById('themeToggleBtn');
-  if(themeBtn) themeBtn.style.display = state.screen === 'home' ? 'flex' : 'none';
+  // Скины без ночного режима делают эту кнопку бессмысленной — не
+  // просто гасим её, а полностью прячем, чтобы не выглядела рабочей.
+  const skinHasDark = typeof SKINS === 'undefined' || (SKINS[currentSkin()]?.supportsDark ?? true);
+  if(themeBtn) themeBtn.style.display = (state.screen === 'home' && skinHasDark) ? 'flex' : 'none';
 }
 
 /* =====================================================
@@ -6850,24 +7116,42 @@ document.querySelectorAll('[data-nav="friends"]').forEach(btn => {
 });
 
 /* =====================================================
-   THEME TOGGLE (Нафас: «День» / «Ночь»)
+   ОФОРМЛЕНИЕ: СКИН (палитра/шрифты/форма) + ТЕМА (день/ночь)
+   SKINS/currentSkin() сами живут у самого верха этого script-блока
+   (initProfile() ниже вызывает updateSettingsGearVisibility(),
+   которая на них ссылается, ещё до того как выполнение доходит
+   досюда — const в JS не поднимается, поэтому объявление обязано
+   идти раньше первого обращения). Скин — атрибут data-skin; тема —
+   существующий data-theme. Они независимы в CSS, но «Нафас» и
+   «Классика» единственные, у кого есть обе половины (цвета и формы
+   определены и с data-theme="dark", и без) — у остальных скинов
+   один-единственный режим, поэтому переключатель дня/ночи для них
+   скрывается.
 ===================================================== */
 function applyThemeMeta(){
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  // Читаем реальный вычисленный --bg, а не захардкоженный цвет одного
+  // скина — иначе строка состояния Android/адресная строка браузера не
+  // совпадала бы с фоном при любом скине, кроме «Нафаса».
+  const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
   const meta = document.querySelector('meta[name="theme-color"]');
-  if(meta) meta.setAttribute('content', isDark ? '#06171C' : '#F3F7F6');
+  if(meta && bg) meta.setAttribute('content', bg);
 }
 applyThemeMeta();
 
-// Shared by the home-screen sun/moon icon and the picker in Settings, so
-// changing the theme from either place keeps both in sync.
+// Общая функция и для солнца/луны на главном экране, и для пикера в
+// настройках — обе точки управления остаются синхронными.
 function updateThemePickerUI(){
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   document.querySelectorAll('.theme-picker-opt').forEach(btn=>{
     btn.classList.toggle('active', btn.dataset.themeChoice === (isDark ? 'dark' : 'light'));
   });
+  const supportsDark = SKINS[currentSkin()]?.supportsDark;
+  document.querySelectorAll('#themePicker, #themeToggleBtn, #themeSectionLabel').forEach(el=>{
+    el.classList.toggle('theme-picker-disabled', !supportsDark);
+  });
 }
 function setTheme(toDark){
+  if(!SKINS[currentSkin()]?.supportsDark) return;
   const apply = () => {
     if(toDark) document.documentElement.setAttribute('data-theme', 'dark');
     else document.documentElement.removeAttribute('data-theme');
@@ -6878,9 +7162,32 @@ function setTheme(toDark){
   if(document.startViewTransition){ document.startViewTransition(apply); }
   else { apply(); }
 }
+function updateSkinPickerUI(){
+  const skin = currentSkin();
+  document.querySelectorAll('.skin-picker-opt').forEach(btn=>{
+    btn.classList.toggle('active', btn.dataset.skinChoice === skin);
+  });
+}
+function setSkin(name){
+  if(!SKINS[name]) return;
+  const apply = () => {
+    if(name === 'nafas') document.documentElement.removeAttribute('data-skin');
+    else document.documentElement.setAttribute('data-skin', name);
+    try{ localStorage.setItem('skinPref', name); }catch(e){}
+    applyThemeMeta();
+    updateSkinPickerUI();
+    updateThemePickerUI();
+  };
+  if(document.startViewTransition){ document.startViewTransition(apply); }
+  else { apply(); }
+}
 updateThemePickerUI();
+updateSkinPickerUI();
 document.querySelectorAll('.theme-picker-opt').forEach(btn=>{
   btn.addEventListener('click', ()=> setTheme(btn.dataset.themeChoice === 'dark'));
+});
+document.querySelectorAll('.skin-picker-opt').forEach(btn=>{
+  btn.addEventListener('click', ()=> setSkin(btn.dataset.skinChoice));
 });
 document.getElementById('themeToggleBtn').addEventListener('click', ()=>{
   setTheme(document.documentElement.getAttribute('data-theme') !== 'dark');
