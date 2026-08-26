@@ -139,8 +139,9 @@ body{
 /* Theme toggle is wrapped in document.startViewTransition() (same API the
    screen-switch already uses below) — it cross-fades the whole rendered
    frame, which is the only way to get a smooth transition across gradient
-   backgrounds that plain CSS `transition` can't interpolate. */
-::view-transition-old(root), ::view-transition-new(root){ animation-duration:.5s; }
+   backgrounds that plain CSS `transition` can't interpolate. Left at the
+   browser's own default duration/easing (no override here) so the page
+   switch itself is exactly as fast as it always was. */
 /* The tabbar opts out of the root cross-fade above and keeps its own
    name so it stays the live, interactive element throughout a screen
    switch — otherwise the active-tab indicator's slide would be baked
