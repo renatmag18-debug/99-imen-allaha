@@ -2330,10 +2330,28 @@ const tabIndicator = document.getElementById('tabIndicator');
 function moveTabIndicator(skipAnim){
   const active = document.querySelector('.tabbar .tab.active');
   if(!active || !tabIndicator) return;
+  // The tab we just marked active is itself mid-transition (its own
+  // width/padding and its label's max-width both animate on the "active"
+  // class), so offsetWidth read right now would catch it still collapsed
+  // at the very start of that animation — the indicator would then be
+  // sized to the pre-expansion box instead of the target pill. Briefly
+  // suspend those transitions to measure the true resting geometry, then
+  // restore them (this doesn't affect what the tab itself visibly does —
+  // the transition engine only compares style before vs. after this whole
+  // synchronous block, not this transient probe in between).
+  const span = active.querySelector('span');
+  const prevTabT = active.style.transition, prevSpanT = span ? span.style.transition : '';
+  active.style.transition = 'none';
+  if(span) span.style.transition = 'none';
+  void active.offsetWidth;
+  const w = active.offsetWidth, h = active.offsetHeight, l = active.offsetLeft, t = active.offsetTop;
+  active.style.transition = prevTabT;
+  if(span) span.style.transition = prevSpanT;
+
   if(skipAnim) tabIndicator.style.transition = 'none';
-  tabIndicator.style.width = active.offsetWidth + 'px';
-  tabIndicator.style.height = active.offsetHeight + 'px';
-  tabIndicator.style.transform = `translate(${active.offsetLeft}px, ${active.offsetTop}px)`;
+  tabIndicator.style.width = w + 'px';
+  tabIndicator.style.height = h + 'px';
+  tabIndicator.style.transform = `translate(${l}px, ${t}px)`;
   if(skipAnim){ tabIndicator.offsetHeight; tabIndicator.style.transition = ''; }
 }
 window.addEventListener('resize', ()=>moveTabIndicator(true));
