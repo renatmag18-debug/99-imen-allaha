@@ -709,6 +709,90 @@ body{
 .nav-arrow:active{ transform:scale(.9); }
 .nav-arrow svg{width:18px;height:18px;}
 
+/* ================= QURAN READER =================
+   Страницы приходят с api.quran.com (/verses/by_page/N) — та же
+   разбивка на 604 страницы, что и в печатном Мусхафе, поэтому номер
+   страницы здесь соответствует номеру страницы в бумажном Коране.
+   Точных исходных переносов строк это не воспроизводит (для этого
+   нужен отдельный шрифт под каждую из 604 страниц) — переносится по
+   ширине экрана, но состав аятов на странице тот же, что в книге. */
+.quran-head{ display:flex; align-items:center; gap:10px; padding:16px 20px 12px; flex-shrink:0; }
+.quran-surah-btn{
+  flex:1; min-width:0; display:flex; align-items:center; justify-content:center; gap:6px;
+  background:var(--glass); border:1px solid var(--line); border-radius:var(--r-pill);
+  padding:10px 14px; color:var(--ivory); font-family:var(--font-display); font-size:15px; font-weight:300;
+  cursor:pointer;
+}
+.quran-surah-btn svg{ width:14px; height:14px; flex-shrink:0; }
+.quran-surah-btn span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.quran-tajweed-btn{
+  width:44px; height:44px; border-radius:50%; border:1px solid var(--line); background:var(--glass);
+  display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--ivory-dim);
+  flex-shrink:0; transition:color .2s, border-color .2s;
+}
+.quran-tajweed-btn svg{ width:19px; height:19px; }
+.quran-tajweed-btn.active{ color:var(--gold); border-color:var(--gold); }
+
+.quran-page-scroll{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:6px 22px 30px; position:relative; }
+.quran-page{
+  font-family:var(--font-ar); font-size:26px; line-height:2.35; text-align:justify; direction:rtl;
+  color:var(--ivory); text-shadow:var(--ink-halo);
+}
+.quran-status{ text-align:center; color:var(--ivory-dim); font-size:13.5px; padding:60px 20px; line-height:1.7; }
+
+.quran-surah-title{
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  margin:22px 0 14px; padding:10px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+  font-family:var(--font-display); font-size:16px; font-weight:300; color:var(--gold); text-align:center;
+}
+.quran-surah-title:first-child{ margin-top:0; }
+.quran-bismillah{
+  display:block; text-align:center; font-family:var(--font-ar); font-size:26px; color:var(--gold-soft);
+  margin:0 0 18px; direction:rtl;
+}
+.quran-page span.end{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:1.55em; height:1.55em; margin:0 3px; border:1px solid var(--gold); border-radius:50%;
+  font-family:var(--font-num); font-size:0.42em; color:var(--gold); vertical-align:middle;
+}
+/* Стандартная цветовая легенда таджвида — классы совпадают с разметкой,
+   которую отдаёт API в поле text_uthmani_tajweed. */
+.quran-page tajweed.ham_wasl, .quran-page tajweed.laam_shamsiyah, .quran-page tajweed.slnt{ color:#9AA0A6; }
+.quran-page tajweed.ghunnah{ color:#FF7E1E; }
+.quran-page tajweed.idgham_ghunnah{ color:#169777; }
+.quran-page tajweed.idgham_wo_ghunnah{ color:#169200; }
+.quran-page tajweed.idgham_shafawi{ color:#58B800; }
+.quran-page tajweed.ikhafa{ color:#9400A8; }
+.quran-page tajweed.ikhafa_shafawi{ color:#D500B7; }
+.quran-page tajweed.iqlab{ color:#26BFFD; }
+.quran-page tajweed.qalaqah{ color:#DD0008; }
+.quran-page tajweed.madda_normal{ color:#537FFF; }
+.quran-page tajweed.madda_permissible{ color:#4050FF; }
+.quran-page tajweed.madda_necessary, .quran-page tajweed.madda_obligatory{ color:#000EBC; }
+.quran-page[data-tajweed="off"] tajweed{ color:inherit; }
+
+.quran-foot{
+  flex-shrink:0; display:flex; align-items:center; justify-content:space-between; gap:14px;
+  padding:12px 22px calc(14px + var(--safe-bottom));
+  border-top:1px solid var(--line); background:var(--glass); backdrop-filter:blur(14px);
+}
+.quran-nav-btn{
+  width:44px; height:44px; border-radius:50%; border:1px solid var(--line); background:var(--panel);
+  display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--ivory); flex-shrink:0;
+}
+.quran-nav-btn:active{ transform:scale(.92); }
+.quran-nav-btn:disabled{ opacity:.35; pointer-events:none; }
+.quran-nav-btn svg{ width:18px; height:18px; }
+.quran-page-num{ font-family:var(--font-num); font-size:13.5px; color:var(--ivory-dim); background:none; border:none; cursor:pointer; }
+
+.quran-surah-row{ display:flex; align-items:center; gap:12px; padding:12px 4px; border-bottom:1px solid var(--line); cursor:pointer; }
+.quran-surah-row:last-child{ border-bottom:none; }
+.quran-surah-row .n{ width:26px; flex-shrink:0; font-family:var(--font-num); font-size:12px; color:var(--jade); }
+.quran-surah-row .name{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.quran-surah-row .name .ru{ font-size:14.5px; color:var(--ivory); }
+.quran-surah-row .name .meta{ font-size:11.5px; color:var(--ivory-dim); }
+.quran-surah-row .ar{ font-family:var(--font-ar); font-size:19px; color:var(--gold-soft); direction:rtl; flex-shrink:0; }
+
 /* ================= QUIZ ================= */
 .quiz-head{ display:flex; align-items:center; gap:12px; padding:0 20px 16px; flex-shrink:0;}
 .progress-track{ flex:1; height:6px; border-radius:4px; background:var(--fill-3); overflow:hidden;}
@@ -1673,6 +1757,7 @@ body{
           <button class="seg-btn" data-misc="dua">Дуа</button>
           <button class="seg-btn" data-misc="namaz">Намаз</button>
           <button class="seg-btn" data-misc="favorites" title="Избранное" style="font-size:16px;">★</button>
+          <button class="seg-btn" data-misc="quran">Коран</button>
         </div>
       </div>
 
@@ -1987,6 +2072,42 @@ body{
       </div>
     </section>
 
+    <section class="screen" data-screen="quran">
+      <div class="quran-head">
+        <button class="nav-arrow" data-nav="misc" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="quran-surah-btn" id="quranSurahBtn">
+          <span id="quranSurahName">Коран</span>
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="quran-tajweed-btn" id="quranTajweedBtn" aria-label="Таджвид" title="Таджвид">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="8" cy="9" r="2.4" fill="currentColor"/><circle cx="16" cy="9.5" r="2.4" fill="currentColor" opacity=".6"/><circle cx="12" cy="16" r="2.4" fill="currentColor" opacity=".35"/></svg>
+        </button>
+      </div>
+      <div class="quran-page-scroll" id="quranPageScroll">
+        <div class="quran-page" id="quranPage" dir="rtl"></div>
+        <div class="quran-status" id="quranLoading">Загрузка страницы…</div>
+        <div class="quran-status" id="quranError" style="display:none;">
+          Не удалось загрузить страницу.<br>Проверьте подключение к интернету.
+          <button class="btn btn-ghost" id="quranRetryBtn" style="margin-top:14px;">Повторить</button>
+        </div>
+      </div>
+      <div class="quran-foot">
+        <button class="quran-nav-btn" id="quranPrevBtn" aria-label="Предыдущая страница"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="quran-page-num" id="quranPageNum">1 / 604</button>
+        <button class="quran-nav-btn" id="quranNextBtn" aria-label="Следующая страница"><svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sheet-backdrop" id="quranSurahBackdrop"></div>
+  <div class="sheet" id="quranSurahSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-top">
+      <div class="sheet-idx">Суры Корана</div>
+      <button class="sheet-close" id="quranSurahClose"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
+    </div>
+    <div class="sheet-body" id="quranSurahList" style="text-align:left;padding-top:2px;"></div>
   </div>
 
   <div class="sheet-backdrop" id="friendPickerBackdrop"></div>
@@ -2388,6 +2509,7 @@ window.addEventListener('popstate', (e) => {
     try { closeProfileView(); } catch(e){}
     try { closeDhikrRoomSheet(); } catch(e){}
     try { closeFriendPicker(); } catch(e){}
+    try { closeQuranSurahSheet(); } catch(e){}
     setTimeout(() => { isClosingFromPopstate = false; }, 50);
   }
 });
@@ -3818,6 +3940,10 @@ function moveWeeklyChallengeCardInto(wrapEl){
 moveWeeklyChallengeCardInto(miscWraps.zikr);
 document.querySelectorAll('#miscSegment .seg-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
+    // "Коран" isn't another in-place tab like the rest of this row — it
+    // opens its own full screen, so it never becomes the active segment
+    // and never touches miscWraps.
+    if(btn.dataset.misc === 'quran'){ go('quran'); openQuranScreen(); return; }
     document.querySelectorAll('#miscSegment .seg-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     Object.entries(miscWraps).forEach(([key, el])=>{
@@ -4342,6 +4468,10 @@ function updateSettingsGearVisibility(){
   // просто гасим её, а полностью прячем, чтобы не выглядела рабочей.
   const skinHasDark = typeof SKINS === 'undefined' || (SKINS[currentSkin()]?.supportsDark ?? true);
   if(themeBtn) themeBtn.style.display = (state.screen === 'home' && skinHasDark) ? 'flex' : 'none';
+  // Коран — полноэкранный ридер со своей нижней панелью (пред./стр./след.);
+  // плавающий док поверх неё только мешал бы перелистыванию.
+  const dock = document.querySelector('.tabbar');
+  if(dock) dock.style.display = state.screen === 'quran' ? 'none' : '';
 }
 
 /* =====================================================
@@ -7245,6 +7375,164 @@ document.getElementById('themeToggleBtn').addEventListener('click', ()=>{
   setTheme(document.documentElement.getAttribute('data-theme') !== 'dark');
 });
 updateSettingsGearVisibility();
+
+/* =====================================================
+   КОРАН — постраничное чтение (api.quran.com), с переключаемым
+   таджвидом. Текст и разбивку на 604 страницы не храним в самом
+   index.html (это отдельная, обновляемая на каждый запуск страница —
+   лишние сотни килобайт текста Корана замедлили бы её загрузку),
+   а подгружаем по одной странице лениво, только когда пользователь
+   реально открыл этот экран, с кэшем в памяти на время сессии.
+===================================================== */
+const QURAN_TOTAL_PAGES = 604;
+const quranState = { page: 1, tajweed: true, chapters: null, pageCache: {} };
+(function quranLoadPrefs(){
+  try{
+    const savedPage = parseInt(localStorage.getItem('quranLastPage'), 10);
+    if(savedPage >= 1 && savedPage <= QURAN_TOTAL_PAGES) quranState.page = savedPage;
+    if(localStorage.getItem('quranTajweed') === 'off') quranState.tajweed = false;
+  }catch(e){}
+})();
+
+async function quranFetchChapters(){
+  if(quranState.chapters) return quranState.chapters;
+  try{
+    const cached = localStorage.getItem('quranChaptersCache');
+    if(cached){ quranState.chapters = JSON.parse(cached); return quranState.chapters; }
+  }catch(e){}
+  const resp = await fetch('https://api.quran.com/api/v4/chapters?language=ru');
+  const data = await resp.json();
+  quranState.chapters = data.chapters;
+  try{ localStorage.setItem('quranChaptersCache', JSON.stringify(data.chapters)); }catch(e){}
+  return quranState.chapters;
+}
+function quranChapterFor(num){ return (quranState.chapters||[]).find(c=>c.id===num); }
+function quranSurahDisplayName(chapter){
+  return chapter ? (chapter.translated_name?.name || chapter.name_simple || '') : '';
+}
+
+async function quranFetchPage(pageNum){
+  if(quranState.pageCache[pageNum]) return quranState.pageCache[pageNum];
+  const resp = await fetch(`https://api.quran.com/api/v4/verses/by_page/${pageNum}?words=false&fields=text_uthmani_tajweed`);
+  if(!resp.ok) throw new Error('bad status ' + resp.status);
+  const data = await resp.json();
+  quranState.pageCache[pageNum] = data.verses;
+  return data.verses;
+}
+
+async function quranRenderPage(pageNum){
+  const pageEl = document.getElementById('quranPage');
+  const loadingEl = document.getElementById('quranLoading');
+  const errorEl = document.getElementById('quranError');
+  const pageNumEl = document.getElementById('quranPageNum');
+  const prevBtn = document.getElementById('quranPrevBtn');
+  const nextBtn = document.getElementById('quranNextBtn');
+  const scrollEl = document.getElementById('quranPageScroll');
+
+  errorEl.style.display = 'none';
+  pageEl.style.display = 'none';
+  loadingEl.style.display = 'block';
+  loadingEl.textContent = 'Загрузка страницы…';
+  pageNumEl.textContent = pageNum + ' / ' + QURAN_TOTAL_PAGES;
+  prevBtn.disabled = pageNum <= 1;
+  nextBtn.disabled = pageNum >= QURAN_TOTAL_PAGES;
+
+  try{
+    await quranFetchChapters();
+    const verses = await quranFetchPage(pageNum);
+    let html = '';
+    verses.forEach(v=>{
+      const chapterNum = parseInt(v.verse_key.split(':')[0], 10);
+      if(v.verse_number === 1){
+        const chapter = quranChapterFor(chapterNum);
+        html += `<div class="quran-surah-title" dir="ltr">${chapterNum}. ${quranSurahDisplayName(chapter)} — ${chapter ? chapter.name_arabic : ''}</div>`;
+        if(chapterNum !== 1 && chapterNum !== 9){
+          html += `<span class="quran-bismillah">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</span>`;
+        }
+      }
+      html += v.text_uthmani_tajweed + ' ';
+    });
+    pageEl.innerHTML = html;
+    pageEl.setAttribute('data-tajweed', quranState.tajweed ? 'on' : 'off');
+    pageEl.style.display = '';
+    loadingEl.style.display = 'none';
+    if(scrollEl) scrollEl.scrollTop = 0;
+
+    const firstChapterNum = parseInt(verses[0].verse_key.split(':')[0], 10);
+    const firstChapter = quranChapterFor(firstChapterNum);
+    document.getElementById('quranSurahName').textContent = firstChapter
+      ? (firstChapterNum + '. ' + quranSurahDisplayName(firstChapter)) : 'Коран';
+
+    quranState.page = pageNum;
+    try{ localStorage.setItem('quranLastPage', pageNum); }catch(e){}
+  }catch(e){
+    loadingEl.style.display = 'none';
+    errorEl.style.display = 'block';
+  }
+}
+
+function openQuranScreen(){ quranRenderPage(quranState.page); }
+
+function quranGoToPage(n){
+  n = Math.max(1, Math.min(QURAN_TOTAL_PAGES, Math.round(n)));
+  quranRenderPage(n);
+}
+document.getElementById('quranPrevBtn').addEventListener('click', ()=> quranGoToPage(quranState.page - 1));
+document.getElementById('quranNextBtn').addEventListener('click', ()=> quranGoToPage(quranState.page + 1));
+document.getElementById('quranRetryBtn').addEventListener('click', ()=> quranRenderPage(quranState.page));
+document.getElementById('quranPageNum').addEventListener('click', ()=>{
+  const input = window.prompt('Перейти на страницу (1–' + QURAN_TOTAL_PAGES + ')', quranState.page);
+  const n = parseInt(input, 10);
+  if(n) quranGoToPage(n);
+});
+
+const quranTajweedBtn = document.getElementById('quranTajweedBtn');
+function quranUpdateTajweedBtn(){ quranTajweedBtn.classList.toggle('active', quranState.tajweed); }
+quranUpdateTajweedBtn();
+quranTajweedBtn.addEventListener('click', ()=>{
+  quranState.tajweed = !quranState.tajweed;
+  try{ localStorage.setItem('quranTajweed', quranState.tajweed ? 'on' : 'off'); }catch(e){}
+  quranUpdateTajweedBtn();
+  document.getElementById('quranPage').setAttribute('data-tajweed', quranState.tajweed ? 'on' : 'off');
+});
+
+/* --- список сур --- */
+async function openQuranSurahSheet(){
+  pushSheetHistory();
+  document.getElementById('quranSurahSheet').classList.add('show');
+  document.getElementById('quranSurahBackdrop').classList.add('show');
+  const listEl = document.getElementById('quranSurahList');
+  if(!listEl.dataset.filled){
+    listEl.innerHTML = '<p class="misc-intro">Загрузка…</p>';
+    try{
+      const chapters = await quranFetchChapters();
+      listEl.innerHTML = chapters.map(c => `
+        <div class="quran-surah-row" data-page="${c.pages[0]}">
+          <span class="n">${c.id}</span>
+          <span class="name"><span class="ru">${quranSurahDisplayName(c)}</span><span class="meta">${c.verses_count} аятов</span></span>
+          <span class="ar">${c.name_arabic}</span>
+        </div>
+      `).join('');
+      listEl.dataset.filled = '1';
+      listEl.querySelectorAll('.quran-surah-row').forEach(row=>{
+        row.addEventListener('click', ()=>{
+          closeQuranSurahSheet();
+          quranGoToPage(parseInt(row.dataset.page, 10));
+        });
+      });
+    }catch(e){
+      listEl.innerHTML = '<p class="misc-intro">Не удалось загрузить список сур.</p>';
+    }
+  }
+}
+function closeQuranSurahSheet(){
+  popSheetHistory();
+  document.getElementById('quranSurahSheet').classList.remove('show');
+  document.getElementById('quranSurahBackdrop').classList.remove('show');
+}
+document.getElementById('quranSurahBtn').addEventListener('click', openQuranSurahSheet);
+document.getElementById('quranSurahClose').addEventListener('click', closeQuranSurahSheet);
+document.getElementById('quranSurahBackdrop').addEventListener('click', closeQuranSurahSheet);
 
 /* =====================================================
    SWIPE BETWEEN SCREENS
