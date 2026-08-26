@@ -45,7 +45,18 @@
 // never sees a flash of the (now-default) light theme first.
 try{
   if(localStorage.getItem('themePref') === 'dark') document.documentElement.setAttribute('data-theme','dark');
-  const savedSkin = localStorage.getItem('skinPref');
+  let savedSkin = localStorage.getItem('skinPref');
+  if(!savedSkin){
+    // Совсем новый пользователь (ни разу не заходил раньше) — по умолчанию
+    // «Классика», а не «Нафас». Отличаем от старого пользователя, который
+    // просто ни разу не открывал выбор темы, по следам его использования.
+    const isReturning = localStorage.getItem('learnedNames') || localStorage.getItem('bestScore') ||
+      localStorage.getItem('username') || localStorage.getItem('themePref');
+    if(!isReturning){
+      savedSkin = 'classic';
+      localStorage.setItem('skinPref', 'classic');
+    }
+  }
   if(savedSkin && savedSkin !== 'nafas') document.documentElement.setAttribute('data-skin', savedSkin);
 }catch(e){}
 </script>
@@ -1099,21 +1110,11 @@ body{
    док (плавающий/сплошной/из края в край) и видны ли подписи.
    ============================================================= */
 
-/* Классика и Б·Ночь — подписи рядом с иконками, как в исходном
-   таббаре и в редакционном макете (текстовый нижний ряд). */
-:root[data-skin="classic"] .tab span,
-:root[data-skin="noch"] .tab span{
-  position:static; width:auto; max-width:100%; height:auto; margin:0; overflow:hidden; clip-path:none;
-  font-size:10.5px; font-weight:700; letter-spacing:.01em; white-space:nowrap; text-overflow:ellipsis;
-}
+/* Классика и Б·Ночь — только иконки, подписи скрыты как в базовом доке. */
 :root[data-skin="classic"] .tab,
 :root[data-skin="noch"] .tab{
-  /* flex:1 — с видимыми подписями 5 вкладок шире, чем 5 круглых
-     иконок; без права сжиматься (унаследованного flex:0 0 auto)
-     последняя вкладка («Друзья») просто не помещалась и обрезалась
-     краем экрана. */
-  flex:1 1 0; min-width:0; width:auto; height:auto; padding:8px 4px; border-radius:var(--r-pill);
-  flex-direction:column; gap:3px;
+  flex:1 1 0; min-width:0; width:auto; height:auto; padding:10px 4px; border-radius:var(--r-pill);
+  display:flex; align-items:center; justify-content:center;
 }
 
 /* Классика — сплошная панель во всю ширину, как было исторически,
@@ -1134,7 +1135,7 @@ body{
 }
 :root[data-skin="noch"] .tab.active{ background:none; color:var(--gold); }
 
-/* Е·Матн — из края в край, пять равных колонок сетки, подписи видны. */
+/* Е·Матн — из края в край, пять равных колонок сетки, только иконки. */
 :root[data-skin="matn"] .tabbar{
   left:0; right:0; bottom:0; transform:none; width:100%; max-width:none;
   display:grid; grid-template-columns:repeat(5,1fr); gap:0;
@@ -1142,14 +1143,11 @@ body{
   padding:0 0 var(--safe-bottom); backdrop-filter:none; box-shadow:none;
 }
 :root[data-skin="matn"] .tab{
-  width:auto; height:auto; padding:10px 4px; border-radius:0; flex-direction:column; gap:4px;
+  width:auto; height:auto; padding:14px 4px; border-radius:0;
+  display:flex; align-items:center; justify-content:center;
   border-right:1px solid var(--nav-border);
 }
 :root[data-skin="matn"] .tab:last-child{ border-right:none; }
-:root[data-skin="matn"] .tab span{
-  position:static; width:auto; height:auto; margin:0; overflow:visible; clip-path:none;
-  font-size:10px; font-weight:600; font-family:var(--font-num);
-}
 :root[data-skin="matn"] .tab.active{ background:var(--fill-2); color:var(--gold); }
 
 /* Б·Ночь — тонкие линейки вместо карточек в сетке имён. */
