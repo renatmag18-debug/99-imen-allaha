@@ -136,19 +136,6 @@ body{
     radial-gradient(ellipse 70% 50% at 100% 110%, var(--glow-b), transparent 60%),
     linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
 }
-/* Theme toggle is wrapped in document.startViewTransition() (same API the
-   screen-switch already uses below) — it cross-fades the whole rendered
-   frame, which is the only way to get a smooth transition across gradient
-   backgrounds that plain CSS `transition` can't interpolate. Left at the
-   browser's own default duration/easing (no override here) so the page
-   switch itself is exactly as fast as it always was. */
-/* The tabbar opts out of the root cross-fade above and keeps its own
-   name so it stays the live, interactive element throughout a screen
-   switch — otherwise the active-tab indicator's slide would be baked
-   into the same before/after snapshot pair as the page content and
-   read as a fade instead of a real, continuous slide. */
-/* DEBUG DISABLED: .tabbar{ view-transition-name: tabbar; } */
-/* DEBUG DISABLED */
 /* ---------- ambient geometric pattern ---------- */
 .pattern-veil{
   position:absolute; inset:0; pointer-events:none; opacity:0.05; z-index:0;
@@ -202,29 +189,17 @@ body{
   backdrop-filter: blur(16px);
   box-shadow: 0 14px 32px -10px rgba(0,0,0,0.3);
 }
-/* A single indicator slides/resizes to sit behind whichever tab is
-   active (JS positions it from the active tab's own geometry — see
-   moveTabIndicator) instead of each tab fading its own fill in/out,
-   so the highlight visibly travels from one tab to the next. */
-.tab-indicator{
-  position:absolute; top:0; left:0; z-index:0; border-radius:100px;
-  background:linear-gradient(135deg, var(--gold-soft), var(--gold));
-  transition:transform .38s var(--ease), width .38s var(--ease), height .38s var(--ease);
-  pointer-events:none; will-change:transform;
-}
 .tab{
   position:relative; flex:0 0 auto; display:flex; flex-direction:row; align-items:center; justify-content:center; gap:7px;
   width:42px; height:42px; padding:0; border-radius:100px; cursor:pointer; color:var(--ivory-dim); overflow:hidden;
-  transition: color .32s var(--ease), width .32s var(--ease), padding .32s var(--ease);
   background:none; border:none; font-family:var(--font-body);
 }
-.tab svg, .tab span{ position:relative; z-index:1; }
 .tab svg{width:19px;height:19px; flex-shrink:0;}
 .tab span{
   font-size:12px; letter-spacing:.02em; font-weight:700; white-space:nowrap;
-  max-width:0; opacity:0; transition:max-width .32s var(--ease), opacity .22s var(--ease);
+  max-width:0; opacity:0;
 }
-.tab.active{ width:auto; padding:0 16px 0 12px; color:#241004; }
+.tab.active{ width:auto; padding:0 16px 0 12px; color:#241004; background:linear-gradient(135deg, var(--gold-soft), var(--gold)); }
 .tab.active span{ max-width:100px; opacity:1; }
 .tab:active{ transform:scale(.94); }
 
@@ -903,8 +878,7 @@ body{
   }
   .tab{ flex-direction:row; justify-content:flex-start; gap:12px; width:auto; height:auto; padding:12px 14px; border-radius:14px; }
   .tab span{ font-size:13px; max-width:none; opacity:1; }
-  .tab.active{ width:auto; padding:12px 14px; color:var(--gold-soft); }
-  .tab-indicator{ border-radius:14px; background:var(--nav-active-tint); }
+  .tab.active{ width:auto; padding:12px 14px; background:var(--nav-active-tint); color:var(--gold-soft); }
   .tab-badge{ top:8px; right:auto; left:32px; }
   .stage{ margin-left:210px; margin-top:0; padding-top:78px; height:100vh; }
   .scroll{ max-width:640px; margin:0 auto; padding:20px 30px 60px;}
@@ -1785,7 +1759,6 @@ if (window.AndroidApp && window.AndroidApp.shouldShowSplash && window.AndroidApp
   </div>
 
   <div class="tabbar">
-    <div class="tab-indicator" id="tabIndicator"></div>
     <button class="tab active" data-nav="home">
       <svg viewBox="0 0 24 24" fill="none"><path d="M4 11.5L12 4l8 7.5M6 9.5V20h12V9.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span>Главная</span>
@@ -2327,36 +2300,6 @@ const screens = {};
 document.querySelectorAll('.screen').forEach(s=>screens[s.dataset.screen]=s);
 const tabs = document.querySelectorAll('.tab');
 
-const tabIndicator = document.getElementById('tabIndicator');
-function moveTabIndicator(skipAnim){
-  const active = document.querySelector('.tabbar .tab.active');
-  if(!active || !tabIndicator) return;
-  // The tab we just marked active is itself mid-transition (its own
-  // width/padding and its label's max-width both animate on the "active"
-  // class), so offsetWidth read right now would catch it still collapsed
-  // at the very start of that animation — the indicator would then be
-  // sized to the pre-expansion box instead of the target pill. Briefly
-  // suspend those transitions to measure the true resting geometry, then
-  // restore them (this doesn't affect what the tab itself visibly does —
-  // the transition engine only compares style before vs. after this whole
-  // synchronous block, not this transient probe in between).
-  const span = active.querySelector('span');
-  const prevTabT = active.style.transition, prevSpanT = span ? span.style.transition : '';
-  active.style.transition = 'none';
-  if(span) span.style.transition = 'none';
-  void active.offsetWidth;
-  const w = active.offsetWidth, h = active.offsetHeight, l = active.offsetLeft, t = active.offsetTop;
-  active.style.transition = prevTabT;
-  if(span) span.style.transition = prevSpanT;
-
-  if(skipAnim) tabIndicator.style.transition = 'none';
-  tabIndicator.style.width = w + 'px';
-  tabIndicator.style.height = h + 'px';
-  tabIndicator.style.transform = `translate(${l}px, ${t}px)`;
-  if(skipAnim){ tabIndicator.offsetHeight; tabIndicator.style.transition = ''; }
-}
-window.addEventListener('resize', ()=>moveTabIndicator(true));
-
 let isPopping = false;
 function go(name, replace = false){
   if(!screens[name]) return;
@@ -2364,7 +2307,6 @@ function go(name, replace = false){
     Object.values(screens).forEach(s=>s.classList.remove('active'));
     screens[name].classList.add('active');
     tabs.forEach(t=>t.classList.toggle('active', t.dataset.nav===name));
-    moveTabIndicator();
     state.screen = name;
     window.scrollTo(0,0);
     const sc = screens[name].querySelector('.scroll'); if(sc) sc.scrollTop = 0;
@@ -6913,7 +6855,6 @@ document.getElementById('themeToggleBtn').addEventListener('click', ()=>{
   else { apply(); }
 });
 updateSettingsGearVisibility();
-moveTabIndicator(true);
 
 /* =====================================================
    SWIPE BETWEEN SCREENS
