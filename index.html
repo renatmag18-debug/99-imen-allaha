@@ -7473,6 +7473,34 @@ let chatThreadFirstRenderDone = false;
 // around and avoids redoing the canvas grab on every re-render.
 let chatVideoPosterById = {};
 let chatVideoPosterPending = new Set();
+// Legacy voice/video messages (audioData/videoData, embedded base64) predate
+// the Storage migration — confirmed on a real device that Firebase's live
+// listener re-sending the WHOLE matched dataset (all 300 messages, embedded
+// media included) on every change is what made sending/receiving in a chat
+// with several of these take ~17s, versus under a second in a chat with
+// few. Migrating each one to Storage the first time it's viewed fixes this
+// permanently for that chat without a separate bulk-migration script.
+let chatLegacyMediaMigrating = new Set();
+function dataUrlToBlob(dataUrl){
+  const match = /^data:([^;]+);base64,(.*)$/.exec(dataUrl);
+  if(!match) return null;
+  return base64ToBlob(match[2], match[1]);
+}
+async function migrateLegacyMediaMessage(path, id, kind, dataUrl){
+  if(chatLegacyMediaMigrating.has(id)) return;
+  chatLegacyMediaMigrating.add(id);
+  try{
+    const blob = dataUrlToBlob(dataUrl);
+    if(!blob) return;
+    const url = await uploadChatMedia(path, id, blob, kind);
+    const field = kind === 'audio' ? 'audioUrl' : 'videoUrl';
+    const legacyField = kind === 'audio' ? 'audioData' : 'videoData';
+    await fbDb.ref(`${path}/messages/${id}`).update({ [field]: url, [legacyField]: null });
+  }catch(e){
+    console.warn('legacy media migration failed for', id, e);
+    chatLegacyMediaMigrating.delete(id);
+  }
+}
 // Mirrors `presence`: while a thread is open, activeChatViewers/{myKey} names
 // who I'm looking at, so the sender can skip a push notification that would
 // just be telling me about a message I'm already reading live.
@@ -7543,6 +7571,7 @@ function renderChatThreadMessages(messagesObj, isLiveSnapshot){
       // so playback doesn't need to care which one it got.
       const audioSrc = m.audioUrl || m.audioData;
       if(audioSrc) chatMediaDataById[id] = audioSrc;
+      if(!m.audioUrl && m.audioData && fbDb) migrateLegacyMediaMessage(chatThreadKey, id, 'audio', m.audioData);
       bodyHtml = `<button class="chat-voice-play" data-voice-id="${escapeHtml(id)}" aria-label="Воспроизвести">
            <svg class="icon-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
            <svg class="icon-pause" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
@@ -7558,6 +7587,7 @@ function renderChatThreadMessages(messagesObj, isLiveSnapshot){
         chatMediaDataById[id] = videoSrc;
         if(!chatVideoPosterById[id]) generateVideoPoster(id, videoSrc);
       }
+      if(!m.videoUrl && m.videoData && fbDb) migrateLegacyMediaMessage(chatThreadKey, id, 'video', m.videoData);
       const poster = chatVideoPosterById[id];
       const posterStyle = poster ? ` style="background-image:url(${poster});background-size:cover;background-position:center top;"` : '';
       bodyHtml = `<div class="chat-video-circle" data-video-id="${escapeHtml(id)}"${posterStyle}>
