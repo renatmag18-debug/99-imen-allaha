@@ -567,7 +567,11 @@ body{
 .about-note{ font-size:11.5px; color:var(--ivory-dim); text-align:center; line-height:1.6; padding:6px 6px 20px; opacity:.7;}
 
 /* ================= STUDY ================= */
-.search-wrap{ position:relative; margin-bottom:14px; flex-shrink:0; padding:0 20px;}
+.search-wrap{
+  position:relative; margin-bottom:14px; flex-shrink:0; padding:0 20px; overflow:hidden; max-height:60px;
+  transition: max-height .25s var(--ease), opacity .2s var(--ease), margin-bottom .25s var(--ease);
+}
+.search-wrap.collapsed{ max-height:0; opacity:0; margin-bottom:0; pointer-events:none; }
 .search-wrap input{
   width:100%; background:var(--glass); backdrop-filter:blur(12px); border:1px solid var(--line); border-radius:var(--r-pill);
   padding:13px 18px 13px 42px; color:var(--ivory); font-family:var(--font-body); font-size:14px; font-weight:300; outline:none;
@@ -1005,6 +1009,7 @@ body{
   position:relative; width:min(78vw,340px); height:min(78vw,340px); border-radius:50%; overflow:hidden;
   background:#000; box-shadow:0 10px 40px rgba(0,0,0,.5);
 }
+#chatVideoViewerSpinner{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:32px; height:32px; }
 /* object-position biased to the top: a portrait recording cropped into a
    square/circle by default centers the crop, which cuts an equal sliver off
    the top and bottom — for a face shot that reads as "the top got cut off"
@@ -2493,6 +2498,7 @@ body{
     </button>
     <div class="chat-video-viewer-circle">
       <video class="chat-video-circle-el" id="chatVideoViewerEl" playsinline></video>
+      <div class="chat-pending-spinner" id="chatVideoViewerSpinner" style="display:none;"></div>
     </div>
   </div>
 
@@ -4945,6 +4951,34 @@ miscSearchInput.addEventListener('input', ()=>{
   renderMiscSearch(q);
   moveWeeklyChallengeCardInto(miscSearchWrap);
 });
+
+// Collapses the search bar while scrolling down through any of the misc
+// screen's lists (зикры/азкары/дуа/намаз/избранное/search results — each is
+// its own .scroll element, swapped via display:none/contents rather than
+// all sharing one), to free up reading space; scrolling back up or landing
+// at the very top brings it back. 'scroll' events don't bubble, but a
+// capture-phase listener on a shared ancestor still catches them from
+// whichever of the six .scroll children is currently visible, without
+// needing to attach/detach a listener on every tab switch.
+(function initMiscSearchCollapse(){
+  const miscScreen = document.querySelector('[data-screen="misc"]');
+  const searchWrap = document.querySelector('[data-screen="misc"] .search-wrap');
+  if(!miscScreen || !searchWrap) return;
+  miscScreen.addEventListener('scroll', e=>{
+    const scrollEl = e.target;
+    if(!scrollEl.classList || !scrollEl.classList.contains('scroll')) return;
+    const st = scrollEl.scrollTop;
+    const last = scrollEl._miscScrollLast || 0;
+    scrollEl._miscScrollLast = st;
+    if(st <= 4){
+      searchWrap.classList.remove('collapsed');
+    } else if(st - last > 4){
+      searchWrap.classList.add('collapsed');
+    } else if(st - last < -4){
+      searchWrap.classList.remove('collapsed');
+    }
+  }, { capture: true, passive: true });
+})();
 
 /* =====================================================
    DETAIL SHEET
@@ -7717,7 +7751,14 @@ function renderChatThreadMessages(messagesObj, isLiveSnapshot){
   entries.forEach(([id])=> chatRenderedMessageIds.add(id));
   chatThreadFirstRenderDone = true;
   wrap.innerHTML = html;
+  // Reading scrollHeight right after innerHTML forces a synchronous layout,
+  // so this is normally accurate immediately — but with the new-message
+  // entrance animation and (for media bubbles) an image/video still
+  // decoding, the content's final height can still shift a frame or two
+  // later, leaving the scroll a bit short of the true bottom. Deferring one
+  // frame re-measures after that settles.
   scrollEl.scrollTop = scrollEl.scrollHeight;
+  requestAnimationFrame(()=>{ scrollEl.scrollTop = scrollEl.scrollHeight; });
   // If a voice message is still playing across this re-render (e.g. a new
   // message just arrived), the old button was just destroyed — reattach the
   // playing/progress UI to its freshly rendered replacement.
@@ -8523,12 +8564,21 @@ function generateVideoPoster(id, src){
   video.addEventListener('error', () => { clearTimeout(safetyTimeout); finish(); }, { once:true });
   video.src = src;
 }
-function openVideoViewer(src){
+function openVideoViewer(src, poster){
   // Only one thing (voice or video) plays at a time in the thread.
   chatVoiceAudioEl.pause();
   const overlay = document.getElementById('chatVideoViewerOverlay');
   const videoEl = document.getElementById('chatVideoViewerEl');
+  const spinner = document.getElementById('chatVideoViewerSpinner');
+  // Without a poster, the browser's own default is a plain gray circle with
+  // a huge generic play icon while the video buffers — reusing the same
+  // first-frame poster already generated for the closed circle (see
+  // generateVideoPoster) means the real first frame shows there instead,
+  // with just a small spinner (not a fake play button — this view autoplays)
+  // on top until playback actually starts.
+  videoEl.poster = poster || '';
   videoEl.src = src;
+  spinner.style.display = 'block';
   overlay.classList.add('show');
   videoEl.play().catch(()=> showToast('Не удалось воспроизвести'));
 }
@@ -8540,12 +8590,16 @@ function closeVideoViewer(){
   videoEl.pause();
   videoEl.removeAttribute('src');
   videoEl.load();
+  document.getElementById('chatVideoViewerSpinner').style.display = 'none';
 }
 document.getElementById('chatVideoViewerClose').addEventListener('click', closeVideoViewer);
 document.getElementById('chatVideoViewerOverlay').addEventListener('click', e=>{
   if(e.target.id === 'chatVideoViewerOverlay') closeVideoViewer();
 });
 document.getElementById('chatVideoViewerEl').addEventListener('ended', closeVideoViewer);
+document.getElementById('chatVideoViewerEl').addEventListener('playing', ()=>{
+  document.getElementById('chatVideoViewerSpinner').style.display = 'none';
+});
 function openImageViewer(src){
   const overlay = document.getElementById('chatImageViewerOverlay');
   document.getElementById('chatImageViewerImg').src = src;
@@ -8572,7 +8626,7 @@ document.getElementById('chatThreadMessages').addEventListener('click', e=>{
     const id = videoCircle.dataset.videoId;
     const src = chatMediaDataById[id];
     if(!src) return;
-    openVideoViewer(src);
+    openVideoViewer(src, chatVideoPosterById[id]);
     return;
   }
   const btn = e.target.closest('.chat-voice-play');
