@@ -885,6 +885,36 @@ body{
 .chat-send-btn svg{ width:18px; height:18px; }
 .chat-send-btn:disabled{ opacity:.4; pointer-events:none; }
 
+.chat-recording-bar{
+  flex-shrink:0; display:flex; align-items:center; gap:10px;
+  padding:10px 14px calc(12px + var(--safe-bottom));
+  border-top:1px solid var(--line); background:var(--glass); backdrop-filter:blur(14px);
+}
+.chat-recording-dot{
+  width:10px; height:10px; border-radius:50%; background:#e14b4b; flex-shrink:0;
+  animation:chatRecPulse 1.1s ease-in-out infinite;
+}
+@keyframes chatRecPulse{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
+.chat-recording-timer{ font-family:var(--font-num); font-size:14px; color:var(--ivory); flex-shrink:0; }
+.chat-recording-hint{ flex:1; font-size:13px; color:var(--ivory-dim); }
+.chat-recording-cancel{
+  width:36px; height:36px; border-radius:50%; border:1px solid var(--line); background:var(--fill-1);
+  color:var(--ivory-dim); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;
+}
+.chat-recording-cancel svg{ width:16px; height:16px; }
+
+.chat-bubble.voice{ display:flex; align-items:center; gap:9px; min-width:170px; }
+.chat-voice-play{
+  width:32px; height:32px; border-radius:50%; border:none; flex-shrink:0; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.14); color:inherit;
+}
+.chat-bubble-row.mine .chat-voice-play{ background:rgba(0,0,0,.16); }
+.chat-voice-play svg{ width:15px; height:15px; }
+.chat-voice-body{ flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; }
+.chat-voice-bar{ height:3px; border-radius:2px; background:currentColor; opacity:.28; overflow:hidden; }
+.chat-voice-bar-fill{ height:100%; width:0%; background:currentColor; opacity:1; }
+.chat-voice-duration{ font-size:11px; opacity:.75; font-family:var(--font-num); }
+
 .quran-legend-toggle{
   display:flex; align-items:center; justify-content:space-between; width:100%;
   background:none; border:none; padding:4px 0; margin-top:-8px; cursor:pointer;
@@ -2273,9 +2303,23 @@ body{
         <div id="chatThreadMessages"></div>
         <div class="chat-empty-hint" id="chatThreadEmptyHint">Здесь пока нет сообщений — напишите первым.</div>
       </div>
-      <div class="chat-input-bar">
+      <div class="chat-input-bar" id="chatInputBar">
         <textarea id="chatInput" rows="1" placeholder="Сообщение…" maxlength="2000"></textarea>
-        <button class="chat-send-btn" id="chatSendBtn" aria-label="Отправить" disabled>
+        <button class="chat-send-btn" id="chatMicBtn" aria-label="Голосовое сообщение">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 15a3 3 0 003-3V6a3 3 0 10-6 0v6a3 3 0 003 3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M19 11a7 7 0 01-14 0M12 18v3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
+        <button class="chat-send-btn" id="chatSendBtn" aria-label="Отправить" style="display:none;" disabled>
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 12l16-8-6 8 6 8-16-8z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <div class="chat-recording-bar" id="chatRecordingBar" style="display:none;">
+        <span class="chat-recording-dot"></span>
+        <span class="chat-recording-timer" id="chatRecordingTimer">0:00</span>
+        <span class="chat-recording-hint">Запись голосового…</span>
+        <button class="chat-recording-cancel" id="chatRecordingCancelBtn" aria-label="Отменить запись">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+        <button class="chat-send-btn" id="chatRecordingSendBtn" aria-label="Отправить голосовое">
           <svg viewBox="0 0 24 24" fill="none"><path d="M4 12l16-8-6 8 6 8-16-8z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
         </button>
       </div>
@@ -2651,6 +2695,7 @@ const PUSH_RELAY_URL = "https://99ism-api.99ism-worker.workers.dev/push";
 const PUSH_RELAY_SECRET = "kJNSpd7TCyYe1rF7o9Lij7u4DSEz4tuIVNy7qQIHbh4=";
 let fbDb = null;
 let fbAuth = null;
+let fbStorage = null;
 
 // Firebase's SDK scripts used to be blocking <script src> tags right here,
 // ahead of the entire app script below — on a slow or blocked connection to
@@ -2680,10 +2725,12 @@ let fbAuthReady = (async () => {
     await loadScriptTag('https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js');
     await loadScriptTag('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js');
     await loadScriptTag('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
+    await loadScriptTag('https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js');
 
     firebase.initializeApp(FIREBASE_CONFIG);
     fbDb = firebase.database();
     fbAuth = firebase.auth();
+    fbStorage = firebase.storage();
     return new Promise(resolve=>{
       const unsub = fbAuth.onAuthStateChanged(user=>{
         if(user){ unsub(); resolve(user); }
@@ -7189,6 +7236,12 @@ function closeChatThread(){
   if(chatThreadPresenceUnsub){ chatThreadPresenceUnsub(); chatThreadPresenceUnsub = null; }
   chatThreadKey = null;
   clearActiveChatViewer();
+  chatVoiceAudioEl.pause();
+  chatVoicePlayingBtn = null;
+  // Leaving mid-recording (swipe/hardware back, not the composer's own
+  // cancel/send) must still release the mic — otherwise it stays actively
+  // recording in the background indefinitely.
+  if(typeof cancelVoiceRecording === 'function') cancelVoiceRecording();
 }
 function markChatRead(otherUsername){
   if(!fbDb || !state.profile) return;
@@ -7212,10 +7265,33 @@ function renderChatThreadMessages(messagesObj){
     const day = new Date(ts).toDateString();
     if(day !== lastDay){ html += `<div class="chat-day-sep">${formatChatDay(ts)}</div>`; lastDay = day; }
     const mine = m.from === myKeyVal;
-    html += `<div class="chat-bubble-row${mine?' mine':''}"><div class="chat-bubble">${escapeHtml(m.text||'')}<span class="chat-bubble-time">${formatChatClock(ts)}</span></div></div>`;
+    const bodyHtml = (m.type === 'voice' && m.audioUrl)
+      ? `<button class="chat-voice-play" data-voice-url="${escapeHtml(m.audioUrl)}" aria-label="Воспроизвести">
+           <svg class="icon-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+           <svg class="icon-pause" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+         </button>
+         <div class="chat-voice-body">
+           <div class="chat-voice-bar"><div class="chat-voice-bar-fill"></div></div>
+           <span class="chat-voice-duration">${formatVoiceDuration(m.duration||0)}</span>
+         </div>`
+      : escapeHtml(m.text||'');
+    html += `<div class="chat-bubble-row${mine?' mine':''}"><div class="chat-bubble${m.type==='voice'?' voice':''}">${bodyHtml}<span class="chat-bubble-time">${formatChatClock(ts)}</span></div></div>`;
   });
   wrap.innerHTML = html;
   scrollEl.scrollTop = scrollEl.scrollHeight;
+  // If a voice message is still playing across this re-render (e.g. a new
+  // message just arrived), the old button was just destroyed — reattach the
+  // playing/progress UI to its freshly rendered replacement.
+  if(chatVoicePlayingBtn && !chatVoiceAudioEl.paused){
+    const newBtn = wrap.querySelector(`.chat-voice-play[data-voice-url="${CSS.escape(chatVoiceAudioEl.src)}"]`);
+    if(newBtn){
+      chatVoicePlayingBtn = newBtn;
+      newBtn.querySelector('.icon-play').style.display = 'none';
+      newBtn.querySelector('.icon-pause').style.display = '';
+    } else {
+      chatVoicePlayingBtn = null;
+    }
+  }
 }
 function openChatThread(username, name, avatar){
   if(!state.profile || !state.profile.authenticated){ showToast('Войдите, чтобы писать друзьям'); return; }
@@ -7226,6 +7302,9 @@ function openChatThread(username, name, avatar){
   renderAvatarInto(document.getElementById('chatThreadAvatar'), avatar, name);
   document.getElementById('chatThreadMessages').innerHTML = '';
   document.getElementById('chatThreadEmptyHint').style.display = 'none';
+  chatInputEl.value = '';
+  autoResizeChatInput();
+  updateChatComposerButtons();
   const dot = document.getElementById('chatThreadPresence');
   dot.classList.remove('online');
   chatThreadPresenceUnsub = watchPresence(username, online => dot.classList.toggle('online', online));
@@ -7261,13 +7340,22 @@ document.querySelector('[data-screen="chat"] [data-nav="chats"]').addEventListen
 
 const chatInputEl = document.getElementById('chatInput');
 const chatSendBtn = document.getElementById('chatSendBtn');
+const chatMicBtn = document.getElementById('chatMicBtn');
 function autoResizeChatInput(){
   chatInputEl.style.height = 'auto';
   chatInputEl.style.height = Math.min(chatInputEl.scrollHeight, 110) + 'px';
 }
+// Mirrors Telegram: the mic button is what's there by default, and only
+// swaps for the send button once there's actual text to send.
+function updateChatComposerButtons(){
+  const hasText = !!chatInputEl.value.trim();
+  chatSendBtn.style.display = hasText ? 'flex' : 'none';
+  chatSendBtn.disabled = !hasText;
+  chatMicBtn.style.display = hasText ? 'none' : 'flex';
+}
 chatInputEl.addEventListener('input', ()=>{
   autoResizeChatInput();
-  chatSendBtn.disabled = !chatInputEl.value.trim();
+  updateChatComposerButtons();
 });
 chatInputEl.addEventListener('keydown', e=>{
   if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendCurrentChatMessage(); }
@@ -7279,7 +7367,7 @@ async function sendCurrentChatMessage(){
   const otherUsername = state.activeChat.uid;
   chatInputEl.value = '';
   autoResizeChatInput();
-  chatSendBtn.disabled = true;
+  updateChatComposerButtons();
   const path = chatPairPath(otherUsername);
   const myKeyVal = fbKey(state.profile.username);
   const ts = firebase.database.ServerValue.TIMESTAMP;
@@ -7302,6 +7390,150 @@ async function sendCurrentChatMessage(){
   }
 }
 chatSendBtn.addEventListener('click', sendCurrentChatMessage);
+
+/* --- voice messages: record, upload, playback --- */
+function formatVoiceDuration(sec){
+  sec = Math.max(0, Math.round(sec));
+  const m = Math.floor(sec/60), s = sec%60;
+  return m+':'+String(s).padStart(2,'0');
+}
+
+let chatRecorder = null;
+let chatRecordedChunks = [];
+let chatRecordingStream = null;
+let chatRecordingStartTime = 0;
+let chatRecordingTimerHandle = null;
+
+function chatRecordingTick(){
+  const sec = Math.floor((Date.now() - chatRecordingStartTime) / 1000);
+  document.getElementById('chatRecordingTimer').textContent = formatVoiceDuration(sec);
+}
+function stopChatRecordingUI(){
+  if(chatRecordingTimerHandle){ clearInterval(chatRecordingTimerHandle); chatRecordingTimerHandle = null; }
+  if(chatRecordingStream){ chatRecordingStream.getTracks().forEach(t=>t.stop()); chatRecordingStream = null; }
+  document.getElementById('chatRecordingBar').style.display = 'none';
+  document.getElementById('chatInputBar').style.display = 'flex';
+}
+async function startVoiceRecording(){
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined'){
+    showToast('Запись голоса не поддерживается на этом устройстве');
+    return;
+  }
+  let stream;
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  }catch(e){
+    showToast('Нет доступа к микрофону');
+    return;
+  }
+  chatRecordingStream = stream;
+  chatRecordedChunks = [];
+  const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find(t => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t));
+  chatRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+  chatRecorder.ondataavailable = e => { if(e.data && e.data.size > 0) chatRecordedChunks.push(e.data); };
+  chatRecorder.start();
+  chatRecordingStartTime = Date.now();
+  document.getElementById('chatInputBar').style.display = 'none';
+  document.getElementById('chatRecordingBar').style.display = 'flex';
+  chatRecordingTick();
+  chatRecordingTimerHandle = setInterval(chatRecordingTick, 250);
+}
+function cancelVoiceRecording(){
+  if(chatRecorder && chatRecorder.state !== 'inactive'){
+    chatRecorder.ondataavailable = null;
+    chatRecorder.stop();
+  }
+  chatRecorder = null;
+  chatRecordedChunks = [];
+  stopChatRecordingUI();
+}
+async function finishAndSendVoiceRecording(){
+  if(!chatRecorder || chatRecorder.state === 'inactive'){ stopChatRecordingUI(); return; }
+  const durationSec = (Date.now() - chatRecordingStartTime) / 1000;
+  const recorder = chatRecorder;
+  const blob = await new Promise(resolve=>{
+    recorder.onstop = () => resolve(new Blob(chatRecordedChunks, { type: recorder.mimeType || 'audio/webm' }));
+    recorder.stop();
+  });
+  chatRecorder = null;
+  stopChatRecordingUI();
+  if(durationSec < 1){ showToast('Слишком короткая запись'); return; }
+  await sendVoiceMessage(blob, durationSec);
+}
+document.getElementById('chatMicBtn').addEventListener('click', startVoiceRecording);
+document.getElementById('chatRecordingCancelBtn').addEventListener('click', cancelVoiceRecording);
+document.getElementById('chatRecordingSendBtn').addEventListener('click', finishAndSendVoiceRecording);
+
+async function sendVoiceMessage(blob, durationSec){
+  if(!state.activeChat) return;
+  if(!fbDb || !fbStorage){ showToast('Нет соединения с сервером'); return; }
+  const otherUsername = state.activeChat.uid;
+  const path = chatPairPath(otherUsername);
+  const myKeyVal = fbKey(state.profile.username);
+  const ts = firebase.database.ServerValue.TIMESTAMP;
+  const msgRef = fbDb.ref(path+'/messages').push();
+  const ext = (blob.type || '').includes('mp4') ? 'm4a' : 'webm';
+  try{
+    const storageRef = fbStorage.ref('voiceMessages/'+path+'/'+msgRef.key+'.'+ext);
+    await storageRef.put(blob, { contentType: blob.type || 'audio/webm' });
+    const audioUrl = await storageRef.getDownloadURL();
+    await msgRef.set({ from: myKeyVal, type: 'voice', audioUrl, duration: durationSec, ts });
+    await fbDb.ref(path+'/meta').set({ lastText: '🎤 Голосовое сообщение', lastTs: ts, lastFrom: myKeyVal });
+    fbDb.ref(path+'/lastRead/'+myKeyVal).set(ts);
+    const viewerSnap = await fbDb.ref('activeChatViewers/'+fbKey(otherUsername)).once('value');
+    if(viewerSnap.val() !== myKeyVal){
+      notifyFriend(otherUsername, state.profile.username, '🎤 Голосовое сообщение', 'chat-message', baseUrl()+'?chat='+encodeURIComponent(state.profile.username));
+    }
+  }catch(e){
+    console.warn('sendVoiceMessage failed:', e);
+    showToast('Не удалось отправить голосовое сообщение');
+  }
+}
+
+// One shared <audio> element for the whole thread — playing a second voice
+// bubble pauses whichever one was already playing, matching how every
+// messenger handles overlapping voice notes.
+const chatVoiceAudioEl = new Audio();
+let chatVoicePlayingBtn = null;
+function resetVoiceButtonUI(btn){
+  const playIcon = btn.querySelector('.icon-play'), pauseIcon = btn.querySelector('.icon-pause');
+  if(playIcon) playIcon.style.display = '';
+  if(pauseIcon) pauseIcon.style.display = 'none';
+  const bar = btn.parentElement.querySelector('.chat-voice-bar-fill');
+  if(bar) bar.style.width = '0%';
+}
+document.getElementById('chatThreadMessages').addEventListener('click', e=>{
+  const btn = e.target.closest('.chat-voice-play');
+  if(!btn) return;
+  const url = btn.dataset.voiceUrl;
+  if(chatVoicePlayingBtn === btn && !chatVoiceAudioEl.paused){
+    chatVoiceAudioEl.pause();
+    return;
+  }
+  if(chatVoicePlayingBtn && chatVoicePlayingBtn !== btn) resetVoiceButtonUI(chatVoicePlayingBtn);
+  chatVoicePlayingBtn = btn;
+  if(chatVoiceAudioEl.src !== url) chatVoiceAudioEl.src = url;
+  chatVoiceAudioEl.play().catch(()=> showToast('Не удалось воспроизвести'));
+});
+chatVoiceAudioEl.addEventListener('play', ()=>{
+  if(!chatVoicePlayingBtn) return;
+  chatVoicePlayingBtn.querySelector('.icon-play').style.display = 'none';
+  chatVoicePlayingBtn.querySelector('.icon-pause').style.display = '';
+});
+chatVoiceAudioEl.addEventListener('pause', ()=>{
+  if(!chatVoicePlayingBtn) return;
+  chatVoicePlayingBtn.querySelector('.icon-play').style.display = '';
+  chatVoicePlayingBtn.querySelector('.icon-pause').style.display = 'none';
+});
+chatVoiceAudioEl.addEventListener('ended', ()=>{
+  if(chatVoicePlayingBtn) resetVoiceButtonUI(chatVoicePlayingBtn);
+  chatVoicePlayingBtn = null;
+});
+chatVoiceAudioEl.addEventListener('timeupdate', ()=>{
+  if(!chatVoicePlayingBtn || !chatVoiceAudioEl.duration) return;
+  const bar = chatVoicePlayingBtn.parentElement.querySelector('.chat-voice-bar-fill');
+  if(bar) bar.style.width = (chatVoiceAudioEl.currentTime / chatVoiceAudioEl.duration * 100)+'%';
+});
 
 // ?chat=<username> deep link (from a chat-message push notification) — opened
 // once state.friendsList has loaded, same pattern as ?room=/?zroom= above.
