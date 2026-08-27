@@ -2817,6 +2817,15 @@ function loadScriptTagsInOrder(urls){
   return Promise.all(urls.map(loadScriptTag));
 }
 
+// firebase-messaging-compat.js is only ever touched by registerPushToken()
+// (see fbMessagingReady below), never by chat/friends/quiz/anything on the
+// fbAuthReady critical path — loading it here too just made every chat open
+// wait on a script the chat itself never uses. Fetched in parallel with the
+// three below regardless (this fires immediately, same as they do), just no
+// longer part of what fbAuthReady blocks on.
+let fbMessagingReady = loadScriptTag('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js')
+  .catch(e => console.warn('Failed to load firebase-messaging-compat.js:', e));
+
 // Resolves once we have a signed-in (anonymous) Firebase user, so DB writes
 // carry a real auth.uid the security rules can check. Friends/codes/invites
 // are gated on this identity — see README note near FRIENDS section below.
@@ -2826,8 +2835,7 @@ let fbAuthReady = (async () => {
     await loadScriptTagsInOrder([
       'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js',
       'https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js',
-      'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js',
-      'https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js'
+      'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js'
     ]);
 
     firebase.initializeApp(FIREBASE_CONFIG);
@@ -6865,6 +6873,12 @@ async function registerPushToken(){
   const auth = getAuthCredentials && getAuthCredentials();
   if(!auth) return;
   try{
+    // fbAuthReady for firebase.initializeApp(); fbMessagingReady for the
+    // messaging script itself — neither is awaited by chat/friends/etc
+    // anymore (see fbMessagingReady's own comment), so this is the one
+    // place that actually needs both before touching firebase.messaging().
+    await fbAuthReady;
+    await fbMessagingReady;
     const reg = await navigator.serviceWorker.ready;
     const messaging = firebase.messaging();
     const token = await messaging.getToken({ vapidKey: FCM_VAPID_KEY, serviceWorkerRegistration: reg });
@@ -6902,19 +6916,32 @@ window.onAndroidFCMToken = async function(token) {
   if(!state.profile || !state.profile.authenticated) return;
   const auth = getAuthCredentials && getAuthCredentials();
   if(!auth) return;
-  try {
-    await apiRegisterPushToken(auth.username, auth.password, token);
-    const previouslyEnabled = localStorage.getItem('androidFCMActive');
-    window.androidFCMEnabled = true;
-    localStorage.setItem('androidFCMActive', 'true');
-    if (!previouslyEnabled) {
-      showToast('Уведомления включены!');
-    }
-    updateNotifUI();
-    if(typeof updateReminderUI === 'function') updateReminderUI();
-  } catch(e) {
-    console.warn('Android FCM registration failed:', e);
+  // Retries instead of a single silent attempt — this used to await
+  // apiRegisterPushToken() without ever checking whether it actually
+  // succeeded, so a registration call that failed right at app launch
+  // (a momentary network drop, an auth hiccup) still marked notifications
+  // as "enabled" and showed the success toast. That leaves the token never
+  // actually registered server-side until the next app launch tries again —
+  // a real gap this app previously had no way to detect or recover from
+  // within the same session.
+  let result = null;
+  for(let attempt = 0; attempt < 3; attempt++){
+    result = await apiRegisterPushToken(auth.username, auth.password, token);
+    if(result && result.ok) break;
+    if(attempt < 2) await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
   }
+  if(!result || !result.ok){
+    console.warn('Android FCM registration failed after retries:', result && result.error);
+    return;
+  }
+  const previouslyEnabled = localStorage.getItem('androidFCMActive');
+  window.androidFCMEnabled = true;
+  localStorage.setItem('androidFCMActive', 'true');
+  if (!previouslyEnabled) {
+    showToast('Уведомления включены!');
+  }
+  updateNotifUI();
+  if(typeof updateReminderUI === 'function') updateReminderUI();
 };
 const enableNotifBtnEl = document.getElementById('enableNotifBtn');
 if(enableNotifBtnEl) enableNotifBtnEl.addEventListener('click', enableNotifications);
@@ -7548,9 +7575,6 @@ function updateChatComposerButtons(){
 chatInputEl.addEventListener('input', ()=>{
   autoResizeChatInput();
   updateChatComposerButtons();
-});
-chatInputEl.addEventListener('keydown', e=>{
-  if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendCurrentChatMessage(); }
 });
 async function sendCurrentChatMessage(){
   const text = chatInputEl.value.trim();
