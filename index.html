@@ -7722,6 +7722,12 @@ const QURAN_SURAH_TRANSLIT = [
 // reading, and doesn't get counted as pages read — see `mode` below.
 const quranState = { page: 1, bookmarkPage: 1, mode: 'progress', tajweed: true, font: 'uthmani', size: 26, chapters: null, pageCache: {}, readPages: new Set() };
 const QURAN_READ_PAGES_KEY = 'quranReadPages';
+// Bump this to force a one-time reset of everyone's pages-read progress —
+// used once already because earlier versions marked ANY visited page as
+// "read", including a straight jump to page 604 via the surah picker, so
+// existing counts could be wildly inflated ahead of the progress/browse
+// mode split above.
+const QURAN_PROGRESS_RESET_VERSION = 1;
 (function quranLoadPrefs(){
   try{
     const savedPage = parseInt(localStorage.getItem('quranLastPage'), 10);
@@ -7731,8 +7737,18 @@ const QURAN_READ_PAGES_KEY = 'quranReadPages';
     if(QURAN_FONTS.includes(savedFont)) quranState.font = savedFont;
     const savedSize = parseInt(localStorage.getItem('quranSize'), 10);
     if(savedSize >= 16 && savedSize <= 48) quranState.size = savedSize;
-    const savedRead = JSON.parse(localStorage.getItem(QURAN_READ_PAGES_KEY) || '[]');
-    quranState.readPages = new Set(savedRead);
+
+    const resetVersion = parseInt(localStorage.getItem('quranProgressResetVersion'), 10) || 0;
+    if(resetVersion < QURAN_PROGRESS_RESET_VERSION){
+      localStorage.removeItem(QURAN_READ_PAGES_KEY);
+      localStorage.setItem('quranProgressResetVersion', String(QURAN_PROGRESS_RESET_VERSION));
+      // quranState.readPages stays the empty Set it was constructed with;
+      // the next login's catch-up sync (see syncQuranPagesRead) will push
+      // this 0 to the server, overwriting the old inflated stat there too.
+    } else {
+      const savedRead = JSON.parse(localStorage.getItem(QURAN_READ_PAGES_KEY) || '[]');
+      quranState.readPages = new Set(savedRead);
+    }
   }catch(e){}
 })();
 function quranMarkPageRead(pageNum){
