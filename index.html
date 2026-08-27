@@ -7487,8 +7487,6 @@ function dataUrlToBlob(dataUrl){
   return base64ToBlob(match[2], match[1]);
 }
 async function migrateLegacyMediaMessage(path, id, kind, dataUrl){
-  if(chatLegacyMediaMigrating.has(id)) return;
-  chatLegacyMediaMigrating.add(id);
   try{
     const blob = dataUrlToBlob(dataUrl);
     if(!blob) return;
@@ -7500,6 +7498,21 @@ async function migrateLegacyMediaMessage(path, id, kind, dataUrl){
     console.warn('legacy media migration failed for', id, e);
     chatLegacyMediaMigrating.delete(id);
   }
+}
+// A chat with many legacy messages would otherwise kick off ALL of their
+// uploads at once the moment the thread renders — competing for the same
+// connection this is trying to unclog in the first place, confirmed on a
+// real device to make an immediate send even slower right after opening.
+// Chaining them onto one queue runs uploads one at a time instead; the
+// short initial delay leaves a clear runway for whatever the user does
+// right after opening (most likely: sending something themselves).
+let chatLegacyMigrationQueue = Promise.resolve();
+function queueLegacyMediaMigration(path, id, kind, dataUrl){
+  if(chatLegacyMediaMigrating.has(id)) return;
+  chatLegacyMediaMigrating.add(id);
+  chatLegacyMigrationQueue = chatLegacyMigrationQueue
+    .then(()=> new Promise(r => setTimeout(r, 1500)))
+    .then(()=> migrateLegacyMediaMessage(path, id, kind, dataUrl));
 }
 // Mirrors `presence`: while a thread is open, activeChatViewers/{myKey} names
 // who I'm looking at, so the sender can skip a push notification that would
@@ -7571,7 +7584,7 @@ function renderChatThreadMessages(messagesObj, isLiveSnapshot){
       // so playback doesn't need to care which one it got.
       const audioSrc = m.audioUrl || m.audioData;
       if(audioSrc) chatMediaDataById[id] = audioSrc;
-      if(!m.audioUrl && m.audioData && fbDb) migrateLegacyMediaMessage(chatThreadKey, id, 'audio', m.audioData);
+      if(!m.audioUrl && m.audioData && fbDb) queueLegacyMediaMigration(chatThreadKey, id, 'audio', m.audioData);
       bodyHtml = `<button class="chat-voice-play" data-voice-id="${escapeHtml(id)}" aria-label="Воспроизвести">
            <svg class="icon-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
            <svg class="icon-pause" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
@@ -7587,7 +7600,7 @@ function renderChatThreadMessages(messagesObj, isLiveSnapshot){
         chatMediaDataById[id] = videoSrc;
         if(!chatVideoPosterById[id]) generateVideoPoster(id, videoSrc);
       }
-      if(!m.videoUrl && m.videoData && fbDb) migrateLegacyMediaMessage(chatThreadKey, id, 'video', m.videoData);
+      if(!m.videoUrl && m.videoData && fbDb) queueLegacyMediaMigration(chatThreadKey, id, 'video', m.videoData);
       const poster = chatVideoPosterById[id];
       const posterStyle = poster ? ` style="background-image:url(${poster});background-size:cover;background-position:center top;"` : '';
       bodyHtml = `<div class="chat-video-circle" data-video-id="${escapeHtml(id)}"${posterStyle}>
