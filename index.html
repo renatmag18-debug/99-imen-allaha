@@ -2785,6 +2785,7 @@ const PUSH_RELAY_URL = "https://99ism-api.99ism-worker.workers.dev/push";
 const PUSH_RELAY_SECRET = "kJNSpd7TCyYe1rF7o9Lij7u4DSEz4tuIVNy7qQIHbh4=";
 let fbDb = null;
 let fbAuth = null;
+let fbStorage = null;
 
 // Firebase's SDK scripts used to be blocking <script src> tags right here,
 // ahead of the entire app script below — on a slow or blocked connection to
@@ -2840,6 +2841,23 @@ let fbAppScriptReady = loadScriptTag('https://www.gstatic.com/firebasejs/10.12.2
 let fbMessagingReady = fbAppScriptReady
   .then(()=> loadScriptTag('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js'))
   .catch(e => console.warn('Failed to load firebase-messaging-compat.js:', e));
+
+// Voice/video chat messages upload to Storage (see sendVoiceMessage/
+// sendVideoMessage) rather than embedding base64 in the RTDB message
+// itself — same reasoning as messaging above: only the send path touches
+// this, so it shouldn't block fbAuthReady/chat opening either.
+let fbStorageReady = fbAppScriptReady
+  .then(()=> loadScriptTag('https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js'))
+  .catch(e => console.warn('Failed to load firebase-storage-compat.js:', e));
+// firebase.storage() needs firebase.initializeApp() to have run (that
+// happens inside fbAuthReady) as well as the storage script itself —
+// callers just await this instead of juggling both promises themselves.
+async function ensureStorage(){
+  await fbAuthReady;
+  await fbStorageReady;
+  if(!fbStorage) fbStorage = firebase.storage();
+  return fbStorage;
+}
 
 // Resolves once we have a signed-in (anonymous) Firebase user, so DB writes
 // carry a real auth.uid the security rules can check. Friends/codes/invites
@@ -7476,7 +7494,12 @@ function renderChatThreadMessages(messagesObj, isLiveSnapshot){
     // making the whole voice/video message vanish rather than just being
     // briefly untappable until the real data arrives.
     if(m.type === 'voice'){
-      if(m.audioData) chatMediaDataById[id] = m.audioData;
+      // audioUrl (Storage download URL) is the current format; audioData
+      // (base64 data: URL) is what messages sent before the Storage
+      // migration still carry — both work identically as an <audio src>,
+      // so playback doesn't need to care which one it got.
+      const audioSrc = m.audioUrl || m.audioData;
+      if(audioSrc) chatMediaDataById[id] = audioSrc;
       bodyHtml = `<button class="chat-voice-play" data-voice-id="${escapeHtml(id)}" aria-label="Воспроизвести">
            <svg class="icon-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
            <svg class="icon-pause" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
@@ -7486,9 +7509,11 @@ function renderChatThreadMessages(messagesObj, isLiveSnapshot){
            <span class="chat-voice-duration" data-total="${m.duration||0}">${formatVoiceDuration(m.duration||0)}</span>
          </div>`;
     } else if(m.type === 'video'){
-      if(m.videoData){
-        chatMediaDataById[id] = m.videoData;
-        if(!chatVideoPosterById[id]) generateVideoPoster(id, m.videoData);
+      // Same old-vs-new format split as voice above (videoUrl vs videoData).
+      const videoSrc = m.videoUrl || m.videoData;
+      if(videoSrc){
+        chatMediaDataById[id] = videoSrc;
+        if(!chatVideoPosterById[id]) generateVideoPoster(id, videoSrc);
       }
       const poster = chatVideoPosterById[id];
       const posterStyle = poster ? ` style="background-image:url(${poster});background-size:cover;background-position:center top;"` : '';
@@ -7820,13 +7845,25 @@ document.getElementById('chatMicBtn').addEventListener('click', startVoiceRecord
 document.getElementById('chatRecordingCancelBtn').addEventListener('click', cancelVoiceRecording);
 document.getElementById('chatRecordingSendBtn').addEventListener('click', finishAndSendVoiceRecording);
 
-function blobToDataURL(blob){
-  return new Promise((resolve, reject)=>{
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(reader.error || new Error('FileReader failed'));
-    reader.readAsDataURL(blob);
-  });
+// Guesses a filesystem-friendly extension purely for readability in the
+// Storage console — playback only ever depends on the Content-Type set
+// during upload (see uploadChatMedia), never on this.
+function extensionForMime(mime, kind){
+  if(mime && mime.includes('webm')) return 'webm';
+  if(mime && mime.includes('ogg')) return 'ogg';
+  return kind === 'audio' ? 'm4a' : 'mp4';
+}
+// Uploads a voice/video blob to Storage under a path keyed by the chat and
+// the message's own push id, returning its public download URL. Requires
+// Storage to actually be enabled on the Firebase project (Blaze plan) —
+// callers should let the surrounding try/catch's "failed to send" toast
+// cover the case where it isn't.
+async function uploadChatMedia(path, msgKey, blob, kind){
+  const storage = await ensureStorage();
+  const ext = extensionForMime(blob.type, kind);
+  const storageRef = storage.ref(`chatMedia/${path}/${msgKey}.${ext}`);
+  await storageRef.put(blob, { contentType: blob.type || (kind === 'audio' ? 'audio/mp4' : 'video/mp4') });
+  return await storageRef.getDownloadURL();
 }
 async function sendVoiceMessage(blob, durationSec){
   if(!state.activeChat) return;
@@ -7836,11 +7873,12 @@ async function sendVoiceMessage(blob, durationSec){
   const myKeyVal = fbKey(state.profile.username);
   const ts = firebase.database.ServerValue.TIMESTAMP;
   try{
-    // readAsDataURL already prefixes the exact "data:<mime-type>;base64,"
-    // header, so this string can be dropped straight into <audio>.src on
-    // playback with no separate MIME-type bookkeeping.
-    const audioData = await blobToDataURL(blob);
-    await fbDb.ref(path+'/messages').push({ from: myKeyVal, type: 'voice', audioData, duration: durationSec, ts });
+    // Reserve the message id up front so the Storage path and the RTDB
+    // record agree on it, without writing the (still-uploading) message
+    // into the thread until the file is actually available to play.
+    const msgRef = fbDb.ref(path+'/messages').push();
+    const audioUrl = await uploadChatMedia(path, msgRef.key, blob, 'audio');
+    await msgRef.set({ from: myKeyVal, type: 'voice', audioUrl, duration: durationSec, ts });
     await fbDb.ref(path+'/meta').set({ lastText: '🎤 Голосовое сообщение', lastTs: ts, lastFrom: myKeyVal });
     fbDb.ref(path+'/lastRead/'+myKeyVal).set(ts);
     const viewerSnap = await fbDb.ref('activeChatViewers/'+fbKey(otherUsername)).once('value');
@@ -7893,8 +7931,12 @@ async function sendVideoMessage(blob){
   const myKeyVal = fbKey(state.profile.username);
   const ts = firebase.database.ServerValue.TIMESTAMP;
   try{
-    const [videoData, durationSec] = await Promise.all([blobToDataURL(blob), getVideoDuration(blob)]);
-    await fbDb.ref(path+'/messages').push({ from: myKeyVal, type: 'video', videoData, duration: durationSec, ts });
+    // .push() just generates a local key synchronously (no network round
+    // trip), so it can run alongside getVideoDuration() without an extra
+    // await of its own.
+    const msgRef = fbDb.ref(path+'/messages').push();
+    const [durationSec, videoUrl] = await Promise.all([getVideoDuration(blob), uploadChatMedia(path, msgRef.key, blob, 'video')]);
+    await msgRef.set({ from: myKeyVal, type: 'video', videoUrl, duration: durationSec, ts });
     await fbDb.ref(path+'/meta').set({ lastText: '⭕ Видео-кружок', lastTs: ts, lastFrom: myKeyVal });
     fbDb.ref(path+'/lastRead/'+myKeyVal).set(ts);
     const viewerSnap = await fbDb.ref('activeChatViewers/'+fbKey(otherUsername)).once('value');
@@ -8029,6 +8071,10 @@ function generateVideoPoster(id, src){
   video.muted = true;
   video.playsInline = true;
   video.preload = 'auto';
+  // Needed to read pixels off a Storage-hosted (cross-origin) video into
+  // the canvas below without it being flagged "tainted" — harmless no-op
+  // for a same-origin data: URL (legacy base64 messages).
+  video.crossOrigin = 'anonymous';
   video.style.position = 'fixed';
   video.style.left = '-9999px';
   video.style.width = '2px';
