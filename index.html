@@ -7242,6 +7242,31 @@ function chatPairPath(otherUsername){
   const [lo, hi] = [fbKey(state.profile.username), fbKey(otherUsername)].sort();
   return 'chats/'+lo+'/'+hi;
 }
+// A lightweight local cache of a thread's last-seen messages, purely so
+// reopening a chat can render instantly instead of sitting on "Загрузка…"
+// through the anonymous sign-in + RTDB connection round trips every time —
+// see openChatThread(). Deliberately strips audioData/videoData (base64,
+// can be sizeable) before storing: this is only meant to redraw the
+// familiar shape of the conversation while the live listener catches up,
+// not to make media playable offline, and keeping it out avoids blowing
+// through localStorage's size limit across many chats.
+function chatCacheKey(path){ return 'chatCache_'+path; }
+function saveChatCache(path, messagesObj){
+  try{
+    const lite = {};
+    Object.entries(messagesObj || {}).forEach(([id, m])=>{
+      const { audioData, videoData, ...rest } = m;
+      lite[id] = rest;
+    });
+    localStorage.setItem(chatCacheKey(path), JSON.stringify(lite));
+  }catch(e){ /* storage full/unavailable — cache is best-effort only */ }
+}
+function loadChatCache(path){
+  try{
+    const raw = localStorage.getItem(chatCacheKey(path));
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){ return null; }
+}
 function formatChatClock(ts){
   return new Date(ts).toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
 }
@@ -7399,8 +7424,13 @@ function markChatRead(otherUsername){
   if(!fbDb || !state.profile) return;
   fbDb.ref(chatPairPath(otherUsername)+'/lastRead/'+fbKey(state.profile.username)).set(firebase.database.ServerValue.TIMESTAMP);
 }
-function renderChatThreadMessages(messagesObj){
+function renderChatThreadMessages(messagesObj, isLiveSnapshot){
   chatThreadLastMessagesObj = messagesObj;
+  // Only a genuine Firebase snapshot updates the cache — re-renders driven
+  // by the cache itself (openChatThread's cache-priming call) or by the
+  // lastRead listener (checkmarks only, not new data) would otherwise just
+  // write the same or stale data back.
+  if(isLiveSnapshot && chatThreadKey) saveChatCache(chatThreadKey, messagesObj);
   const wrap = document.getElementById('chatThreadMessages');
   const emptyHint = document.getElementById('chatThreadEmptyHint');
   const scrollEl = document.getElementById('chatThreadScroll');
@@ -7499,14 +7529,26 @@ function openChatThread(username, name, avatar){
   chatThreadLastMessagesObj = null;
   chatRenderedMessageIds = new Set();
   chatThreadFirstRenderDone = false;
-  // Shown immediately rather than leaving the screen blank — the first chat
-  // opened after launch waits on fbAuthReady (Firebase SDK scripts + anonymous
-  // sign-in, all over the network), which can take a few seconds and
-  // otherwise looks like the thread is just stuck empty. renderChatThreadMessages
-  // overwrites this with the real "no messages" text once data actually arrives.
-  const chatThreadEmptyHintEl = document.getElementById('chatThreadEmptyHint');
-  chatThreadEmptyHintEl.textContent = 'Загрузка сообщений…';
-  chatThreadEmptyHintEl.style.display = 'block';
+  // Anonymous sign-in + establishing the RTDB connection are both real
+  // network round trips that can't be sped up from here — on a slow
+  // connection to Google's infrastructure that alone can take several
+  // seconds. Showing whatever this chat looked like last time immediately
+  // (from a lightweight local cache, no media payloads) makes reopening a
+  // chat feel instant instead of blank/loading every single time; the live
+  // listener below overwrites it with the real thing moments later anyway.
+  const cachedMessages = loadChatCache(chatPairPath(username));
+  if(cachedMessages){
+    renderChatThreadMessages(cachedMessages);
+  } else {
+    // Shown immediately rather than leaving the screen blank — the first chat
+    // opened after launch waits on fbAuthReady (Firebase SDK scripts + anonymous
+    // sign-in, all over the network), which can take a few seconds and
+    // otherwise looks like the thread is just stuck empty. renderChatThreadMessages
+    // overwrites this with the real "no messages" text once data actually arrives.
+    const chatThreadEmptyHintEl = document.getElementById('chatThreadEmptyHint');
+    chatThreadEmptyHintEl.textContent = 'Загрузка сообщений…';
+    chatThreadEmptyHintEl.style.display = 'block';
+  }
   chatInputEl.value = '';
   autoResizeChatInput();
   updateChatComposerButtons();
@@ -7527,7 +7569,7 @@ function openChatThread(username, name, avatar){
     viewerRef.onDisconnect().remove();
     const msgsRef = fbDb.ref(path+'/messages').limitToLast(300);
     const listener = snap => {
-      renderChatThreadMessages(snap.val());
+      renderChatThreadMessages(snap.val(), true);
       markChatRead(username);
     };
     // The 3rd .on() arg fires on a rules rejection (e.g. read access denied)
