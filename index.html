@@ -1029,9 +1029,24 @@ body{
   display:block; max-width:220px; max-height:280px; width:auto; height:auto;
   border-radius:14px; cursor:pointer; object-fit:cover;
 }
+.chat-clip-wrap{ position:relative; display:inline-block; max-width:240px; }
 .chat-clip-video{
   display:block; max-width:240px; max-height:320px; width:100%; border-radius:14px; background:#000;
 }
+.chat-clip-fullscreen-btn{
+  position:absolute; top:8px; right:8px; z-index:2; width:30px; height:30px; border-radius:50%;
+  border:none; background:rgba(0,0,0,.55); color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+.chat-clip-fullscreen-btn svg{ width:15px; height:15px; }
+.chat-clip-fullscreen-btn:active{ transform:scale(.9); }
+
+#chatClipViewerOverlay{
+  position:fixed; inset:0; z-index:60; background:rgba(4,10,12,.95);
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity .18s var(--ease);
+}
+#chatClipViewerOverlay.show{ opacity:1; pointer-events:auto; }
+#chatClipViewerEl{ max-width:100vw; max-height:100vh; width:auto; height:auto; }
 
 .chat-bubble.pending{ background:none; border:none; padding:0; }
 .chat-bubble-row.mine .chat-bubble.pending{ background:none; border:none; padding:0; }
@@ -2507,6 +2522,13 @@ body{
       <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
     </button>
     <img id="chatImageViewerImg" alt="">
+  </div>
+
+  <div id="chatClipViewerOverlay">
+    <button class="chat-video-viewer-close" id="chatClipViewerClose" aria-label="Закрыть">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
+    <video id="chatClipViewerEl" controls playsinline></video>
   </div>
 
   <div class="sheet-backdrop" id="quranSurahBackdrop"></div>
@@ -7571,6 +7593,16 @@ let chatRenderedMessageIds = new Set();
 // The initial history load for a thread shouldn't animate every bubble in
 // at once — only messages that arrive while it's already open should.
 let chatThreadFirstRenderDone = false;
+// Photo/video thumbnails have no explicit width/height, so the browser
+// doesn't know their real footprint until the file itself loads — for
+// anything above the very bottom of the thread, that load then grows the
+// page and shifts everything below it, but nothing re-corrects the scroll
+// position afterwards. The fix isn't "give images a fixed size" (their
+// aspect ratio varies too much to guess), it's re-pinning to the bottom
+// whenever a bubble's own media finishes loading — restricted to this
+// short window right after a chat is opened, so it doesn't fight someone
+// who has deliberately scrolled up to read older messages later.
+let chatInitialLoadStickUntil = 0;
 // Video-circle first-frame thumbnails, generated once per message id (see
 // generateVideoPoster) and kept for the life of the page — cheap to keep
 // around and avoids redoing the canvas grab on every re-render.
@@ -7723,7 +7755,16 @@ function renderChatThreadMessages(messagesObj, isLiveSnapshot){
       if(m.clipUrl && !chatVideoPosterById[id]) generateVideoPoster(id, m.clipUrl);
       const clipPoster = chatVideoPosterById[id];
       const posterAttr = clipPoster ? ` poster="${escapeHtml(clipPoster)}"` : '';
-      bodyHtml = `<video class="chat-clip-video" data-video-id="${escapeHtml(id)}" controls playsinline preload="metadata" src="${escapeHtml(m.clipUrl||'')}"${posterAttr}></video>`;
+      // The native <video controls> fullscreen icon is a no-op in this
+      // WebView (no onShowCustomView support to grant it), so this adds its
+      // own fullscreen button wired to a JS-driven overlay (openClipViewer)
+      // instead of relying on the browser's built-in fullscreen API at all.
+      bodyHtml = `<div class="chat-clip-wrap">
+           <video class="chat-clip-video" data-video-id="${escapeHtml(id)}" controls playsinline preload="metadata" src="${escapeHtml(m.clipUrl||'')}"${posterAttr}></video>
+           <button type="button" class="chat-clip-fullscreen-btn" aria-label="Развернуть на весь экран">
+             <svg viewBox="0 0 24 24" fill="none"><path d="M9 3H5a2 2 0 00-2 2v4M15 3h4a2 2 0 012 2v4M9 21H5a2 2 0 01-2-2v-4M15 21h4a2 2 0 002-2v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+           </button>
+         </div>`;
     } else {
       bodyHtml = escapeHtml(m.text||'');
     }
@@ -7787,6 +7828,7 @@ function openChatThread(username, name, avatar){
   chatThreadLastMessagesObj = null;
   chatRenderedMessageIds = new Set();
   chatThreadFirstRenderDone = false;
+  chatInitialLoadStickUntil = Date.now() + 3000;
   // Anonymous sign-in + establishing the RTDB connection are both real
   // network round trips that can't be sped up from here — on a slow
   // connection to Google's infrastructure that alone can take several
@@ -8615,10 +8657,45 @@ document.getElementById('chatImageViewerClose').addEventListener('click', closeI
 document.getElementById('chatImageViewerOverlay').addEventListener('click', e=>{
   if(e.target.id === 'chatImageViewerOverlay') closeImageViewer();
 });
+// Gallery-video ("clip") fullscreen — a JS-driven overlay rather than the
+// native <video controls> fullscreen button, which is a silent no-op in
+// this WebView (no onShowCustomView support to grant the request). Carries
+// over the inline player's current position/play state so tapping fullscreen
+// mid-playback doesn't restart the clip from the beginning.
+function openClipViewer(src, startTime, autoplay){
+  chatVoiceAudioEl.pause();
+  const overlay = document.getElementById('chatClipViewerOverlay');
+  const videoEl = document.getElementById('chatClipViewerEl');
+  videoEl.src = src;
+  overlay.classList.add('show');
+  if(startTime) videoEl.currentTime = startTime;
+  if(autoplay) videoEl.play().catch(()=>{});
+}
+function closeClipViewer(){
+  const overlay = document.getElementById('chatClipViewerOverlay');
+  const videoEl = document.getElementById('chatClipViewerEl');
+  if(!overlay.classList.contains('show')) return;
+  overlay.classList.remove('show');
+  videoEl.pause();
+  videoEl.removeAttribute('src');
+  videoEl.load();
+}
+document.getElementById('chatClipViewerClose').addEventListener('click', closeClipViewer);
+document.getElementById('chatClipViewerOverlay').addEventListener('click', e=>{
+  if(e.target.id === 'chatClipViewerOverlay') closeClipViewer();
+});
 document.getElementById('chatThreadMessages').addEventListener('click', e=>{
   const imageThumb = e.target.closest('.chat-image-thumb');
   if(imageThumb){
     openImageViewer(imageThumb.src);
+    return;
+  }
+  const clipFsBtn = e.target.closest('.chat-clip-fullscreen-btn');
+  if(clipFsBtn){
+    const clipVideo = clipFsBtn.closest('.chat-clip-wrap').querySelector('.chat-clip-video');
+    const wasPlaying = clipVideo && !clipVideo.paused;
+    if(clipVideo) clipVideo.pause();
+    openClipViewer(clipVideo.currentSrc || clipVideo.src, clipVideo.currentTime, wasPlaying);
     return;
   }
   const videoCircle = e.target.closest('.chat-video-circle');
@@ -8645,6 +8722,23 @@ document.getElementById('chatThreadMessages').addEventListener('click', e=>{
   if(chatVoiceAudioEl.src !== src) chatVoiceAudioEl.src = src;
   chatVoiceAudioEl.play().catch(()=> showToast('Не удалось воспроизвести'));
 });
+// Neither event bubbles, but a capture-phase listener on an ancestor still
+// catches them — see chatInitialLoadStickUntil's comment for why this only
+// re-pins scroll during the short window after a chat opens. <img> fires
+// 'load' once its pixels are in; <video> never fires that at all — its
+// first size-affecting milestone is 'loadedmetadata', once dimensions
+// (and so the rendered height, given width:100%) are known.
+function chatStickScrollOnMediaLoad(e){
+  if(Date.now() > chatInitialLoadStickUntil) return;
+  const scrollEl = document.getElementById('chatThreadScroll');
+  if(scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight;
+}
+document.getElementById('chatThreadMessages').addEventListener('load', e=>{
+  if(e.target && e.target.tagName === 'IMG') chatStickScrollOnMediaLoad(e);
+}, true);
+document.getElementById('chatThreadMessages').addEventListener('loadedmetadata', e=>{
+  if(e.target && e.target.tagName === 'VIDEO') chatStickScrollOnMediaLoad(e);
+}, true);
 chatVoiceAudioEl.addEventListener('play', ()=>{
   if(!chatVoicePlayingBtn) return;
   chatVoicePlayingBtn.querySelector('.icon-play').style.display = 'none';
