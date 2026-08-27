@@ -1442,7 +1442,7 @@ body{
           <div class="stat-row">
             <div class="stat"><b id="learnedCount">0</b><span>изучено</span></div>
             <div class="stat"><b id="zikrLifetimeStat">0</b><span>зикров</span></div>
-            <div class="stat"><b id="quranReadStat">0%</b><span>прочитано Корана</span></div>
+            <div class="stat"><b id="quranReadStat">0</b><span>прочитано Корана</span></div>
           </div>
         </div>
 
@@ -2937,8 +2937,7 @@ document.querySelectorAll('[data-nav]').forEach(el=>{
 function updateHomeStats(){
   document.getElementById('learnedCount').textContent = state.learned.size;
   document.getElementById('zikrLifetimeStat').textContent = (typeof getZikrLifetimeTotal === 'function' ? (getZikrLifetimeTotal()||0) : 0).toLocaleString('ru-RU');
-  const quranPct = typeof quranReadPercent === 'function' ? quranReadPercent() : 0;
-  document.getElementById('quranReadStat').textContent = quranPct+'%';
+  document.getElementById('quranReadStat').textContent = quranState.readPages.size+' стр.';
 }
 
 let leaderboardScope = 'global';
@@ -7718,11 +7717,6 @@ const QURAN_READ_PAGES_KEY = 'quranReadPages';
     quranState.readPages = new Set(savedRead);
   }catch(e){}
 })();
-// Виден на главном экране как «% прочитано Корана» — доля из 604 страниц
-// Мусхафа, которые пользователь хотя бы раз открывал в ридере.
-function quranReadPercent(){
-  return Math.round(quranState.readPages.size / QURAN_TOTAL_PAGES * 100);
-}
 function quranMarkPageRead(pageNum){
   if(quranState.readPages.has(pageNum)) return;
   quranState.readPages.add(pageNum);
