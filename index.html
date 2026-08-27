@@ -7736,7 +7736,10 @@ window.onNativeVideoRecorded = async function(base64){
 window.onNativeVideoRecordError = function(reason){
   if(reason === 'cancelled') return;
   console.warn('native video circle recording failed:', reason);
-  showToast(reason === 'too_large' ? 'Видео получилось слишком большим' : 'Не удалось записать видео-кружок');
+  let msg = 'Не удалось записать видео-кружок';
+  if(reason === 'too_large') msg = 'Видео получилось слишком большим';
+  else if(reason === 'permission_denied') msg = 'Нет доступа к камере или микрофону';
+  showToast(msg);
 };
 
 // Browser fallback (plain website, no native bridge): getUserMedia video —
