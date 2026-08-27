@@ -1356,6 +1356,7 @@ body{
     <!-- HOME -->
     <section class="screen active" data-screen="home">
       <div class="scroll">
+        <div id="homeInvitesArea"></div>
         <div class="ios-app-banner" id="iosAppBanner">
           <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12M12 3l4 4M12 3L8 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 13v6a2 2 0 002 2h10a2 2 0 002-2v-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span>Установите как приложение: нажмите <b>«Поделиться»</b> внизу экрана в Safari, затем <b>«На экран Домой»</b></span>
@@ -7082,9 +7083,11 @@ setInterval(()=>{
   flushTimeTracking();
 }, 60000);
 
-/* ---------- pending duel / challenge invites banner ---------- */
+/* ---------- pending duel / challenge invites banner ----------
+   Rendered on the home screen too (not just Друзья) — an invite buried
+   a tab away meant people didn't notice it until they happened to open
+   Друзья on their own. */
 function renderInvitesArea(){
-  const area = document.getElementById('friendInvitesArea');
   let html = '';
   state.duelInvites.forEach(inv=>{
     html += `
@@ -7116,10 +7119,13 @@ function renderInvitesArea(){
         </div>
       </div>`;
   });
-  area.innerHTML = html;
+  ['friendInvitesArea','homeInvitesArea'].forEach(id=>{
+    const area = document.getElementById(id);
+    if(area) area.innerHTML = html;
+  });
 }
 
-document.getElementById('friendInvitesArea').addEventListener('click', e=>{
+function handleInviteAreaClick(e){
   const joinDuel = e.target.closest('[data-join-duel]');
   const declineDuel = e.target.closest('[data-decline-duel]');
   const acceptChallenge = e.target.closest('[data-accept-challenge]');
@@ -7132,7 +7138,9 @@ document.getElementById('friendInvitesArea').addEventListener('click', e=>{
   else if(declineChallenge) declineChallengeInvite(declineChallenge.dataset.declineChallenge);
   else if(joinDhikr) acceptDhikrRoomInvite(joinDhikr.dataset.joinDhikr);
   else if(declineDhikr) declineDhikrRoomInvite(declineDhikr.dataset.declineDhikr);
-});
+}
+document.getElementById('friendInvitesArea').addEventListener('click', handleInviteAreaClick);
+document.getElementById('homeInvitesArea').addEventListener('click', handleInviteAreaClick);
 
 function acceptDuelInvite(roomId){
   if(!fbDb || !state.profile) return;
