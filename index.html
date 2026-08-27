@@ -7362,7 +7362,7 @@ function renderChatThreadMessages(messagesObj){
          </button>
          <div class="chat-voice-body">
            <div class="chat-voice-bar"><div class="chat-voice-bar-fill"></div></div>
-           <span class="chat-voice-duration">${formatVoiceDuration(m.duration||0)}</span>
+           <span class="chat-voice-duration" data-total="${m.duration||0}">${formatVoiceDuration(m.duration||0)}</span>
          </div>`;
     } else if(m.type === 'video' && m.videoData){
       chatMediaDataById[id] = m.videoData;
@@ -7842,6 +7842,8 @@ function resetVoiceButtonUI(btn){
   if(pauseIcon) pauseIcon.style.display = 'none';
   const bar = btn.parentElement.querySelector('.chat-voice-bar-fill');
   if(bar) bar.style.width = '0%';
+  const durationEl = btn.parentElement.querySelector('.chat-voice-duration');
+  if(durationEl) durationEl.textContent = formatVoiceDuration(parseFloat(durationEl.dataset.total) || 0);
 }
 function openVideoViewer(src){
   // Only one thing (voice or video) plays at a time in the thread.
@@ -7910,6 +7912,8 @@ chatVoiceAudioEl.addEventListener('timeupdate', ()=>{
   if(!chatVoicePlayingBtn || !chatVoiceAudioEl.duration) return;
   const bar = chatVoicePlayingBtn.parentElement.querySelector('.chat-voice-bar-fill');
   if(bar) bar.style.width = (chatVoiceAudioEl.currentTime / chatVoiceAudioEl.duration * 100)+'%';
+  const durationEl = chatVoicePlayingBtn.parentElement.querySelector('.chat-voice-duration');
+  if(durationEl) durationEl.textContent = formatVoiceDuration(chatVoiceAudioEl.currentTime);
 });
 
 // ?chat=<username> deep link (from a chat-message push notification) — opened
