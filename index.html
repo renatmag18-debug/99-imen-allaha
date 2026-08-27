@@ -915,6 +915,38 @@ body{
 .chat-voice-bar-fill{ height:100%; width:0%; background:currentColor; opacity:1; }
 .chat-voice-duration{ font-size:11px; opacity:.75; font-family:var(--font-num); }
 
+.chat-video-record-bar{
+  flex-shrink:0; display:flex; align-items:center; gap:10px;
+  padding:10px 14px calc(12px + var(--safe-bottom));
+  border-top:1px solid var(--line); background:var(--glass); backdrop-filter:blur(14px);
+}
+.chat-video-record-preview-wrap{
+  width:44px; height:44px; border-radius:50%; overflow:hidden; flex-shrink:0;
+  background:#000; border:1px solid var(--line);
+}
+#chatVideoRecordPreview{ width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
+
+.chat-bubble.video{ background:none; border:none; padding:0; }
+.chat-video-circle{
+  position:relative; width:170px; height:170px; border-radius:50%; overflow:hidden;
+  background:#000; cursor:pointer; flex-shrink:0;
+}
+.chat-video-circle-el{ width:100%; height:100%; object-fit:cover; display:block; }
+.chat-video-circle-play{
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:44px; height:44px; border-radius:50%; border:none; background:rgba(0,0,0,.45); color:#fff;
+  display:flex; align-items:center; justify-content:center; pointer-events:none;
+}
+.chat-video-circle-play svg{ width:20px; height:20px; }
+.chat-video-circle.playing .chat-video-circle-play{ display:none; }
+.chat-video-circle-duration{
+  /* Centered rather than corner-anchored — a circular mask clips a square's
+     corners much more than its bottom-center, where the circle is widest. */
+  position:absolute; bottom:16px; left:50%; transform:translateX(-50%);
+  font-size:11px; color:#fff; font-family:var(--font-num); white-space:nowrap;
+  background:rgba(0,0,0,.45); padding:1px 7px; border-radius:8px; pointer-events:none;
+}
+
 .quran-legend-toggle{
   display:flex; align-items:center; justify-content:space-between; width:100%;
   background:none; border:none; padding:4px 0; margin-top:-8px; cursor:pointer;
@@ -2305,6 +2337,9 @@ body{
       </div>
       <div class="chat-input-bar" id="chatInputBar">
         <textarea id="chatInput" rows="1" placeholder="Сообщение…" maxlength="2000"></textarea>
+        <button class="chat-send-btn" id="chatVideoCircleBtn" aria-label="Видео-кружок">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M15 10l5-3v10l-5-3" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><rect x="3" y="6" width="12" height="12" rx="2.5" stroke="currentColor" stroke-width="1.6"/></svg>
+        </button>
         <button class="chat-send-btn" id="chatMicBtn" aria-label="Голосовое сообщение">
           <svg viewBox="0 0 24 24" fill="none"><path d="M12 15a3 3 0 003-3V6a3 3 0 10-6 0v6a3 3 0 003 3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M19 11a7 7 0 01-14 0M12 18v3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
         </button>
@@ -2320,6 +2355,21 @@ body{
           <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
         <button class="chat-send-btn" id="chatRecordingSendBtn" aria-label="Отправить голосовое">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 12l16-8-6 8 6 8-16-8z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <!-- Browser-only fallback (no native camera bridge): live self-view
+           while recording, since there's no system camera app taking over
+           the screen the way there is inside the Android app. -->
+      <div class="chat-video-record-bar" id="chatVideoRecordBar" style="display:none;">
+        <div class="chat-video-record-preview-wrap">
+          <video id="chatVideoRecordPreview" muted playsinline autoplay></video>
+        </div>
+        <span class="chat-recording-timer" id="chatVideoRecordTimer">0:00</span>
+        <button class="chat-recording-cancel" id="chatVideoRecordCancelBtn" aria-label="Отменить запись">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+        <button class="chat-send-btn" id="chatVideoRecordSendBtn" aria-label="Отправить видео-кружок">
           <svg viewBox="0 0 24 24" fill="none"><path d="M4 12l16-8-6 8 6 8-16-8z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
         </button>
       </div>
@@ -7236,10 +7286,12 @@ function closeChatThread(){
   chatVoiceAudioEl.pause();
   chatVoicePlayingBtn = null;
   chatVoicePlayingId = null;
+  document.querySelectorAll('#chatThreadMessages video').forEach(v=>v.pause());
   // Leaving mid-recording (swipe/hardware back, not the composer's own
   // cancel/send) must still release the mic — otherwise it stays actively
   // recording in the background indefinitely.
   if(typeof cancelVoiceRecording === 'function') cancelVoiceRecording();
+  if(typeof cancelVideoCircleRecording === 'function') cancelVideoCircleRecording();
 }
 function markChatRead(otherUsername){
   if(!fbDb || !state.profile) return;
@@ -7258,9 +7310,9 @@ function renderChatThreadMessages(messagesObj){
   emptyHint.style.display = 'none';
   const myKeyVal = fbKey(state.profile.username);
   let lastDay = null, html = '';
-  // Repopulated on every render — keeps the (possibly large, base64) audio
+  // Repopulated on every render — keeps the (possibly large, base64) media
   // payload out of the DOM entirely; bubbles only carry the short message id.
-  chatVoiceDataById = {};
+  chatMediaDataById = {};
   entries.forEach(([id, m])=>{
     const ts = m.ts || Date.now();
     const day = new Date(ts).toDateString();
@@ -7268,7 +7320,7 @@ function renderChatThreadMessages(messagesObj){
     const mine = m.from === myKeyVal;
     let bodyHtml;
     if(m.type === 'voice' && m.audioData){
-      chatVoiceDataById[id] = m.audioData;
+      chatMediaDataById[id] = m.audioData;
       bodyHtml = `<button class="chat-voice-play" data-voice-id="${escapeHtml(id)}" aria-label="Воспроизвести">
            <svg class="icon-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
            <svg class="icon-pause" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
@@ -7277,10 +7329,20 @@ function renderChatThreadMessages(messagesObj){
            <div class="chat-voice-bar"><div class="chat-voice-bar-fill"></div></div>
            <span class="chat-voice-duration">${formatVoiceDuration(m.duration||0)}</span>
          </div>`;
+    } else if(m.type === 'video' && m.videoData){
+      chatMediaDataById[id] = m.videoData;
+      bodyHtml = `<div class="chat-video-circle" data-video-id="${escapeHtml(id)}">
+           <video class="chat-video-circle-el" playsinline></video>
+           <button class="chat-video-circle-play" aria-label="Воспроизвести">
+             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+           </button>
+           <span class="chat-video-circle-duration">${formatVoiceDuration(m.duration||0)}</span>
+         </div>`;
     } else {
       bodyHtml = escapeHtml(m.text||'');
     }
-    html += `<div class="chat-bubble-row${mine?' mine':''}"><div class="chat-bubble${m.type==='voice'?' voice':''}">${bodyHtml}<span class="chat-bubble-time">${formatChatClock(ts)}</span></div></div>`;
+    const bubbleClass = m.type === 'voice' ? ' voice' : (m.type === 'video' ? ' video' : '');
+    html += `<div class="chat-bubble-row${mine?' mine':''}"><div class="chat-bubble${bubbleClass}">${bodyHtml}<span class="chat-bubble-time">${formatChatClock(ts)}</span></div></div>`;
   });
   wrap.innerHTML = html;
   scrollEl.scrollTop = scrollEl.scrollHeight;
@@ -7358,6 +7420,7 @@ function updateChatComposerButtons(){
   chatSendBtn.style.display = hasText ? 'flex' : 'none';
   chatSendBtn.disabled = !hasText;
   chatMicBtn.style.display = hasText ? 'none' : 'flex';
+  document.getElementById('chatVideoCircleBtn').style.display = hasText ? 'none' : 'flex';
 }
 chatInputEl.addEventListener('input', ()=>{
   autoResizeChatInput();
@@ -7577,13 +7640,158 @@ async function sendVoiceMessage(blob, durationSec){
   }
 }
 
+/* --- video circles ("кружочки"): record, upload, playback --- */
+const MAX_VIDEO_CIRCLE_SEC = 15;
+
+function hasNativeVideoCircle(){
+  return !!(window.AndroidApp && window.AndroidApp.startVideoCircleCapture);
+}
+// Reads actual duration from the recorded file itself rather than tracking
+// a separate timer — the only reliable source once the native path hands
+// back a system-camera-recorded file whose exact length we didn't measure.
+function getVideoDuration(blob){
+  return new Promise(resolve=>{
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.muted = true;
+    const url = URL.createObjectURL(blob);
+    const finish = (dur) => { URL.revokeObjectURL(url); resolve(dur || 0); };
+    video.onloadedmetadata = () => {
+      // Known Chrome/MediaRecorder quirk: a freshly-recorded, streamed
+      // container often reports Infinity/NaN for duration until something
+      // forces a seek past the (unknown) end, at which point the browser
+      // corrects it to the real value.
+      if(!isFinite(video.duration)){
+        video.currentTime = Number.MAX_SAFE_INTEGER;
+        video.ontimeupdate = () => { video.ontimeupdate = null; finish(isFinite(video.duration) ? video.duration : 0); };
+      } else {
+        finish(video.duration);
+      }
+    };
+    video.onerror = () => finish(0);
+    video.src = url;
+  });
+}
+async function sendVideoMessage(blob){
+  if(!state.activeChat) return;
+  if(!fbDb){ showToast('Нет соединения с сервером'); return; }
+  const otherUsername = state.activeChat.uid;
+  const path = chatPairPath(otherUsername);
+  const myKeyVal = fbKey(state.profile.username);
+  const ts = firebase.database.ServerValue.TIMESTAMP;
+  try{
+    const [videoData, durationSec] = await Promise.all([blobToDataURL(blob), getVideoDuration(blob)]);
+    await fbDb.ref(path+'/messages').push({ from: myKeyVal, type: 'video', videoData, duration: durationSec, ts });
+    await fbDb.ref(path+'/meta').set({ lastText: '⭕ Видео-кружок', lastTs: ts, lastFrom: myKeyVal });
+    fbDb.ref(path+'/lastRead/'+myKeyVal).set(ts);
+    const viewerSnap = await fbDb.ref('activeChatViewers/'+fbKey(otherUsername)).once('value');
+    if(viewerSnap.val() !== myKeyVal){
+      notifyFriend(otherUsername, state.profile.username, '⭕ Видео-кружок', 'chat-message', baseUrl()+'?chat='+encodeURIComponent(state.profile.username));
+    }
+  }catch(e){
+    console.warn('sendVideoMessage failed:', e);
+    showToast('Не удалось отправить видео-кружок');
+  }
+}
+
+// Native path: the system camera app takes over the whole screen, so there's
+// no recording bar of our own to show — just wait for the callback.
+window.onNativeVideoRecorded = async function(base64){
+  const blob = base64ToBlob(base64, 'video/mp4');
+  await sendVideoMessage(blob);
+};
+window.onNativeVideoRecordError = function(reason){
+  if(reason === 'cancelled') return;
+  console.warn('native video circle recording failed:', reason);
+  showToast(reason === 'too_large' ? 'Видео получилось слишком большим' : 'Не удалось записать видео-кружок');
+};
+
+// Browser fallback (plain website, no native bridge): getUserMedia video —
+// confirmed elsewhere in this file that audio-only getUserMedia works fine
+// in a real browser tab, so this path is expected to work there too.
+let chatVideoRecorder = null;
+let chatVideoRecordedChunks = [];
+let chatVideoRecordingStream = null;
+let chatVideoRecordingTimerHandle = null;
+let chatVideoRecordingStartTime = 0;
+
+function chatVideoRecordingTick(){
+  const sec = Math.floor((Date.now() - chatVideoRecordingStartTime) / 1000);
+  document.getElementById('chatVideoRecordTimer').textContent = formatVoiceDuration(sec);
+  if(sec >= MAX_VIDEO_CIRCLE_SEC){
+    showToast('Достигнут лимит записи — '+formatVoiceDuration(MAX_VIDEO_CIRCLE_SEC));
+    finishAndSendVideoCircleRecording();
+  }
+}
+function stopVideoCircleRecordingUI(){
+  if(chatVideoRecordingTimerHandle){ clearInterval(chatVideoRecordingTimerHandle); chatVideoRecordingTimerHandle = null; }
+  if(chatVideoRecordingStream){ chatVideoRecordingStream.getTracks().forEach(t=>t.stop()); chatVideoRecordingStream = null; }
+  document.getElementById('chatVideoRecordPreview').srcObject = null;
+  document.getElementById('chatVideoRecordBar').style.display = 'none';
+  document.getElementById('chatInputBar').style.display = 'flex';
+}
+async function startVideoCircleRecording(){
+  if(hasNativeVideoCircle()){
+    window.AndroidApp.startVideoCircleCapture();
+    return;
+  }
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined'){
+    showToast('Запись видео не поддерживается на этом устройстве');
+    return;
+  }
+  let stream;
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode:'user', width:{ideal:320}, height:{ideal:320} }, audio: true });
+  }catch(e){
+    console.warn('getUserMedia (video) failed:', e);
+    showToast('Нет доступа к камере: '+(e.name||e.message||e));
+    return;
+  }
+  chatVideoRecordingStream = stream;
+  chatVideoRecordedChunks = [];
+  const preview = document.getElementById('chatVideoRecordPreview');
+  preview.srcObject = stream;
+  const mimeType = ['video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'].find(t => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t));
+  chatVideoRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+  chatVideoRecorder.ondataavailable = e => { if(e.data && e.data.size > 0) chatVideoRecordedChunks.push(e.data); };
+  chatVideoRecorder.start();
+  chatVideoRecordingStartTime = Date.now();
+  document.getElementById('chatInputBar').style.display = 'none';
+  document.getElementById('chatVideoRecordBar').style.display = 'flex';
+  chatVideoRecordingTick();
+  chatVideoRecordingTimerHandle = setInterval(chatVideoRecordingTick, 250);
+}
+function cancelVideoCircleRecording(){
+  if(chatVideoRecorder && chatVideoRecorder.state !== 'inactive'){
+    chatVideoRecorder.ondataavailable = null;
+    chatVideoRecorder.stop();
+  }
+  chatVideoRecorder = null;
+  chatVideoRecordedChunks = [];
+  stopVideoCircleRecordingUI();
+}
+async function finishAndSendVideoCircleRecording(){
+  if(!chatVideoRecorder || chatVideoRecorder.state === 'inactive'){ stopVideoCircleRecordingUI(); return; }
+  const recorder = chatVideoRecorder;
+  const blob = await new Promise(resolve=>{
+    recorder.onstop = () => resolve(new Blob(chatVideoRecordedChunks, { type: recorder.mimeType || 'video/webm' }));
+    recorder.stop();
+  });
+  chatVideoRecorder = null;
+  stopVideoCircleRecordingUI();
+  await sendVideoMessage(blob);
+}
+document.getElementById('chatVideoCircleBtn').addEventListener('click', startVideoCircleRecording);
+document.getElementById('chatVideoRecordCancelBtn').addEventListener('click', cancelVideoCircleRecording);
+document.getElementById('chatVideoRecordSendBtn').addEventListener('click', finishAndSendVideoCircleRecording);
+
 // One shared <audio> element for the whole thread — playing a second voice
 // bubble pauses whichever one was already playing, matching how every
 // messenger handles overlapping voice notes.
 const chatVoiceAudioEl = new Audio();
 let chatVoicePlayingBtn = null;
 let chatVoicePlayingId = null;
-let chatVoiceDataById = {};
+let chatMediaDataById = {};
 function resetVoiceButtonUI(btn){
   const playIcon = btn.querySelector('.icon-play'), pauseIcon = btn.querySelector('.icon-pause');
   if(playIcon) playIcon.style.display = '';
@@ -7592,21 +7800,50 @@ function resetVoiceButtonUI(btn){
   if(bar) bar.style.width = '0%';
 }
 document.getElementById('chatThreadMessages').addEventListener('click', e=>{
+  const videoCircle = e.target.closest('.chat-video-circle');
+  if(videoCircle){
+    const id = videoCircle.dataset.videoId;
+    const src = chatMediaDataById[id];
+    if(!src) return;
+    const videoEl = videoCircle.querySelector('.chat-video-circle-el');
+    if(!videoEl.src) videoEl.src = src;
+    if(videoEl.paused){
+      // Only one thing (voice or video) plays at a time in the thread.
+      chatVoiceAudioEl.pause();
+      document.querySelectorAll('.chat-video-circle-el').forEach(v=>{ if(v !== videoEl && !v.paused) v.pause(); });
+      videoEl.play().catch(()=> showToast('Не удалось воспроизвести'));
+      videoCircle.classList.add('playing');
+    } else {
+      videoEl.pause();
+      videoCircle.classList.remove('playing');
+    }
+    return;
+  }
   const btn = e.target.closest('.chat-voice-play');
   if(!btn) return;
   const id = btn.dataset.voiceId;
-  const src = chatVoiceDataById[id];
+  const src = chatMediaDataById[id];
   if(!src) return;
   if(chatVoicePlayingId === id && !chatVoiceAudioEl.paused){
     chatVoiceAudioEl.pause();
     return;
   }
+  document.querySelectorAll('.chat-video-circle-el').forEach(v=>{ if(!v.paused) v.pause(); });
+  document.querySelectorAll('.chat-video-circle.playing').forEach(c=>c.classList.remove('playing'));
   if(chatVoicePlayingBtn && chatVoicePlayingBtn !== btn) resetVoiceButtonUI(chatVoicePlayingBtn);
   chatVoicePlayingBtn = btn;
   chatVoicePlayingId = id;
   if(chatVoiceAudioEl.src !== src) chatVoiceAudioEl.src = src;
   chatVoiceAudioEl.play().catch(()=> showToast('Не удалось воспроизвести'));
 });
+// 'ended'/'pause' on a <video> don't bubble — delegate via the capture phase
+// instead of attaching a listener to every rendered video element.
+document.getElementById('chatThreadMessages').addEventListener('ended', e=>{
+  if(e.target.classList.contains('chat-video-circle-el')) e.target.closest('.chat-video-circle')?.classList.remove('playing');
+}, true);
+document.getElementById('chatThreadMessages').addEventListener('pause', e=>{
+  if(e.target.classList.contains('chat-video-circle-el')) e.target.closest('.chat-video-circle')?.classList.remove('playing');
+}, true);
 chatVoiceAudioEl.addEventListener('play', ()=>{
   if(!chatVoicePlayingBtn) return;
   chatVoicePlayingBtn.querySelector('.icon-play').style.display = 'none';
