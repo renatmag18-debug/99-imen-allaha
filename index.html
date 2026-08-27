@@ -7103,10 +7103,10 @@ function subscribeAllChatPreviews(){
       const path = chatPairPath(f.uid);
       metaRef = fbDb.ref(path+'/meta');
       metaListener = snap => { chatPreviewRaw[otherKey].meta = snap.val(); recompute(); };
-      metaRef.on('value', metaListener);
+      metaRef.on('value', metaListener, err => console.warn('chat preview (meta) listener failed:', err));
       readRef = fbDb.ref(path+'/lastRead/'+myKeyVal);
       readListener = snap => { chatPreviewRaw[otherKey].myLastRead = snap.val() || 0; recompute(); };
-      readRef.on('value', readListener);
+      readRef.on('value', readListener, err => console.warn('chat preview (lastRead) listener failed:', err));
     });
     chatPreviewUnsubs.push(()=>{
       cancelled = true;
@@ -7229,7 +7229,14 @@ function openChatThread(username, name, avatar){
       renderChatThreadMessages(snap.val());
       markChatRead(username);
     };
-    msgsRef.on('value', listener);
+    // The 3rd .on() arg fires on a rules rejection (e.g. read access denied)
+    // instead of the success callback — without it a permissions problem
+    // just looks like an empty, forever-loading conversation.
+    msgsRef.on('value', listener, err => {
+      console.warn('chat messages listener failed:', err);
+      document.getElementById('chatThreadEmptyHint').textContent = 'Не удалось загрузить сообщения.';
+      document.getElementById('chatThreadEmptyHint').style.display = 'block';
+    });
     chatThreadUnsub = () => msgsRef.off('value', listener);
   });
 }
@@ -7268,6 +7275,10 @@ async function sendCurrentChatMessage(){
     fbDb.ref(path+'/lastRead/'+myKeyVal).set(ts);
     notifyFriend(otherUsername, state.profile.username, text.length>100 ? text.slice(0,100)+'…' : text, 'chat-message', baseUrl()+'?chat='+encodeURIComponent(state.profile.username));
   }catch(e){
+    // Most likely cause the first time this ships: the `chats/` RTDB path
+    // has no security rule yet, so Firebase rejects the write outright
+    // (e.code === 'PERMISSION_DENIED') rather than a network failure.
+    console.warn('sendCurrentChatMessage failed:', e);
     showToast('Не удалось отправить сообщение');
   }
 }
