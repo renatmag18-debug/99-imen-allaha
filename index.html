@@ -7686,7 +7686,10 @@ function renderChatThreadMessages(messagesObj, isLiveSnapshot){
     } else if(m.type === 'image'){
       bodyHtml = `<img class="chat-image-thumb" src="${escapeHtml(m.imageUrl||'')}" alt="Фото">`;
     } else if(m.type === 'clip'){
-      bodyHtml = `<video class="chat-clip-video" controls playsinline preload="metadata" src="${escapeHtml(m.clipUrl||'')}"></video>`;
+      if(m.clipUrl && !chatVideoPosterById[id]) generateVideoPoster(id, m.clipUrl);
+      const clipPoster = chatVideoPosterById[id];
+      const posterAttr = clipPoster ? ` poster="${escapeHtml(clipPoster)}"` : '';
+      bodyHtml = `<video class="chat-clip-video" data-video-id="${escapeHtml(id)}" controls playsinline preload="metadata" src="${escapeHtml(m.clipUrl||'')}"${posterAttr}></video>`;
     } else {
       bodyHtml = escapeHtml(m.text||'');
     }
@@ -8163,7 +8166,9 @@ function chatLocalVideoPoster(blob){
     };
     const safetyTimeout = setTimeout(()=> finish(null), 4000);
     video.addEventListener('loadeddata', () => {
-      try{ video.currentTime = 0.1; }catch(e){ clearTimeout(safetyTimeout); finish(null); }
+      // See generateVideoPoster's comment — frame 0 is often still black
+      // from camera auto-exposure ramp-up, half a second in usually isn't.
+      try{ video.currentTime = Math.min(0.5, (video.duration || 1) / 2); }catch(e){ clearTimeout(safetyTimeout); finish(null); }
     }, { once:true });
     video.addEventListener('seeked', () => {
       try{
@@ -8456,11 +8461,11 @@ function resetVoiceButtonUI(btn){
   const durationEl = btn.parentElement.querySelector('.chat-voice-duration');
   if(durationEl) durationEl.textContent = formatVoiceDuration(parseFloat(durationEl.dataset.total) || 0);
 }
-// Grabs the first frame of a video-circle message as a small JPEG data URL
-// and caches it (chatVideoPosterById), so an unopened circle shows an actual
-// preview instead of sitting there plain black until tapped. Runs once per
-// message id — chatVideoPosterPending guards against kicking this off again
-// on every re-render before the first attempt has finished.
+// Grabs a frame from a video-circle or clip message as a small JPEG data URL
+// and caches it (chatVideoPosterById), so an unopened video shows an actual
+// preview instead of sitting there plain black/gray until tapped. Runs once
+// per message id — chatVideoPosterPending guards against kicking this off
+// again on every re-render before the first attempt has finished.
 function generateVideoPoster(id, src){
   if(chatVideoPosterPending.has(id)) return;
   chatVideoPosterPending.add(id);
@@ -8489,10 +8494,12 @@ function generateVideoPoster(id, src){
   // this message's poster from ever being retried.
   const safetyTimeout = setTimeout(finish, 5000);
   video.addEventListener('loadeddata', () => {
-    // Seeking to a small offset rather than exactly 0 sidesteps a known
-    // Chrome quirk where currentTime=0 sometimes doesn't trigger a repaint
-    // on a freshly-loaded video element.
-    try { video.currentTime = 0.1; } catch(e) { finish(); clearTimeout(safetyTimeout); }
+    // Seeking to exactly 0 both fails to trigger a repaint on some Chrome
+    // versions AND, worse, a camera's auto-exposure is often still visibly
+    // ramping up in the very first fraction of a second — frame 0 alone was
+    // frequently just a black circle in practice. Half a second in is far
+    // enough past that ramp-up while still reading as "the start" of the clip.
+    try { video.currentTime = Math.min(0.5, (video.duration || 1) / 2); } catch(e) { finish(); clearTimeout(safetyTimeout); }
   }, { once:true });
   video.addEventListener('seeked', () => {
     try {
@@ -8505,6 +8512,8 @@ function generateVideoPoster(id, src){
       chatVideoPosterById[id] = dataUrl;
       const circle = document.querySelector(`.chat-video-circle[data-video-id="${CSS.escape(id)}"]`);
       if(circle) circle.style.cssText += `background-image:url(${dataUrl});background-size:cover;background-position:center top;`;
+      const clipVideo = document.querySelector(`.chat-clip-video[data-video-id="${CSS.escape(id)}"]`);
+      if(clipVideo) clipVideo.poster = dataUrl;
     } catch(e) {
       console.warn('video poster generation failed:', e);
     }
@@ -9512,7 +9521,7 @@ async function quranFetchPage(pageNum){
   // wrong word counts). Rendering word-by-word from this field instead of
   // the verse-level one is what makes each word directly tappable while
   // keeping the same tajweed coloring.
-  const resp = await fetch(`https://api.quran.com/api/v4/verses/by_page/${pageNum}?words=true&word_fields=text_uthmani_tajweed,audio_url,char_type_name&fields=text_uthmani_tajweed`);
+  const resp = await fetch(`https://api.quran.com/api/v4/verses/by_page/${pageNum}?words=true&word_fields=text_uthmani_tajweed,char_type_name&fields=text_uthmani_tajweed`);
   if(!resp.ok) throw new Error('bad status ' + resp.status);
   const data = await resp.json();
   quranState.pageCache[pageNum] = data.verses;
@@ -9543,16 +9552,28 @@ async function quranFetchPageAudio(pageNum){
 // `words` is ever missing, rather than rendering nothing.
 function quranBuildVerseHtml(v){
   if(!v.words || !v.words.length) return v.text_uthmani_tajweed;
+  const [chapterNum, ayahNum] = v.verse_key.split(':').map(Number);
+  // The API's own per-word audio_url is wrong whenever a pause mark (ۛ ۘ ۚ
+  // etc.) is embedded in an earlier word of the same ayah: it reserves a
+  // "phantom" clip number for every such mark, bumping every word after it
+  // by one — but the CDN's actual files are numbered 1..N plainly, with no
+  // slot reserved for marks. Confirmed against verse 2:2 directly: the API
+  // pointed words 6/7 at wbw/002_002_008.mp3 and _009.mp3, both a real
+  // 404 — the files that actually exist stop at _007.mp3, one per real word.
+  // Built the URL from a local plain counter instead of trusting audio_url.
+  let audioPosition = 0;
   return v.words.map(w => {
     if(w.char_type_name === 'end'){
       return `<span class="end">${escapeHtml(w.text_uthmani_tajweed || '')}</span>`;
     }
+    audioPosition++;
     // The word-level field uses <rule class=...> instead of the verse-level
     // <tajweed class=...> for the exact same rule/color classes — normalized
     // to `tajweed` here so both share the one set of tajweed CSS rules.
     const colored = (w.text_uthmani_tajweed || '').replace(/<(\/?)rule\b/g, '<$1tajweed');
-    const audioAttr = w.audio_url ? ` data-audio="${escapeHtml(QURAN_AUDIO_BASE + w.audio_url)}"` : '';
-    return `<span class="quran-word"${audioAttr}>${colored}</span>`;
+    const pad3 = n => String(n).padStart(3, '0');
+    const audioUrl = `${QURAN_AUDIO_BASE}wbw/${pad3(chapterNum)}_${pad3(ayahNum)}_${pad3(audioPosition)}.mp3`;
+    return `<span class="quran-word" data-audio="${escapeHtml(audioUrl)}">${colored}</span>`;
   }).join(' ');
 }
 
