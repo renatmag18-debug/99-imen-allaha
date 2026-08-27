@@ -754,11 +754,11 @@ body{
   font-family:var(--font-ar); line-height:2.35; text-align:justify; direction:rtl;
   color:var(--ivory); text-shadow:var(--ink-halo);
 }
-.quran-page[data-font="amiri"]{ font-family:'Amiri', serif; }
-.quran-page[data-font="scheherazade"]{ font-family:'Scheherazade New', serif; }
-.quran-page[data-font="notonaskh"]{ font-family:'Noto Naskh Arabic', serif; }
-.quran-page[data-font="lateef"]{ font-family:'Lateef', serif; }
-.quran-page[data-font="arefruqaa"]{ font-family:'Aref Ruqaa', serif; }
+.quran-page[data-font="amiri"], .quran-font-preview[data-font="amiri"]{ font-family:'Amiri', serif; }
+.quran-page[data-font="scheherazade"], .quran-font-preview[data-font="scheherazade"]{ font-family:'Scheherazade New', serif; }
+.quran-page[data-font="notonaskh"], .quran-font-preview[data-font="notonaskh"]{ font-family:'Noto Naskh Arabic', serif; }
+.quran-page[data-font="lateef"], .quran-font-preview[data-font="lateef"]{ font-family:'Lateef', serif; }
+.quran-page[data-font="arefruqaa"], .quran-font-preview[data-font="arefruqaa"]{ font-family:'Aref Ruqaa', serif; }
 .quran-status{ text-align:center; color:var(--ivory-dim); font-size:13.5px; padding:60px 20px; line-height:1.7; }
 
 .quran-surah-title{
@@ -779,17 +779,17 @@ body{
 /* Стандартная цветовая легенда таджвида — классы совпадают с разметкой,
    которую отдаёт API в поле text_uthmani_tajweed. */
 .quran-page tajweed.ham_wasl, .quran-page tajweed.laam_shamsiyah, .quran-page tajweed.slnt{ color:#9AA0A6; }
-.quran-page tajweed.ghunnah{ color:#FF7E1E; }
-.quran-page tajweed.idgham_ghunnah{ color:#169777; }
-.quran-page tajweed.idgham_wo_ghunnah{ color:#169200; }
-.quran-page tajweed.idgham_shafawi{ color:#58B800; }
-.quran-page tajweed.ikhafa{ color:#9400A8; }
-.quran-page tajweed.ikhafa_shafawi{ color:#D500B7; }
-.quran-page tajweed.iqlab{ color:#26BFFD; }
-.quran-page tajweed.qalaqah{ color:#DD0008; }
-.quran-page tajweed.madda_normal{ color:#537FFF; }
-.quran-page tajweed.madda_permissible{ color:#4050FF; }
-.quran-page tajweed.madda_necessary, .quran-page tajweed.madda_obligatory{ color:#000EBC; }
+.quran-page tajweed.ghunnah,
+.quran-page tajweed.idgham_ghunnah,
+.quran-page tajweed.idgham_wo_ghunnah,
+.quran-page tajweed.idgham_shafawi,
+.quran-page tajweed.ikhafa,
+.quran-page tajweed.ikhafa_shafawi,
+.quran-page tajweed.iqlab{ color:#18A800; }
+.quran-page tajweed.qalaqah{ color:#18B4D8; }
+.quran-page tajweed.madda_normal{ color:#F08420; }
+.quran-page tajweed.madda_permissible{ color:#0C48B4; }
+.quran-page tajweed.madda_necessary, .quran-page tajweed.madda_obligatory{ color:#E448B4; }
 .quran-page[data-tajweed="off"] tajweed{ color:inherit; }
 
 .quran-foot{
@@ -811,6 +811,7 @@ body{
 .quran-surah-row .n{ width:26px; flex-shrink:0; font-family:var(--font-num); font-size:12px; color:var(--jade); }
 .quran-surah-row .name{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
 .quran-surah-row .name .ru{ font-size:14.5px; color:var(--ivory); }
+.quran-surah-row .name .translit{ font-size:12px; color:var(--gold-soft); }
 .quran-surah-row .name .meta{ font-size:11.5px; color:var(--ivory-dim); }
 .quran-surah-row .ar{ font-family:var(--font-ar); font-size:19px; color:var(--gold-soft); direction:rtl; flex-shrink:0; }
 
@@ -821,6 +822,11 @@ body{
 }
 .quran-legend-toggle svg{ width:15px; height:15px; transition:transform .2s var(--ease); flex-shrink:0; }
 .quran-legend-toggle.open svg{ transform:rotate(180deg); }
+.quran-font-preview{
+  text-align:center; padding:18px 10px; margin-bottom:18px; border-radius:var(--r-card);
+  background:var(--fill-sunken); border:1px solid var(--line);
+  font-family:var(--font-ar); font-size:26px; color:var(--ivory); line-height:1.6; overflow-wrap:break-word;
+}
 .quran-legend{ display:flex; flex-direction:column; gap:10px; padding:12px 0 20px; }
 .quran-legend-row{ display:flex; align-items:flex-start; gap:10px; }
 .quran-legend-dot{ width:13px; height:13px; border-radius:50%; margin-top:2px; flex-shrink:0; }
@@ -2160,6 +2166,8 @@ body{
       <button class="sheet-close" id="quranSettingsClose"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
     </div>
     <div class="sheet-body" style="text-align:left;padding-top:2px;">
+
+      <div class="quran-font-preview" id="quranFontPreview" dir="rtl">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div>
 
       <div class="section-label" style="margin-top:0;">Шрифт</div>
       <div class="len-choice" id="quranFontChoice" style="justify-content:flex-start;margin-bottom:20px;">
@@ -7476,17 +7484,27 @@ const QURAN_TOTAL_PAGES = 604;
 const QURAN_FONTS = ['uthmani','amiri','scheherazade','notonaskh','lateef','arefruqaa'];
 const QURAN_TAJWEED_LEGEND = [
   { color:'#9AA0A6', label:'Не произносится — соединительная хамза, «солнечный» лям и другие непроизносимые буквы' },
-  { color:'#FF7E1E', label:'Гунна — носовой призвук, тянется около 2 тактов' },
-  { color:'#169777', label:'Идгам с гунной — слияние букв с носовым призвуком' },
-  { color:'#169200', label:'Идгам без гунны — слияние букв без призвука' },
-  { color:'#58B800', label:'Идгам губной — слияние двух букв «мим»' },
-  { color:'#9400A8', label:'Ихфа — скрытое, приглушённое произношение «нун»' },
-  { color:'#D500B7', label:'Ихфа губной — скрытое произношение «мим» перед «ба»' },
-  { color:'#26BFFD', label:'Икляб — «нун» переходит в звук «м» перед «ба»' },
-  { color:'#DD0008', label:'Калькаля — отскок звука на буквах ق ط ب ج د' },
-  { color:'#537FFF', label:'Мадд обычный — растяжение звука на 2 такта' },
-  { color:'#4050FF', label:'Мадд допустимый — растяжение на 2–6 тактов' },
-  { color:'#000EBC', label:'Мадд обязательный — растяжение на 4–6 тактов' },
+  { color:'#18A800', label:'Гунна, идгам и ихфа — везде, где звучит носовой призвук: слияние букв, скрытое произношение «нун»/«мим», переход «нун» в «м» перед «ба»' },
+  { color:'#18B4D8', label:'Калькаля — отскок звука на буквах ق ط ب ج د с сукуном' },
+  { color:'#F08420', label:'Мадд обычный — естественное растяжение звука на 2 такта' },
+  { color:'#0C48B4', label:'Мадд допустимый — растяжение на 2–6 тактов' },
+  { color:'#E448B4', label:'Мадд обязательный — растяжение на 4–6 тактов' },
+];
+// Русская транскрипция арабского названия суры (не перевод смысла —
+// он уже есть в translated_name с сайта — а то, как название звучит).
+const QURAN_SURAH_TRANSLIT = [
+  'Аль-Фатиха','Аль-Бакара','Аль ‘Имран','Ан-Ниса','Аль-Маида','Аль-Анам','Аль-Аграф','Аль-Анфаль','Ат-Тауба','Юнус',
+  'Худ','Юсуф','Ар-Раад','Ибрахим','Аль-Хиджр','Ан-Нахль','Аль-Исра','Аль-Кахф','Марьям','Та Ха',
+  'Аль-Анбия','Аль-Хадж','Аль-Муминун','Ан-Нур','Аль-Фуркан','Аш-Шуара','Ан-Намль','Аль-Касас','Аль-Анкабут','Ар-Рум',
+  'Лукман','Ас-Саджда','Аль-Ахзаб','Саба','Фатыр','Йа Син','Ас-Саффат','Сад','Аз-Зумар','Гафир',
+  'Фуссылат','Аш-Шура','Аз-Зухруф','Ад-Духан','Аль-Джасия','Аль-Ахкаф','Мухаммад','Аль-Фатх','Аль-Худжурат','Каф',
+  'Аз-Зарият','Ат-Тур','Ан-Наджм','Аль-Камар','Ар-Рахман','Аль-Вакиа','Аль-Хадид','Аль-Муджадала','Аль-Хашр','Аль-Мумтахана',
+  'Ас-Сафф','Аль-Джумуа','Аль-Мунафикун','Ат-Тагабун','Ат-Талак','Ат-Тахрим','Аль-Мульк','Аль-Калям','Аль-Хакка','Аль-Мааридж',
+  'Нух','Аль-Джинн','Аль-Муззаммиль','Аль-Муддассир','Аль-Кияма','Аль-Инсан','Аль-Мурсалят','Ан-Наба','Ан-Назиат','Абаса',
+  'Ат-Таквир','Аль-Инфитар','Аль-Мутаффифин','Аль-Иншикак','Аль-Бурудж','Ат-Тарик','Аль-Аля','Аль-Гашия','Аль-Фаджр','Аль-Балад',
+  'Аш-Шамс','Аль-Лейль','Ад-Духа','Аш-Шарх','Ат-Тин','Аль-Аляк','Аль-Кадр','Аль-Байина','Аз-Зальзаля','Аль-Адият',
+  'Аль-Кариа','Ат-Такасур','Аль-Аср','Аль-Хумаза','Аль-Филь','Курайш','Аль-Маун','Аль-Каусар','Аль-Кафирун','Ан-Наср',
+  'Аль-Масад','Аль-Ихляс','Аль-Фаляк','Ан-Нас',
 ];
 const quranState = { page: 1, tajweed: true, font: 'uthmani', size: 26, chapters: null, pageCache: {} };
 (function quranLoadPrefs(){
@@ -7630,6 +7648,17 @@ const quranTajweedToggle = document.getElementById('quranTajweedToggle');
   });
 })();
 
+// Держит и саму страницу, и образец в настройках в одном шрифте/размере —
+// так видно результат сразу, не закрывая лист настроек.
+function quranApplyDisplayPrefs(){
+  const preview = document.getElementById('quranFontPreview');
+  preview.setAttribute('data-font', quranState.font);
+  preview.style.fontSize = quranState.size + 'px';
+  const pageEl = document.getElementById('quranPage');
+  pageEl.setAttribute('data-font', quranState.font);
+  pageEl.style.fontSize = quranState.size + 'px';
+}
+
 function quranUpdateFontChoiceUI(){
   document.querySelectorAll('#quranFontChoice .len-chip').forEach(c=>c.classList.toggle('active', c.dataset.font===quranState.font));
 }
@@ -7639,7 +7668,7 @@ document.querySelectorAll('#quranFontChoice .len-chip').forEach(chip=>{
     quranState.font = chip.dataset.font;
     try{ localStorage.setItem('quranFont', quranState.font); }catch(e){}
     quranUpdateFontChoiceUI();
-    document.getElementById('quranPage').setAttribute('data-font', quranState.font);
+    quranApplyDisplayPrefs();
   });
 });
 
@@ -7652,11 +7681,12 @@ document.querySelectorAll('#quranSizeChoice .len-chip').forEach(chip=>{
     quranState.size = parseInt(chip.dataset.size, 10);
     try{ localStorage.setItem('quranSize', quranState.size); }catch(e){}
     quranUpdateSizeChoiceUI();
-    document.getElementById('quranPage').style.fontSize = quranState.size + 'px';
+    quranApplyDisplayPrefs();
   });
 });
 
 function openQuranSettingsSheet(){
+  quranApplyDisplayPrefs();
   pushSheetHistory();
   document.getElementById('quranSettingsSheet').classList.add('show');
   document.getElementById('quranSettingsBackdrop').classList.add('show');
@@ -7683,7 +7713,11 @@ async function openQuranSurahSheet(){
       listEl.innerHTML = chapters.map(c => `
         <div class="quran-surah-row" data-page="${c.pages[0]}">
           <span class="n">${c.id}</span>
-          <span class="name"><span class="ru">${quranSurahDisplayName(c)}</span><span class="meta">${c.verses_count} аятов</span></span>
+          <span class="name">
+            <span class="ru">${quranSurahDisplayName(c)}</span>
+            <span class="translit">${QURAN_SURAH_TRANSLIT[c.id-1] || ''}</span>
+            <span class="meta">${c.verses_count} аятов</span>
+          </span>
           <span class="ar">${c.name_arabic}</span>
         </div>
       `).join('');
