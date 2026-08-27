@@ -927,18 +927,20 @@ body{
 #chatVideoRecordPreview{ width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
 
 .chat-bubble.video{ background:none; border:none; padding:0; }
+/* .chat-bubble-row.mine .chat-bubble carries background/border/padding of its
+   own (3 class selectors) which otherwise outranks the plain 2-class rule
+   above and leaves a gold box around the circle on sent messages. */
+.chat-bubble-row.mine .chat-bubble.video{ background:none; border:none; padding:0; }
 .chat-video-circle{
   position:relative; width:170px; height:170px; border-radius:50%; overflow:hidden;
   background:#000; cursor:pointer; flex-shrink:0;
 }
-.chat-video-circle-el{ width:100%; height:100%; object-fit:cover; display:block; }
 .chat-video-circle-play{
   position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
   width:44px; height:44px; border-radius:50%; border:none; background:rgba(0,0,0,.45); color:#fff;
   display:flex; align-items:center; justify-content:center; pointer-events:none;
 }
 .chat-video-circle-play svg{ width:20px; height:20px; }
-.chat-video-circle.playing .chat-video-circle-play{ display:none; }
 .chat-video-circle-duration{
   /* Centered rather than corner-anchored — a circular mask clips a square's
      corners much more than its bottom-center, where the circle is widest. */
@@ -946,6 +948,29 @@ body{
   font-size:11px; color:#fff; font-family:var(--font-num); white-space:nowrap;
   background:rgba(0,0,0,.45); padding:1px 7px; border-radius:8px; pointer-events:none;
 }
+
+#chatVideoViewerOverlay{
+  position:fixed; inset:0; z-index:60; background:rgba(4,10,12,.92);
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity .18s var(--ease);
+}
+#chatVideoViewerOverlay.show{ opacity:1; pointer-events:auto; }
+.chat-video-viewer-circle{
+  position:relative; width:min(78vw,340px); height:min(78vw,340px); border-radius:50%; overflow:hidden;
+  background:#000; box-shadow:0 10px 40px rgba(0,0,0,.5);
+}
+/* object-position biased to the top: a portrait recording cropped into a
+   square/circle by default centers the crop, which cuts an equal sliver off
+   the top and bottom — for a face shot that reads as "the top got cut off"
+   since there's no headroom to spare. Anchoring to the top keeps the whole
+   head in frame and crops the (usually empty) bottom instead. */
+.chat-video-circle-el{ width:100%; height:100%; object-fit:cover; object-position:center top; display:block; }
+.chat-video-viewer-close{
+  position:absolute; top:calc(20px + var(--safe-top)); right:20px; width:40px; height:40px;
+  border-radius:50%; border:none; background:rgba(255,255,255,.14); color:#fff;
+  display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:1;
+}
+.chat-video-viewer-close svg{ width:18px; height:18px; }
 
 .quran-legend-toggle{
   display:flex; align-items:center; justify-content:space-between; width:100%;
@@ -2375,6 +2400,15 @@ body{
       </div>
     </section>
 
+  </div>
+
+  <div id="chatVideoViewerOverlay">
+    <button class="chat-video-viewer-close" id="chatVideoViewerClose" aria-label="Закрыть">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
+    <div class="chat-video-viewer-circle">
+      <video class="chat-video-circle-el" id="chatVideoViewerEl" playsinline></video>
+    </div>
   </div>
 
   <div class="sheet-backdrop" id="quranSurahBackdrop"></div>
@@ -7286,7 +7320,7 @@ function closeChatThread(){
   chatVoiceAudioEl.pause();
   chatVoicePlayingBtn = null;
   chatVoicePlayingId = null;
-  document.querySelectorAll('#chatThreadMessages video').forEach(v=>v.pause());
+  if(typeof closeVideoViewer === 'function') closeVideoViewer();
   // Leaving mid-recording (swipe/hardware back, not the composer's own
   // cancel/send) must still release the mic — otherwise it stays actively
   // recording in the background indefinitely.
@@ -7332,7 +7366,6 @@ function renderChatThreadMessages(messagesObj){
     } else if(m.type === 'video' && m.videoData){
       chatMediaDataById[id] = m.videoData;
       bodyHtml = `<div class="chat-video-circle" data-video-id="${escapeHtml(id)}">
-           <video class="chat-video-circle-el" playsinline></video>
            <button class="chat-video-circle-play" aria-label="Воспроизвести">
              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
            </button>
@@ -7799,24 +7832,36 @@ function resetVoiceButtonUI(btn){
   const bar = btn.parentElement.querySelector('.chat-voice-bar-fill');
   if(bar) bar.style.width = '0%';
 }
+function openVideoViewer(src){
+  // Only one thing (voice or video) plays at a time in the thread.
+  chatVoiceAudioEl.pause();
+  const overlay = document.getElementById('chatVideoViewerOverlay');
+  const videoEl = document.getElementById('chatVideoViewerEl');
+  videoEl.src = src;
+  overlay.classList.add('show');
+  videoEl.play().catch(()=> showToast('Не удалось воспроизвести'));
+}
+function closeVideoViewer(){
+  const overlay = document.getElementById('chatVideoViewerOverlay');
+  const videoEl = document.getElementById('chatVideoViewerEl');
+  if(!overlay.classList.contains('show')) return;
+  overlay.classList.remove('show');
+  videoEl.pause();
+  videoEl.removeAttribute('src');
+  videoEl.load();
+}
+document.getElementById('chatVideoViewerClose').addEventListener('click', closeVideoViewer);
+document.getElementById('chatVideoViewerOverlay').addEventListener('click', e=>{
+  if(e.target.id === 'chatVideoViewerOverlay') closeVideoViewer();
+});
+document.getElementById('chatVideoViewerEl').addEventListener('ended', closeVideoViewer);
 document.getElementById('chatThreadMessages').addEventListener('click', e=>{
   const videoCircle = e.target.closest('.chat-video-circle');
   if(videoCircle){
     const id = videoCircle.dataset.videoId;
     const src = chatMediaDataById[id];
     if(!src) return;
-    const videoEl = videoCircle.querySelector('.chat-video-circle-el');
-    if(!videoEl.src) videoEl.src = src;
-    if(videoEl.paused){
-      // Only one thing (voice or video) plays at a time in the thread.
-      chatVoiceAudioEl.pause();
-      document.querySelectorAll('.chat-video-circle-el').forEach(v=>{ if(v !== videoEl && !v.paused) v.pause(); });
-      videoEl.play().catch(()=> showToast('Не удалось воспроизвести'));
-      videoCircle.classList.add('playing');
-    } else {
-      videoEl.pause();
-      videoCircle.classList.remove('playing');
-    }
+    openVideoViewer(src);
     return;
   }
   const btn = e.target.closest('.chat-voice-play');
@@ -7828,22 +7873,13 @@ document.getElementById('chatThreadMessages').addEventListener('click', e=>{
     chatVoiceAudioEl.pause();
     return;
   }
-  document.querySelectorAll('.chat-video-circle-el').forEach(v=>{ if(!v.paused) v.pause(); });
-  document.querySelectorAll('.chat-video-circle.playing').forEach(c=>c.classList.remove('playing'));
+  closeVideoViewer();
   if(chatVoicePlayingBtn && chatVoicePlayingBtn !== btn) resetVoiceButtonUI(chatVoicePlayingBtn);
   chatVoicePlayingBtn = btn;
   chatVoicePlayingId = id;
   if(chatVoiceAudioEl.src !== src) chatVoiceAudioEl.src = src;
   chatVoiceAudioEl.play().catch(()=> showToast('Не удалось воспроизвести'));
 });
-// 'ended'/'pause' on a <video> don't bubble — delegate via the capture phase
-// instead of attaching a listener to every rendered video element.
-document.getElementById('chatThreadMessages').addEventListener('ended', e=>{
-  if(e.target.classList.contains('chat-video-circle-el')) e.target.closest('.chat-video-circle')?.classList.remove('playing');
-}, true);
-document.getElementById('chatThreadMessages').addEventListener('pause', e=>{
-  if(e.target.classList.contains('chat-video-circle-el')) e.target.closest('.chat-video-circle')?.classList.remove('playing');
-}, true);
 chatVoiceAudioEl.addEventListener('play', ()=>{
   if(!chatVoicePlayingBtn) return;
   chatVoicePlayingBtn.querySelector('.icon-play').style.display = 'none';
