@@ -1425,9 +1425,9 @@ body{
             </button>
           </div>
           <div class="stat-row">
-            <div class="stat"><b>99</b><span>имён</span></div>
             <div class="stat"><b id="learnedCount">0</b><span>изучено</span></div>
-            <div class="stat"><b id="bestScoreStat">—</b><span>лучший счёт</span></div>
+            <div class="stat"><b id="zikrLifetimeStat">0</b><span>зикров</span></div>
+            <div class="stat"><b id="quranReadStat">0%</b><span>прочитано Корана</span></div>
           </div>
         </div>
 
@@ -2905,7 +2905,9 @@ document.querySelectorAll('[data-nav]').forEach(el=>{
 ===================================================== */
 function updateHomeStats(){
   document.getElementById('learnedCount').textContent = state.learned.size;
-  document.getElementById('bestScoreStat').textContent = state.bestScore ? state.bestScore.pct+'%' : '—';
+  document.getElementById('zikrLifetimeStat').textContent = (typeof getZikrLifetimeTotal === 'function' ? (getZikrLifetimeTotal()||0) : 0).toLocaleString('ru-RU');
+  const quranPct = typeof quranReadPercent === 'function' ? quranReadPercent() : 0;
+  document.getElementById('quranReadStat').textContent = quranPct+'%';
 }
 
 let leaderboardScope = 'global';
@@ -7647,7 +7649,8 @@ const QURAN_SURAH_TRANSLIT = [
   'Аль-Кариа','Ат-Такасур','Аль-Аср','Аль-Хумаза','Аль-Филь','Курайш','Аль-Маун','Аль-Каусар','Аль-Кафирун','Ан-Наср',
   'Аль-Масад','Аль-Ихляс','Аль-Фаляк','Ан-Нас',
 ];
-const quranState = { page: 1, tajweed: true, font: 'uthmani', size: 26, chapters: null, pageCache: {} };
+const quranState = { page: 1, tajweed: true, font: 'uthmani', size: 26, chapters: null, pageCache: {}, readPages: new Set() };
+const QURAN_READ_PAGES_KEY = 'quranReadPages';
 (function quranLoadPrefs(){
   try{
     const savedPage = parseInt(localStorage.getItem('quranLastPage'), 10);
@@ -7657,8 +7660,21 @@ const quranState = { page: 1, tajweed: true, font: 'uthmani', size: 26, chapters
     if(QURAN_FONTS.includes(savedFont)) quranState.font = savedFont;
     const savedSize = parseInt(localStorage.getItem('quranSize'), 10);
     if(savedSize >= 16 && savedSize <= 48) quranState.size = savedSize;
+    const savedRead = JSON.parse(localStorage.getItem(QURAN_READ_PAGES_KEY) || '[]');
+    quranState.readPages = new Set(savedRead);
   }catch(e){}
 })();
+// Виден на главном экране как «% прочитано Корана» — доля из 604 страниц
+// Мусхафа, которые пользователь хотя бы раз открывал в ридере.
+function quranReadPercent(){
+  return Math.round(quranState.readPages.size / QURAN_TOTAL_PAGES * 100);
+}
+function quranMarkPageRead(pageNum){
+  if(quranState.readPages.has(pageNum)) return;
+  quranState.readPages.add(pageNum);
+  try{ localStorage.setItem(QURAN_READ_PAGES_KEY, JSON.stringify(Array.from(quranState.readPages))); }catch(e){}
+  if(typeof updateHomeStats === 'function') updateHomeStats();
+}
 
 async function quranFetchChapters(){
   if(quranState.chapters) return quranState.chapters;
@@ -7733,6 +7749,7 @@ async function quranRenderPage(pageNum){
 
     quranState.page = pageNum;
     try{ localStorage.setItem('quranLastPage', pageNum); }catch(e){}
+    quranMarkPageRead(pageNum);
   }catch(e){
     loadingEl.style.display = 'none';
     errorEl.style.display = 'block';
