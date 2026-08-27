@@ -693,6 +693,21 @@ body{
   transition:transform .3s var(--ease), opacity .25s var(--ease);
 }
 #profileViewSheet.show{ transform:translate(-50%,-50%) scale(1); opacity:1; pointer-events:auto; }
+/* Приглашение — тоже центрированный диалог, но выше всех прочих
+   оверлеев (z-index) и без клика-по-фону — фон здесь только гасит и
+   блокирует нажатия на экран под собой, а не закрывает модалку. */
+#pendingInviteBackdrop{ z-index:35; }
+#pendingInviteModal{
+  z-index:36; left:50%; right:auto; bottom:auto; top:50%; margin:0;
+  width:calc(100% - 48px); max-width:340px; max-height:80vh;
+  border-radius:var(--r-card); border-bottom:1px solid var(--line);
+  padding:22px 20px calc(22px + var(--safe-bottom));
+  transform:translate(-50%,-50%) scale(.94); opacity:0; pointer-events:none;
+  transition:transform .3s var(--ease), opacity .25s var(--ease);
+}
+#pendingInviteModal.show{ transform:translate(-50%,-50%) scale(1); opacity:1; pointer-events:auto; }
+#pendingInviteContent .invite-banner{ margin-bottom:0; }
+#pendingInviteContent .invite-banner + .invite-banner{ margin-top:12px; }
 .sheet-handle{ width:40px; height:4px; border-radius:3px; background:var(--line); margin:2px auto 14px; }
 .sheet-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;}
 .sheet-idx{ font-family:var(--font-num); font-size:13px; color:var(--jade); }
@@ -1356,7 +1371,6 @@ body{
     <!-- HOME -->
     <section class="screen active" data-screen="home">
       <div class="scroll">
-        <div id="homeInvitesArea"></div>
         <div class="ios-app-banner" id="iosAppBanner">
           <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12M12 3l4 4M12 3L8 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 13v6a2 2 0 002 2h10a2 2 0 002-2v-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span>Установите как приложение: нажмите <b>«Поделиться»</b> внизу экрана в Safari, затем <b>«На экран Домой»</b></span>
@@ -1878,7 +1892,6 @@ body{
     <section class="screen" data-screen="friends">
       <div class="scroll">
 
-        <div id="friendInvitesArea"></div>
 
         <div class="profile-card" id="authCard">
           <!-- Основные поля входа -->
@@ -2249,6 +2262,16 @@ body{
       <div class="avatar-color-grid" id="avatarColorGrid"></div>
       <button class="btn btn-primary" id="avatarSaveBtn" style="width:100%;margin-top:6px;">Сохранить</button>
     </div>
+  </div>
+
+  <!-- Приглашение на дуэль/вызов/зикр-комнату — крупное модальное окно
+       поверх ЛЮБОГО экрана, без кнопки закрытия и без закрытия по тапу
+       на фон: решение (принять/отклонить) обязательно, чтобы человек
+       не мог просто продолжить листать приложение, забыв про вызов. -->
+  <div class="sheet-backdrop" id="pendingInviteBackdrop"></div>
+  <div class="sheet" id="pendingInviteModal">
+    <div class="sheet-idx" style="text-align:center;margin-bottom:10px;">Новое приглашение</div>
+    <div class="sheet-body" id="pendingInviteContent" style="padding-top:0;"></div>
   </div>
 
   <div class="sheet-backdrop" id="profileViewBackdrop"></div>
@@ -7085,10 +7108,11 @@ setInterval(()=>{
   flushTimeTracking();
 }, 60000);
 
-/* ---------- pending duel / challenge invites banner ----------
-   Rendered on the home screen too (not just Друзья) — an invite buried
-   a tab away meant people didn't notice it until they happened to open
-   Друзья on their own. */
+/* ---------- pending duel / challenge invites: blocking modal ----------
+   A large centered dialog over whatever screen is currently open, not a
+   banner tucked into the page — no close button and no dismiss-by-tapping-
+   the-backdrop, so accepting or declining is the only way out and the
+   invite can't just get scrolled past or ignored while browsing on. */
 function renderInvitesArea(){
   let html = '';
   state.duelInvites.forEach(inv=>{
@@ -7121,10 +7145,9 @@ function renderInvitesArea(){
         </div>
       </div>`;
   });
-  ['friendInvitesArea','homeInvitesArea'].forEach(id=>{
-    const area = document.getElementById(id);
-    if(area) area.innerHTML = html;
-  });
+  document.getElementById('pendingInviteContent').innerHTML = html;
+  document.getElementById('pendingInviteBackdrop').classList.toggle('show', !!html);
+  document.getElementById('pendingInviteModal').classList.toggle('show', !!html);
 }
 
 function handleInviteAreaClick(e){
@@ -7141,8 +7164,7 @@ function handleInviteAreaClick(e){
   else if(joinDhikr) acceptDhikrRoomInvite(joinDhikr.dataset.joinDhikr);
   else if(declineDhikr) declineDhikrRoomInvite(declineDhikr.dataset.declineDhikr);
 }
-document.getElementById('friendInvitesArea').addEventListener('click', handleInviteAreaClick);
-document.getElementById('homeInvitesArea').addEventListener('click', handleInviteAreaClick);
+document.getElementById('pendingInviteContent').addEventListener('click', handleInviteAreaClick);
 
 function acceptDuelInvite(roomId){
   if(!fbDb || !state.profile) return;
@@ -7987,9 +8009,12 @@ let activeDragScrollArea = null;
 
 document.addEventListener('touchstart', (e) => {
   const sheet = e.target.closest('.sheet.show');
-  // profileViewSheet is a small centered dialog, not a bottom sheet — no
-  // swipe-down-to-dismiss (it'd fight the centering transform on drag).
-  if (!sheet || sheet.id === 'profileViewSheet') return;
+  // profileViewSheet and pendingInviteModal are small centered dialogs, not
+  // bottom sheets — no swipe-down-to-dismiss (it'd fight the centering
+  // transform on drag, and for the invite modal would also let someone
+  // swipe away a duel/challenge invite without actually accepting or
+  // declining it, which is the one thing this modal must not allow).
+  if (!sheet || sheet.id === 'profileViewSheet' || sheet.id === 'pendingInviteModal') return;
   // .sheet-d is just a styled text block, not the scrolling element — the
   // name-detail sheet actually scrolls via its .sheet-body ancestor, so
   // checking .sheet-d's scrollTop (always 0) never caught "already scrolled
