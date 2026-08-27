@@ -765,6 +765,16 @@ body{
 }
 .quran-tajweed-btn svg{ width:19px; height:19px; }
 
+.quran-mode-bar{
+  display:none; align-items:center; justify-content:space-between; gap:10px;
+  padding:9px 20px; background:var(--fill-sunken); border-bottom:1px solid var(--line);
+  font-size:12px; color:var(--ivory-dim); flex-shrink:0;
+}
+.quran-mode-bar button{
+  background:none; border:none; color:var(--gold-soft); font-size:12px; font-weight:600;
+  cursor:pointer; white-space:nowrap; padding:2px;
+}
+
 .quran-page-scroll{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:6px 22px 30px; position:relative; }
 .quran-page{
   font-family:var(--font-ar); line-height:2.35; text-align:justify; direction:rtl;
@@ -2161,6 +2171,10 @@ body{
         <button class="quran-tajweed-btn" id="quranSettingsBtn" aria-label="Настройки Корана" title="Настройки">
           <svg viewBox="0 0 24 24" fill="none"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="1.5"/><path d="M19.4 13.5a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V19.5a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1.08-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H4.5a2 2 0 110-4h.09a1.65 1.65 0 001.51-1.08 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33h.09A1.65 1.65 0 0011.5 4.6V4.5a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v.09a1.65 1.65 0 001.51 1H19.5a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
         </button>
+      </div>
+      <div class="quran-mode-bar" id="quranModeBar">
+        <span>Режим просмотра — прогресс не отмечается</span>
+        <button type="button" id="quranBackToReadingBtn">Вернуться к чтению</button>
       </div>
       <div class="quran-page-scroll" id="quranPageScroll">
         <div class="quran-page" id="quranPage" dir="rtl"></div>
@@ -7702,12 +7716,16 @@ const QURAN_SURAH_TRANSLIT = [
   'Аль-Кариа','Ат-Такасур','Аль-Аср','Аль-Хумаза','Аль-Филь','Курайш','Аль-Маун','Аль-Каусар','Аль-Кафирун','Ан-Наср',
   'Аль-Масад','Аль-Ихляс','Аль-Фаляк','Ан-Нас',
 ];
-const quranState = { page: 1, tajweed: true, font: 'uthmani', size: 26, chapters: null, pageCache: {}, readPages: new Set() };
+// `page` is whatever is currently on screen; `bookmarkPage` is the saved
+// reading-progress position. They diverge in 'browse' mode (looking up a
+// surah/ayah) so that browsing away doesn't overwrite where you left off
+// reading, and doesn't get counted as pages read — see `mode` below.
+const quranState = { page: 1, bookmarkPage: 1, mode: 'progress', tajweed: true, font: 'uthmani', size: 26, chapters: null, pageCache: {}, readPages: new Set() };
 const QURAN_READ_PAGES_KEY = 'quranReadPages';
 (function quranLoadPrefs(){
   try{
     const savedPage = parseInt(localStorage.getItem('quranLastPage'), 10);
-    if(savedPage >= 1 && savedPage <= QURAN_TOTAL_PAGES) quranState.page = savedPage;
+    if(savedPage >= 1 && savedPage <= QURAN_TOTAL_PAGES) quranState.bookmarkPage = savedPage;
     if(localStorage.getItem('quranTajweed') === 'off') quranState.tajweed = false;
     const savedFont = localStorage.getItem('quranFont');
     if(QURAN_FONTS.includes(savedFont)) quranState.font = savedFont;
@@ -7782,6 +7800,7 @@ async function quranRenderPage(pageNum){
   pageNumEl.textContent = pageNum + ' / ' + QURAN_TOTAL_PAGES;
   prevBtn.disabled = pageNum <= 1;
   nextBtn.disabled = pageNum >= QURAN_TOTAL_PAGES;
+  quranUpdateModeBar();
 
   try{
     await quranFetchChapters();
@@ -7812,27 +7831,53 @@ async function quranRenderPage(pageNum){
       ? (firstChapterNum + '. ' + quranSurahDisplayName(firstChapter)) : 'Коран';
 
     quranState.page = pageNum;
-    try{ localStorage.setItem('quranLastPage', pageNum); }catch(e){}
-    quranMarkPageRead(pageNum);
+    // Only a 'progress' page (reached by turning one page at a time from the
+    // reading entry point) moves the bookmark and counts toward the pages-read
+    // stat/leaderboard — a 'browse' visit (surah picker, jump-to-page) is just
+    // a lookup and must not make it look like you've read pages you skipped to.
+    if(quranState.mode === 'progress'){
+      quranState.bookmarkPage = pageNum;
+      try{ localStorage.setItem('quranLastPage', pageNum); }catch(e){}
+      quranMarkPageRead(pageNum);
+    }
   }catch(e){
     loadingEl.style.display = 'none';
     errorEl.style.display = 'block';
   }
 }
 
-function openQuranScreen(){ quranRenderPage(quranState.page); }
+function quranUpdateModeBar(){
+  const bar = document.getElementById('quranModeBar');
+  if(bar) bar.style.display = quranState.mode === 'browse' ? 'flex' : 'none';
+}
+
+function openQuranScreen(){
+  quranState.mode = 'progress';
+  quranRenderPage(quranState.bookmarkPage);
+}
 
 function quranGoToPage(n){
   n = Math.max(1, Math.min(QURAN_TOTAL_PAGES, Math.round(n)));
   quranRenderPage(n);
 }
+// Jumping to an arbitrary page (surah picker, page-number prompt) is a lookup,
+// not sequential reading — always drops into browse mode.
+function quranBrowseToPage(n){
+  quranState.mode = 'browse';
+  quranGoToPage(n);
+}
+function quranReturnToReading(){
+  quranState.mode = 'progress';
+  quranRenderPage(quranState.bookmarkPage);
+}
 document.getElementById('quranPrevBtn').addEventListener('click', ()=> quranGoToPage(quranState.page - 1));
 document.getElementById('quranNextBtn').addEventListener('click', ()=> quranGoToPage(quranState.page + 1));
 document.getElementById('quranRetryBtn').addEventListener('click', ()=> quranRenderPage(quranState.page));
+document.getElementById('quranBackToReadingBtn').addEventListener('click', quranReturnToReading);
 document.getElementById('quranPageNum').addEventListener('click', ()=>{
   const input = window.prompt('Перейти на страницу (1–' + QURAN_TOTAL_PAGES + ')', quranState.page);
   const n = parseInt(input, 10);
-  if(n) quranGoToPage(n);
+  if(n) quranBrowseToPage(n);
 });
 
 /* --- настройки: таджвид (переключатель+легенда), шрифт, размер --- */
@@ -7947,7 +7992,7 @@ async function openQuranSurahSheet(){
       listEl.querySelectorAll('.quran-surah-row').forEach(row=>{
         row.addEventListener('click', ()=>{
           closeQuranSurahSheet();
-          quranGoToPage(parseInt(row.dataset.page, 10));
+          quranBrowseToPage(parseInt(row.dataset.page, 10));
         });
       });
     }catch(e){
