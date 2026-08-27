@@ -2811,19 +2811,34 @@ function loadScriptTag(src){
 // Appends every url up front instead of awaiting each one before starting
 // the next — cuts what used to be N sequential network round trips down to
 // roughly the slowest single one, while script.async=false above still
-// guarantees they execute in this array's order (app before database/auth/
-// messaging, which all reference the app SDK at load time).
+// guarantees they execute in this array's order relative to each other.
+// Only safe for scripts whose relative order doesn't matter against
+// anything ELSE also using loadScriptTag() concurrently — see the
+// fbAppScriptReady comment below for why app-compat.js is loaded on its
+// own rather than folded into one of these calls.
 function loadScriptTagsInOrder(urls){
   return Promise.all(urls.map(loadScriptTag));
 }
 
-// firebase-messaging-compat.js is only ever touched by registerPushToken()
-// (see fbMessagingReady below), never by chat/friends/quiz/anything on the
-// fbAuthReady critical path — loading it here too just made every chat open
-// wait on a script the chat itself never uses. Fetched in parallel with the
-// three below regardless (this fires immediately, same as they do), just no
-// longer part of what fbAuthReady blocks on.
-let fbMessagingReady = loadScriptTag('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js')
+// script.async=false (see loadScriptTag) only guarantees execution in
+// *insertion* order among ALL such scripts on the page — not just within
+// one loadScriptTagsInOrder() call. firebase-app-compat.js has to be the
+// very first one inserted, since database/auth/messaging all extend the
+// `firebase` global it creates; loading messaging as an independent
+// top-level statement here briefly had its tag inserted before app's
+// (this ran before fbAuthReady's IIFE below even started), which broke
+// every one of them, not just messaging. Loading app by itself first, then
+// branching database/auth/messaging off of that same shared promise, keeps
+// app's tag unambiguously first while still fetching everything else in
+// parallel.
+let fbAppScriptReady = loadScriptTag('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
+
+// firebase-messaging-compat.js is only ever touched by registerPushToken(),
+// never by chat/friends/quiz/anything on the fbAuthReady critical path —
+// loading it as part of that path just made every chat open wait on a
+// script the chat itself never uses.
+let fbMessagingReady = fbAppScriptReady
+  .then(()=> loadScriptTag('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js'))
   .catch(e => console.warn('Failed to load firebase-messaging-compat.js:', e));
 
 // Resolves once we have a signed-in (anonymous) Firebase user, so DB writes
@@ -2832,8 +2847,8 @@ let fbMessagingReady = loadScriptTag('https://www.gstatic.com/firebasejs/10.12.2
 // Resolves to null if the SDK never loads, same as the old synchronous path.
 let fbAuthReady = (async () => {
   try{
+    await fbAppScriptReady;
     await loadScriptTagsInOrder([
-      'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js',
       'https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js',
       'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js'
     ]);
