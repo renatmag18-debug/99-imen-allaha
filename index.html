@@ -833,6 +833,26 @@ body{
 .quran-page tajweed.madda_necessary, .quran-page tajweed.madda_obligatory{ color:#E448B4; }
 .quran-page[data-tajweed="off"] tajweed{ color:inherit; }
 
+.quran-verse.search-highlight{ background:var(--accent-tint); border-radius:6px; transition:background .3s; }
+.quran-verse-play, .quran-verse-wbw-btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:1.5em; height:1.5em; margin:0 2px; border:none; background:none; padding:0;
+  font-size:0.5em; opacity:.6; cursor:pointer; vertical-align:middle;
+}
+.quran-verse-play:active, .quran-verse-wbw-btn:active{ transform:scale(.9); }
+.quran-verse-play.playing, .quran-verse-wbw-btn.open{ opacity:1; }
+.quran-wbw-panel{
+  display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-start;
+  margin:6px 0 16px; padding:12px; border-radius:var(--r-input); background:var(--fill-1); border:1px solid var(--line);
+}
+.quran-word-chip{
+  font-family:var(--font-ar); font-size:0.85em; color:var(--gold-soft); cursor:pointer;
+  padding:2px 6px; border-radius:6px; text-shadow:none;
+}
+.quran-word-chip[data-audio]:active{ transform:scale(.94); }
+.quran-word-chip.playing{ background:var(--accent-tint); color:var(--gold); }
+.quran-word-chip:not([data-audio]){ cursor:default; opacity:.6; }
+
 .quran-foot{
   flex-shrink:0; display:flex; align-items:center; justify-content:space-between; gap:14px;
   padding:12px 22px calc(14px + var(--safe-bottom));
@@ -855,6 +875,18 @@ body{
 .quran-surah-row .name .translit{ font-size:12px; color:var(--gold-soft); }
 .quran-surah-row .name .meta{ font-size:11.5px; color:var(--ivory-dim); }
 .quran-surah-row .ar{ font-family:var(--font-ar); font-size:19px; color:var(--gold-soft); direction:rtl; flex-shrink:0; }
+
+.quran-search-input{
+  width:100%; background:var(--fill-1); border:1px solid var(--line); border-radius:var(--r-input);
+  padding:11px 13px; color:var(--ivory); font-family:var(--font-body); font-size:14px; outline:none; margin-bottom:8px;
+}
+.quran-search-input:focus{ border-color:var(--gold); }
+.quran-search-status{ text-align:center; color:var(--ivory-dim); font-size:13px; padding:14px 6px; }
+.quran-search-result{ padding:12px 4px; border-bottom:1px solid var(--line); cursor:pointer; }
+.quran-search-result:last-child{ border-bottom:none; }
+.quran-search-result-ref{ font-size:12px; color:var(--jade); margin-bottom:3px; }
+.quran-search-result-snippet{ font-size:13.5px; color:var(--ivory); line-height:1.5; }
+.quran-search-result-snippet em{ color:var(--gold-soft); font-style:normal; }
 
 /* --- chat: conversation list --- */
 .chat-row{ display:flex; align-items:center; gap:12px; padding:12px 4px; border-bottom:1px solid var(--fill-2); cursor:pointer; }
@@ -2457,7 +2489,12 @@ body{
       <div class="sheet-idx">Суры Корана</div>
       <button class="sheet-close" id="quranSurahClose"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
     </div>
-    <div class="sheet-body" id="quranSurahList" style="text-align:left;padding-top:2px;"></div>
+    <div class="sheet-body" style="text-align:left;padding-top:2px;">
+      <input type="text" id="quranSearchInput" class="quran-search-input" placeholder="Сура, номер аята («2:255») или слово…" autocomplete="off">
+      <div class="quran-search-status" id="quranSearchStatus" style="display:none;"></div>
+      <div id="quranSearchResults"></div>
+      <div id="quranSurahList"></div>
+    </div>
   </div>
 
   <div class="sheet-backdrop" id="quranSettingsBackdrop"></div>
@@ -3248,6 +3285,7 @@ function go(name, replace = false){
     // this chat" — otherwise a stale activeChatViewers entry could suppress
     // push notifications for that friend forever.
     if(prevScreen === 'chat' && name !== 'chat' && typeof closeChatThread === 'function') closeChatThread();
+    if(prevScreen === 'quran' && name !== 'quran' && typeof quranPauseAudio === 'function') quranPauseAudio();
   };
   
   if(!isPopping) {
@@ -9196,7 +9234,12 @@ const QURAN_SURAH_TRANSLIT = [
 // reading-progress position. They diverge in 'browse' mode (looking up a
 // surah/ayah) so that browsing away doesn't overwrite where you left off
 // reading, and doesn't get counted as pages read — see `mode` below.
-const quranState = { page: 1, bookmarkPage: 1, mode: 'progress', tajweed: true, font: 'uthmani', size: 26, chapters: null, pageCache: {}, readPages: new Set() };
+const quranState = { page: 1, bookmarkPage: 1, mode: 'progress', tajweed: true, font: 'uthmani', size: 26, chapters: null, pageCache: {}, audioCache: {}, readPages: new Set(), highlightVerseKey: null };
+// Mishari al-`Afasy — a widely recognizable, popular recitation, used as the
+// single default rather than exposing reciter choice (which would multiply
+// the audio-cache/UI surface for a feature this app doesn't otherwise need).
+const QURAN_RECITATION_ID = 7;
+const QURAN_AUDIO_BASE = 'https://audio.qurancdn.com/';
 const QURAN_READ_PAGES_KEY = 'quranReadPages';
 // Bump this to force a one-time reset of everyone's reading progress. Each
 // step below is gated independently on the stored version so re-running
@@ -9283,11 +9326,62 @@ function quranSurahDisplayName(chapter){
 
 async function quranFetchPage(pageNum){
   if(quranState.pageCache[pageNum]) return quranState.pageCache[pageNum];
-  const resp = await fetch(`https://api.quran.com/api/v4/verses/by_page/${pageNum}?words=false&fields=text_uthmani_tajweed`);
+  // words=true + word_fields brings each word's own plain text and audio_url
+  // alongside the per-verse tajweed HTML (text_uthmani_tajweed) in the same
+  // call, used to build the word-by-word panel (quranToggleWordByWord below).
+  // The tajweed HTML itself is left untouched: it is one already-colored
+  // string per verse where a tajweed rule can span across a word boundary
+  // (idgham/ikhafa carry into the next word), so there is no reliable way to
+  // cut it apart into per-word spans -- word-by-word is rendered as a
+  // separate strip built straight from `words`, not by slicing this string.
+  const resp = await fetch(`https://api.quran.com/api/v4/verses/by_page/${pageNum}?words=true&word_fields=text_uthmani,audio_url,char_type_name&fields=text_uthmani_tajweed`);
   if(!resp.ok) throw new Error('bad status ' + resp.status);
   const data = await resp.json();
   quranState.pageCache[pageNum] = data.verses;
   return data.verses;
+}
+// Per-ayah recitation audio is a separate endpoint from the verse text
+// itself -- fetched alongside it (Promise.all in quranRenderPage) rather than
+// blocking on it, and failures here are swallowed so a flaky audio fetch
+// only costs the play buttons for that page, not the page's text.
+async function quranFetchPageAudio(pageNum){
+  if(quranState.audioCache[pageNum]) return quranState.audioCache[pageNum];
+  try{
+    const resp = await fetch(`https://api.quran.com/api/v4/recitations/${QURAN_RECITATION_ID}/by_page/${pageNum}`);
+    if(!resp.ok) throw new Error('bad status ' + resp.status);
+    const data = await resp.json();
+    const map = {};
+    (data.audio_files || []).forEach(a => { map[a.verse_key] = QURAN_AUDIO_BASE + a.url; });
+    quranState.audioCache[pageNum] = map;
+    return map;
+  }catch(e){
+    console.warn('quranFetchPageAudio failed:', e);
+    return {};
+  }
+}
+// Toggles a small strip of tappable word chips directly under one verse,
+// built straight from that verse's own `words` array (see quranFetchPage) --
+// each chip plays that single word's recitation on tap. Only one panel is
+// open at a time; re-tapping the same verse's own button just closes it.
+function quranToggleWordByWord(btn){
+  const verseKey = btn.dataset.verseKey;
+  const verseEl = btn.closest('.quran-verse');
+  const wasOpenForThisVerse = btn.classList.contains('open');
+  document.querySelectorAll('.quran-wbw-panel').forEach(p => p.remove());
+  document.querySelectorAll('.quran-verse-wbw-btn.open').forEach(b => b.classList.remove('open'));
+  if(wasOpenForThisVerse) return;
+  const verses = quranState.pageCache[quranState.page] || [];
+  const v = verses.find(x => x.verse_key === verseKey);
+  if(!v || !v.words) return;
+  const panel = document.createElement('div');
+  panel.className = 'quran-wbw-panel';
+  panel.dir = 'rtl';
+  panel.innerHTML = v.words.filter(w => w.char_type_name === 'word').map(w => {
+    const audioAttr = w.audio_url ? ` data-audio="${escapeHtml(QURAN_AUDIO_BASE + w.audio_url)}"` : '';
+    return `<span class="quran-word-chip"${audioAttr}>${escapeHtml(w.text_uthmani)}</span>`;
+  }).join('');
+  verseEl.insertAdjacentElement('afterend', panel);
+  btn.classList.add('open');
 }
 
 async function quranRenderPage(pageNum){
@@ -9308,9 +9402,11 @@ async function quranRenderPage(pageNum){
   nextBtn.disabled = pageNum >= QURAN_TOTAL_PAGES;
   quranUpdateModeBar();
 
+  quranPauseAudio();
+
   try{
     await quranFetchChapters();
-    const verses = await quranFetchPage(pageNum);
+    const [verses, audioMap] = await Promise.all([quranFetchPage(pageNum), quranFetchPageAudio(pageNum)]);
     let html = '';
     verses.forEach(v=>{
       const chapterNum = parseInt(v.verse_key.split(':')[0], 10);
@@ -9321,7 +9417,10 @@ async function quranRenderPage(pageNum){
           html += `<span class="quran-bismillah">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</span>`;
         }
       }
-      html += v.text_uthmani_tajweed + ' ';
+      const audioUrl = audioMap[v.verse_key] || '';
+      const playBtn = audioUrl ? `<button type="button" class="quran-verse-play" data-audio="${escapeHtml(audioUrl)}" aria-label="Слушать аят">🔊</button>` : '';
+      const wbwBtn = (v.words && v.words.length) ? `<button type="button" class="quran-verse-wbw-btn" data-verse-key="${escapeHtml(v.verse_key)}" aria-label="Слово за словом">🔤</button>` : '';
+      html += `<span class="quran-verse" data-verse-key="${escapeHtml(v.verse_key)}">${v.text_uthmani_tajweed}${playBtn}${wbwBtn}</span> `;
     });
     pageEl.innerHTML = html;
     pageEl.setAttribute('data-tajweed', quranState.tajweed ? 'on' : 'off');
@@ -9330,6 +9429,19 @@ async function quranRenderPage(pageNum){
     pageEl.style.display = '';
     loadingEl.style.display = 'none';
     if(scrollEl) scrollEl.scrollTop = 0;
+
+    // Landed here from a search result (see quranJumpToAyah) — the exact
+    // page might contain several verses, so flash the specific one that was
+    // searched for instead of leaving it up to the reader to spot it.
+    if(quranState.highlightVerseKey){
+      const target = pageEl.querySelector(`.quran-verse[data-verse-key="${CSS.escape(quranState.highlightVerseKey)}"]`);
+      if(target){
+        target.classList.add('search-highlight');
+        target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        setTimeout(()=> target.classList.remove('search-highlight'), 2500);
+      }
+      quranState.highlightVerseKey = null;
+    }
 
     const firstChapterNum = parseInt(verses[0].verse_key.split(':')[0], 10);
     const firstChapter = quranChapterFor(firstChapterNum);
@@ -9356,6 +9468,48 @@ function quranUpdateModeBar(){
   const bar = document.getElementById('quranModeBar');
   if(bar) bar.style.display = quranState.mode === 'browse' ? 'flex' : 'none';
 }
+
+/* --- ayah / word audio playback --- */
+let quranAudioEl = null;
+let quranPlayingEl = null;
+function quranGetAudioEl(){
+  if(!quranAudioEl){
+    quranAudioEl = new Audio();
+    quranAudioEl.addEventListener('ended', quranClearPlayingHighlight);
+    quranAudioEl.addEventListener('error', quranClearPlayingHighlight);
+  }
+  return quranAudioEl;
+}
+function quranClearPlayingHighlight(){
+  if(quranPlayingEl) quranPlayingEl.classList.remove('playing');
+  quranPlayingEl = null;
+}
+function quranPlayAudio(url, el){
+  if(!url) return;
+  const audio = quranGetAudioEl();
+  quranClearPlayingHighlight();
+  audio.src = url;
+  audio.currentTime = 0;
+  audio.play().catch(()=> showToast('Не удалось воспроизвести'));
+  quranPlayingEl = el;
+  el.classList.add('playing');
+}
+// Called whenever a new page is about to render (quranRenderPage) and when
+// leaving the Коран screen entirely (see go()) — an ayah/word left playing
+// across either of those would otherwise keep going with nothing on screen
+// still pointing at what's making the sound.
+function quranPauseAudio(){
+  if(quranAudioEl) quranAudioEl.pause();
+  quranClearPlayingHighlight();
+}
+document.getElementById('quranPage').addEventListener('click', e=>{
+  const playBtn = e.target.closest('.quran-verse-play');
+  if(playBtn){ quranPlayAudio(playBtn.dataset.audio, playBtn); return; }
+  const wordChip = e.target.closest('.quran-word-chip');
+  if(wordChip){ quranPlayAudio(wordChip.dataset.audio, wordChip); return; }
+  const wbwBtn = e.target.closest('.quran-verse-wbw-btn');
+  if(wbwBtn){ quranToggleWordByWord(wbwBtn); return; }
+});
 
 function openQuranScreen(){
   quranState.mode = 'progress';
@@ -9473,37 +9627,52 @@ document.getElementById('quranSettingsBtn').addEventListener('click', openQuranS
 document.getElementById('quranSettingsClose').addEventListener('click', closeQuranSettingsSheet);
 document.getElementById('quranSettingsBackdrop').addEventListener('click', closeQuranSettingsSheet);
 
-/* --- список сур --- */
+/* --- список сур + поиск сур/аятов --- */
+function quranRenderSurahRows(chapters){
+  const listEl = document.getElementById('quranSurahList');
+  if(!chapters.length){
+    listEl.innerHTML = '';
+    return;
+  }
+  listEl.innerHTML = chapters.map(c => `
+    <div class="quran-surah-row" data-page="${c.pages[0]}">
+      <span class="n">${c.id}</span>
+      <span class="name">
+        <span class="ru">${quranSurahDisplayName(c)}</span>
+        <span class="translit">${QURAN_SURAH_TRANSLIT[c.id-1] || ''}</span>
+        <span class="meta">${c.verses_count} аятов</span>
+      </span>
+      <span class="ar">${c.name_arabic}</span>
+    </div>
+  `).join('');
+  listEl.querySelectorAll('.quran-surah-row').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      closeQuranSurahSheet();
+      quranBrowseToPage(parseInt(row.dataset.page, 10));
+    });
+  });
+}
 async function openQuranSurahSheet(){
   pushSheetHistory();
   document.getElementById('quranSurahSheet').classList.add('show');
   document.getElementById('quranSurahBackdrop').classList.add('show');
+  document.getElementById('quranSearchInput').value = '';
+  document.getElementById('quranSearchResults').innerHTML = '';
+  document.getElementById('quranSearchStatus').style.display = 'none';
   const listEl = document.getElementById('quranSurahList');
-  if(!listEl.dataset.filled){
-    listEl.innerHTML = '<p class="misc-intro">Загрузка…</p>';
-    try{
-      const chapters = await quranFetchChapters();
-      listEl.innerHTML = chapters.map(c => `
-        <div class="quran-surah-row" data-page="${c.pages[0]}">
-          <span class="n">${c.id}</span>
-          <span class="name">
-            <span class="ru">${quranSurahDisplayName(c)}</span>
-            <span class="translit">${QURAN_SURAH_TRANSLIT[c.id-1] || ''}</span>
-            <span class="meta">${c.verses_count} аятов</span>
-          </span>
-          <span class="ar">${c.name_arabic}</span>
-        </div>
-      `).join('');
-      listEl.dataset.filled = '1';
-      listEl.querySelectorAll('.quran-surah-row').forEach(row=>{
-        row.addEventListener('click', ()=>{
-          closeQuranSurahSheet();
-          quranBrowseToPage(parseInt(row.dataset.page, 10));
-        });
-      });
-    }catch(e){
-      listEl.innerHTML = '<p class="misc-intro">Не удалось загрузить список сур.</p>';
-    }
+  listEl.style.display = '';
+  // Re-render the full (unfiltered) list every time the sheet opens — a
+  // previous visit may have left it narrowed down by a search query.
+  if(quranState.chapters){
+    quranRenderSurahRows(quranState.chapters);
+    return;
+  }
+  listEl.innerHTML = '<p class="misc-intro">Загрузка…</p>';
+  try{
+    const chapters = await quranFetchChapters();
+    quranRenderSurahRows(chapters);
+  }catch(e){
+    listEl.innerHTML = '<p class="misc-intro">Не удалось загрузить список сур.</p>';
   }
 }
 function closeQuranSurahSheet(){
@@ -9514,6 +9683,126 @@ function closeQuranSurahSheet(){
 document.getElementById('quranSurahBtn').addEventListener('click', openQuranSurahSheet);
 document.getElementById('quranSurahClose').addEventListener('click', closeQuranSurahSheet);
 document.getElementById('quranSurahBackdrop').addEventListener('click', closeQuranSurahSheet);
+
+// Matches "2:255", "2 255", "2-255", "2,255" — a direct surah:ayah reference,
+// tried before falling back to a text search.
+const QURAN_AYAH_REF_RE = /^\s*(\d{1,3})\s*[:,\- ]\s*(\d{1,3})\s*$/;
+function quranFilterSurahs(query){
+  const chapters = quranState.chapters || [];
+  const q = query.trim().toLowerCase();
+  if(!q) return chapters;
+  return chapters.filter(c =>
+    String(c.id) === q ||
+    quranSurahDisplayName(c).toLowerCase().includes(q) ||
+    (QURAN_SURAH_TRANSLIT[c.id-1] || '').toLowerCase().includes(q) ||
+    (c.name_arabic || '').includes(query.trim())
+  );
+}
+async function quranJumpToAyah(verseKey){
+  closeQuranSurahSheet();
+  try{
+    const resp = await fetch(`https://api.quran.com/api/v4/verses/by_key/${verseKey}?fields=page_number`);
+    if(!resp.ok) throw new Error('bad status ' + resp.status);
+    const data = await resp.json();
+    quranState.highlightVerseKey = verseKey;
+    quranBrowseToPage(data.verse.page_number);
+  }catch(e){
+    showToast('Не удалось перейти к аяту');
+  }
+}
+let quranSearchTimer = null;
+document.getElementById('quranSearchInput').addEventListener('input', e=>{
+  clearTimeout(quranSearchTimer);
+  const q = e.target.value;
+  quranSearchTimer = setTimeout(()=> quranHandleSearchInput(q), 300);
+});
+async function quranHandleSearchInput(query){
+  const listEl = document.getElementById('quranSurahList');
+  const resultsEl = document.getElementById('quranSearchResults');
+  const statusEl = document.getElementById('quranSearchStatus');
+  const trimmed = query.trim();
+
+  if(!trimmed){
+    resultsEl.innerHTML = '';
+    statusEl.style.display = 'none';
+    listEl.style.display = '';
+    quranRenderSurahRows(quranState.chapters || []);
+    return;
+  }
+
+  const ayahMatch = trimmed.match(QURAN_AYAH_REF_RE);
+  if(ayahMatch){
+    const surahNum = parseInt(ayahMatch[1], 10);
+    const ayahNum = parseInt(ayahMatch[2], 10);
+    const chapter = quranChapterFor(surahNum);
+    listEl.style.display = 'none';
+    if(!chapter || ayahNum < 1 || ayahNum > chapter.verses_count){
+      resultsEl.innerHTML = '';
+      statusEl.textContent = 'Такого аята нет.';
+      statusEl.style.display = 'block';
+      return;
+    }
+    statusEl.style.display = 'none';
+    const verseKey = surahNum + ':' + ayahNum;
+    resultsEl.innerHTML = `<div class="quran-surah-row" data-verse-key="${verseKey}">
+      <span class="n">${verseKey}</span>
+      <span class="name">
+        <span class="ru">Перейти к аяту</span>
+        <span class="translit">${quranSurahDisplayName(chapter)}, аят ${ayahNum}</span>
+      </span>
+    </div>`;
+    resultsEl.querySelector('[data-verse-key]').addEventListener('click', ()=> quranJumpToAyah(verseKey));
+    return;
+  }
+
+  const filtered = quranFilterSurahs(trimmed);
+  if(filtered.length){
+    resultsEl.innerHTML = '';
+    statusEl.style.display = 'none';
+    listEl.style.display = '';
+    quranRenderSurahRows(filtered);
+    return;
+  }
+
+  // No surah matched by name/number — try a full-text search across ayah
+  // translations/Arabic text instead. Skipped for a 1-character query since
+  // that would just return noise while someone is mid-typing.
+  listEl.style.display = 'none';
+  if(trimmed.length < 2){
+    resultsEl.innerHTML = '';
+    statusEl.style.display = 'none';
+    return;
+  }
+  statusEl.textContent = 'Поиск…';
+  statusEl.style.display = 'block';
+  resultsEl.innerHTML = '';
+  try{
+    const resp = await fetch(`https://api.quran.com/api/v4/search?q=${encodeURIComponent(trimmed)}&language=ru&size=20`);
+    if(!resp.ok) throw new Error('bad status ' + resp.status);
+    const data = await resp.json();
+    const results = (data.search && data.search.results) || [];
+    if(!results.length){
+      statusEl.textContent = 'Ничего не найдено.';
+      return;
+    }
+    statusEl.style.display = 'none';
+    resultsEl.innerHTML = results.map(r => {
+      const surahNum = parseInt(r.verse_key.split(':')[0], 10);
+      const chapter = quranChapterFor(surahNum);
+      const translation = (r.translations && r.translations[0] && r.translations[0].text) || '';
+      return `<div class="quran-search-result" data-verse-key="${escapeHtml(r.verse_key)}">
+        <div class="quran-search-result-ref">${escapeHtml(r.verse_key)} · ${chapter ? escapeHtml(quranSurahDisplayName(chapter)) : ''}</div>
+        <div class="quran-search-result-snippet">${translation}</div>
+      </div>`;
+    }).join('');
+    resultsEl.querySelectorAll('.quran-search-result').forEach(el=>{
+      el.addEventListener('click', ()=> quranJumpToAyah(el.dataset.verseKey));
+    });
+  }catch(e){
+    statusEl.textContent = 'Ошибка поиска. Проверьте соединение.';
+    statusEl.style.display = 'block';
+  }
+}
 
 /* =====================================================
    SWIPE BETWEEN SCREENS
