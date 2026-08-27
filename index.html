@@ -7338,6 +7338,7 @@ function renderChatThreadMessages(messagesObj){
   const entries = Object.entries(messagesObj || {}).sort((a,b)=> (a[1].ts||0)-(b[1].ts||0));
   if(!entries.length){
     wrap.innerHTML = '';
+    emptyHint.textContent = 'Здесь пока нет сообщений — напишите первым.';
     emptyHint.style.display = 'block';
     return;
   }
@@ -7402,7 +7403,14 @@ function openChatThread(username, name, avatar){
   document.getElementById('chatThreadName').textContent = name;
   renderAvatarInto(document.getElementById('chatThreadAvatar'), avatar, name);
   document.getElementById('chatThreadMessages').innerHTML = '';
-  document.getElementById('chatThreadEmptyHint').style.display = 'none';
+  // Shown immediately rather than leaving the screen blank — the first chat
+  // opened after launch waits on fbAuthReady (Firebase SDK scripts + anonymous
+  // sign-in, all over the network), which can take a few seconds and
+  // otherwise looks like the thread is just stuck empty. renderChatThreadMessages
+  // overwrites this with the real "no messages" text once data actually arrives.
+  const chatThreadEmptyHintEl = document.getElementById('chatThreadEmptyHint');
+  chatThreadEmptyHintEl.textContent = 'Загрузка сообщений…';
+  chatThreadEmptyHintEl.style.display = 'block';
   chatInputEl.value = '';
   autoResizeChatInput();
   updateChatComposerButtons();
@@ -7913,6 +7921,19 @@ chatVoiceAudioEl.addEventListener('timeupdate', ()=>{
   history.replaceState({}, '', baseUrl());
   state.pendingChatUsername = chat;
 })();
+
+// Native counterpart of the ?chat= deep link above — the Android app always
+// loads via loadDataWithBaseURL with no real query string, so a tapped chat
+// notification calls this instead (see MainActivity.deliverPendingChatOpen).
+// Opens immediately if friends are already loaded (app was already running);
+// otherwise defers to the same pendingChatUsername consumed once
+// listenFriendsRealtime()'s friends load completes.
+window.onOpenChatFromNotification = function(username){
+  if(!username) return;
+  const friend = (state.friendsList || []).find(f => fbKey(f.uid) === fbKey(username));
+  if(friend){ openChatThread(friend.uid, friend.name, friend.avatar); return; }
+  state.pendingChatUsername = username;
+};
 
 /* ---------------- avatar picker ---------------- */
 let avatarPickerState = { emoji: AVATAR_EMOJIS[0], color: Object.keys(AVATAR_COLORS)[0] };
