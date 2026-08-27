@@ -859,6 +859,8 @@ body{
 .chat-empty-hint{ display:none; text-align:center; color:var(--ivory-dim); font-size:13px; padding:60px 20px; line-height:1.7; }
 .chat-bubble-row{ display:flex; margin-bottom:8px; }
 .chat-bubble-row.mine{ justify-content:flex-end; }
+@keyframes chatBubbleIn{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:translateY(0); } }
+.chat-bubble-row.new-message{ animation:chatBubbleIn .45s var(--ease); }
 .chat-bubble{
   max-width:78%; padding:9px 13px; border-radius:16px; font-size:14px; line-height:1.45;
   color:var(--ivory); background:var(--panel-2); border:1px solid var(--line);
@@ -7330,6 +7332,19 @@ let chatThreadPresenceUnsub = null;
 let chatThreadOtherLastRead = 0;
 let chatThreadOtherLastReadUnsub = null;
 let chatThreadLastMessagesObj = null;
+// Message ids already rendered once in the currently-open thread — lets the
+// "new message" entrance animation apply only to bubbles that weren't there
+// a moment ago, since the whole list is rebuilt from scratch on every
+// Firebase snapshot rather than diffed.
+let chatRenderedMessageIds = new Set();
+// The initial history load for a thread shouldn't animate every bubble in
+// at once — only messages that arrive while it's already open should.
+let chatThreadFirstRenderDone = false;
+// Video-circle first-frame thumbnails, generated once per message id (see
+// generateVideoPoster) and kept for the life of the page — cheap to keep
+// around and avoids redoing the canvas grab on every re-render.
+let chatVideoPosterById = {};
+let chatVideoPosterPending = new Set();
 // Mirrors `presence`: while a thread is open, activeChatViewers/{myKey} names
 // who I'm looking at, so the sender can skip a push notification that would
 // just be telling me about a message I'm already reading live.
@@ -7393,7 +7408,10 @@ function renderChatThreadMessages(messagesObj){
          </div>`;
     } else if(m.type === 'video' && m.videoData){
       chatMediaDataById[id] = m.videoData;
-      bodyHtml = `<div class="chat-video-circle" data-video-id="${escapeHtml(id)}">
+      const poster = chatVideoPosterById[id];
+      if(!poster) generateVideoPoster(id, m.videoData);
+      const posterStyle = poster ? ` style="background-image:url(${poster});background-size:cover;background-position:center top;"` : '';
+      bodyHtml = `<div class="chat-video-circle" data-video-id="${escapeHtml(id)}"${posterStyle}>
            <button class="chat-video-circle-play" aria-label="Воспроизвести">
              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
            </button>
@@ -7415,8 +7433,16 @@ function renderChatThreadMessages(messagesObj){
         </svg>
       </span>`;
     }
-    html += `<div class="chat-bubble-row${mine?' mine':''}"><div class="chat-bubble${bubbleClass}">${bodyHtml}<span class="chat-bubble-time">${formatChatClock(ts)}${checkHtml}</span></div></div>`;
+    // Only genuinely new messages (not already seen in this thread, and not
+    // part of the initial history load) animate in — otherwise every
+    // existing bubble would replay the entrance animation on every
+    // re-render, since the whole list is rebuilt from scratch on each
+    // Firebase snapshot.
+    const isNewBubble = chatThreadFirstRenderDone && !chatRenderedMessageIds.has(id);
+    html += `<div class="chat-bubble-row${mine?' mine':''}${isNewBubble?' new-message':''}"><div class="chat-bubble${bubbleClass}">${bodyHtml}<span class="chat-bubble-time">${formatChatClock(ts)}${checkHtml}</span></div></div>`;
   });
+  entries.forEach(([id])=> chatRenderedMessageIds.add(id));
+  chatThreadFirstRenderDone = true;
   wrap.innerHTML = html;
   scrollEl.scrollTop = scrollEl.scrollHeight;
   // If a voice message is still playing across this re-render (e.g. a new
@@ -7444,6 +7470,8 @@ function openChatThread(username, name, avatar){
   document.getElementById('chatThreadMessages').innerHTML = '';
   chatThreadOtherLastRead = 0;
   chatThreadLastMessagesObj = null;
+  chatRenderedMessageIds = new Set();
+  chatThreadFirstRenderDone = false;
   // Shown immediately rather than leaving the screen blank — the first chat
   // opened after launch waits on fbAuthReady (Firebase SDK scripts + anonymous
   // sign-in, all over the network), which can take a few seconds and
@@ -7898,6 +7926,60 @@ function resetVoiceButtonUI(btn){
   if(bar) bar.style.width = '0%';
   const durationEl = btn.parentElement.querySelector('.chat-voice-duration');
   if(durationEl) durationEl.textContent = formatVoiceDuration(parseFloat(durationEl.dataset.total) || 0);
+}
+// Grabs the first frame of a video-circle message as a small JPEG data URL
+// and caches it (chatVideoPosterById), so an unopened circle shows an actual
+// preview instead of sitting there plain black until tapped. Runs once per
+// message id — chatVideoPosterPending guards against kicking this off again
+// on every re-render before the first attempt has finished.
+function generateVideoPoster(id, src){
+  if(chatVideoPosterPending.has(id)) return;
+  chatVideoPosterPending.add(id);
+  const video = document.createElement('video');
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = 'auto';
+  video.style.position = 'fixed';
+  video.style.left = '-9999px';
+  video.style.width = '2px';
+  video.style.height = '2px';
+  document.body.appendChild(video);
+  let done = false;
+  const finish = () => {
+    if(done) return;
+    done = true;
+    chatVideoPosterPending.delete(id);
+    video.remove();
+  };
+  // A safety net in case neither loadeddata nor error ever fires on some
+  // device/codec combination — without it a stuck pending flag would block
+  // this message's poster from ever being retried.
+  const safetyTimeout = setTimeout(finish, 5000);
+  video.addEventListener('loadeddata', () => {
+    // Seeking to a small offset rather than exactly 0 sidesteps a known
+    // Chrome quirk where currentTime=0 sometimes doesn't trigger a repaint
+    // on a freshly-loaded video element.
+    try { video.currentTime = 0.1; } catch(e) { finish(); clearTimeout(safetyTimeout); }
+  }, { once:true });
+  video.addEventListener('seeked', () => {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth || 240;
+      canvas.height = video.videoHeight || 240;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      chatVideoPosterById[id] = dataUrl;
+      const circle = document.querySelector(`.chat-video-circle[data-video-id="${CSS.escape(id)}"]`);
+      if(circle) circle.style.cssText += `background-image:url(${dataUrl});background-size:cover;background-position:center top;`;
+    } catch(e) {
+      console.warn('video poster generation failed:', e);
+    }
+    clearTimeout(safetyTimeout);
+    finish();
+  }, { once:true });
+  video.addEventListener('error', () => { clearTimeout(safetyTimeout); finish(); }, { once:true });
+  video.src = src;
 }
 function openVideoViewer(src){
   // Only one thing (voice or video) plays at a time in the thread.
