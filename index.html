@@ -716,6 +716,23 @@ body{
    Точных исходных переносов строк это не воспроизводит (для этого
    нужен отдельный шрифт под каждую из 604 страниц) — переносится по
    ширине экрана, но состав аятов на странице тот же, что в книге. */
+.quran-entry-card{
+  display:flex; align-items:center; gap:14px; width:100%; max-width:90%; margin:0 auto 14px;
+  padding:14px 16px; border-radius:var(--r-card); border:1px solid var(--gold);
+  background:linear-gradient(160deg, var(--accent-tint), var(--accent-tint-soft));
+  cursor:pointer; text-align:left; font-family:var(--font-body);
+}
+.quran-entry-card:active{ transform:scale(.98); }
+.quran-entry-icon{
+  flex-shrink:0; width:42px; height:42px; border-radius:50%; background:var(--gold); color:var(--on-accent);
+  display:flex; align-items:center; justify-content:center;
+}
+.quran-entry-icon svg{ width:20px; height:20px; }
+.quran-entry-text{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.quran-entry-title{ font-family:var(--font-display); font-size:16px; font-weight:400; color:var(--ivory); }
+.quran-entry-sub{ font-size:11.5px; color:var(--ivory-dim); }
+.quran-entry-chevron{ width:16px; height:16px; color:var(--ivory-dim); flex-shrink:0; }
+
 .quran-head{ display:flex; align-items:center; gap:10px; padding:16px 20px 12px; flex-shrink:0; }
 .quran-surah-btn{
   flex:1; min-width:0; display:flex; align-items:center; justify-content:center; gap:6px;
@@ -731,13 +748,13 @@ body{
   flex-shrink:0; transition:color .2s, border-color .2s;
 }
 .quran-tajweed-btn svg{ width:19px; height:19px; }
-.quran-tajweed-btn.active{ color:var(--gold); border-color:var(--gold); }
 
 .quran-page-scroll{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:6px 22px 30px; position:relative; }
 .quran-page{
-  font-family:var(--font-ar); font-size:26px; line-height:2.35; text-align:justify; direction:rtl;
+  font-family:var(--font-ar); line-height:2.35; text-align:justify; direction:rtl;
   color:var(--ivory); text-shadow:var(--ink-halo);
 }
+.quran-page[data-font="amiri"]{ font-family:'Amiri', serif; }
 .quran-status{ text-align:center; color:var(--ivory-dim); font-size:13.5px; padding:60px 20px; line-height:1.7; }
 
 .quran-surah-title{
@@ -792,6 +809,11 @@ body{
 .quran-surah-row .name .ru{ font-size:14.5px; color:var(--ivory); }
 .quran-surah-row .name .meta{ font-size:11.5px; color:var(--ivory-dim); }
 .quran-surah-row .ar{ font-family:var(--font-ar); font-size:19px; color:var(--gold-soft); direction:rtl; flex-shrink:0; }
+
+.quran-legend{ display:flex; flex-direction:column; gap:10px; padding:12px 0 20px; }
+.quran-legend-row{ display:flex; align-items:flex-start; gap:10px; }
+.quran-legend-dot{ width:13px; height:13px; border-radius:50%; margin-top:2px; flex-shrink:0; }
+.quran-legend-row span{ font-size:13px; color:var(--ivory-dim); line-height:1.5; }
 
 /* ================= QUIZ ================= */
 .quiz-head{ display:flex; align-items:center; gap:12px; padding:0 20px 16px; flex-shrink:0;}
@@ -1750,6 +1772,16 @@ body{
           <div class="weekly-challenge-count-label" id="istighfar_weeklyLabel"></div>
         </div>
       </div>
+      <button class="quran-entry-card" id="quranEntryCard">
+        <span class="quran-entry-icon">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 5.8c2.2-1.2 4.8-1.2 7 0v13c-2.2-1.2-4.8-1.2-7 0v-13z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M20 5.8c-2.2-1.2-4.8-1.2-7 0v13c2.2-1.2 4.8-1.2 7 0v-13z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="quran-entry-text">
+          <span class="quran-entry-title">Коран</span>
+          <span class="quran-entry-sub">Читать постранично, с таджвидом</span>
+        </span>
+        <svg class="quran-entry-chevron" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
       <div class="segmented-wrap" id="miscSegmentWrap">
         <div class="segmented" id="miscSegment">
           <button class="seg-btn active" data-misc="zikr">Зикры</button>
@@ -1757,7 +1789,6 @@ body{
           <button class="seg-btn" data-misc="dua">Дуа</button>
           <button class="seg-btn" data-misc="namaz">Намаз</button>
           <button class="seg-btn" data-misc="favorites" title="Избранное" style="font-size:16px;">★</button>
-          <button class="seg-btn" data-misc="quran">Коран</button>
         </div>
       </div>
 
@@ -2079,8 +2110,8 @@ body{
           <span id="quranSurahName">Коран</span>
           <svg viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
-        <button class="quran-tajweed-btn" id="quranTajweedBtn" aria-label="Таджвид" title="Таджвид">
-          <svg viewBox="0 0 24 24" fill="none"><circle cx="8" cy="9" r="2.4" fill="currentColor"/><circle cx="16" cy="9.5" r="2.4" fill="currentColor" opacity=".6"/><circle cx="12" cy="16" r="2.4" fill="currentColor" opacity=".35"/></svg>
+        <button class="quran-tajweed-btn" id="quranSettingsBtn" aria-label="Настройки Корана" title="Настройки">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="1.5"/><path d="M19.4 13.5a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V19.5a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1.08-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H4.5a2 2 0 110-4h.09a1.65 1.65 0 001.51-1.08 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33h.09A1.65 1.65 0 0011.5 4.6V4.5a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v.09a1.65 1.65 0 001.51 1H19.5a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
         </button>
       </div>
       <div class="quran-page-scroll" id="quranPageScroll">
@@ -2108,6 +2139,45 @@ body{
       <button class="sheet-close" id="quranSurahClose"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
     </div>
     <div class="sheet-body" id="quranSurahList" style="text-align:left;padding-top:2px;"></div>
+  </div>
+
+  <div class="sheet-backdrop" id="quranSettingsBackdrop"></div>
+  <div class="sheet" id="quranSettingsSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-top">
+      <div class="sheet-idx">Настройки Корана</div>
+      <button class="sheet-close" id="quranSettingsClose"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
+    </div>
+    <div class="sheet-body" style="text-align:left;padding-top:2px;">
+
+      <div class="section-label" style="margin-top:0;">Шрифт</div>
+      <div class="len-choice" id="quranFontChoice" style="justify-content:flex-start;margin-bottom:20px;">
+        <div class="len-chip active" data-font="uthmani">Усмани (как в Мусхафе)</div>
+        <div class="len-chip" data-font="amiri">Обычный</div>
+      </div>
+
+      <div class="section-label">Размер текста</div>
+      <div class="len-choice" id="quranSizeChoice" style="justify-content:flex-start;margin-bottom:20px;">
+        <div class="len-chip" data-size="20" style="font-size:13px;">А</div>
+        <div class="len-chip active" data-size="26" style="font-size:16px;">А</div>
+        <div class="len-chip" data-size="32" style="font-size:19px;">А</div>
+        <div class="len-chip" data-size="38" style="font-size:22px;">А</div>
+      </div>
+
+      <div class="section-label">Таджвид</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:16px;">
+        <div style="font-size:14px;color:var(--ivory);">Подсветка правил чтения</div>
+        <label style="position:relative;display:inline-block;width:40px;height:24px;flex-shrink:0;">
+          <input type="checkbox" id="quranTajweedToggle" style="opacity:0;width:0;height:0;" checked>
+          <span class="slider" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:var(--fill-3);transition:.4s;border-radius:24px;border:1px solid var(--line);"></span>
+          <span class="slider-knob" style="position:absolute;content:'';height:18px;width:18px;left:2px;bottom:2px;background-color:var(--ivory);transition:.4s;border-radius:50%;"></span>
+        </label>
+      </div>
+
+      <p class="section-desc" style="margin-top:-8px;">Что означает каждый цвет</p>
+      <div class="quran-legend" id="quranLegend"></div>
+
+    </div>
   </div>
 
   <div class="sheet-backdrop" id="friendPickerBackdrop"></div>
@@ -2510,6 +2580,7 @@ window.addEventListener('popstate', (e) => {
     try { closeDhikrRoomSheet(); } catch(e){}
     try { closeFriendPicker(); } catch(e){}
     try { closeQuranSurahSheet(); } catch(e){}
+    try { closeQuranSettingsSheet(); } catch(e){}
     setTimeout(() => { isClosingFromPopstate = false; }, 50);
   }
 });
@@ -3940,10 +4011,6 @@ function moveWeeklyChallengeCardInto(wrapEl){
 moveWeeklyChallengeCardInto(miscWraps.zikr);
 document.querySelectorAll('#miscSegment .seg-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
-    // "Коран" isn't another in-place tab like the rest of this row — it
-    // opens its own full screen, so it never becomes the active segment
-    // and never touches miscWraps.
-    if(btn.dataset.misc === 'quran'){ go('quran'); openQuranScreen(); return; }
     document.querySelectorAll('#miscSegment .seg-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     Object.entries(miscWraps).forEach(([key, el])=>{
@@ -3952,6 +4019,9 @@ document.querySelectorAll('#miscSegment .seg-btn').forEach(btn=>{
     moveWeeklyChallengeCardInto(miscWraps[btn.dataset.misc]);
     if(btn.dataset.misc==='favorites') renderMiscFavorites();
   });
+});
+document.getElementById('quranEntryCard').addEventListener('click', ()=>{
+  go('quran'); openQuranScreen();
 });
 
 /* --- поиск по зикрам/азкарам/дуа/намазу --- */
@@ -7385,12 +7455,29 @@ updateSettingsGearVisibility();
    реально открыл этот экран, с кэшем в памяти на время сессии.
 ===================================================== */
 const QURAN_TOTAL_PAGES = 604;
-const quranState = { page: 1, tajweed: true, chapters: null, pageCache: {} };
+const QURAN_TAJWEED_LEGEND = [
+  { color:'#9AA0A6', label:'Не произносится — соединительная хамза, «солнечный» лям и другие непроизносимые буквы' },
+  { color:'#FF7E1E', label:'Гунна — носовой призвук, тянется около 2 тактов' },
+  { color:'#169777', label:'Идгам с гунной — слияние букв с носовым призвуком' },
+  { color:'#169200', label:'Идгам без гунны — слияние букв без призвука' },
+  { color:'#58B800', label:'Идгам губной — слияние двух букв «мим»' },
+  { color:'#9400A8', label:'Ихфа — скрытое, приглушённое произношение «нун»' },
+  { color:'#D500B7', label:'Ихфа губной — скрытое произношение «мим» перед «ба»' },
+  { color:'#26BFFD', label:'Икляб — «нун» переходит в звук «м» перед «ба»' },
+  { color:'#DD0008', label:'Калькаля — отскок звука на буквах ق ط ب ج د' },
+  { color:'#537FFF', label:'Мадд обычный — растяжение звука на 2 такта' },
+  { color:'#4050FF', label:'Мадд допустимый — растяжение на 2–6 тактов' },
+  { color:'#000EBC', label:'Мадд обязательный — растяжение на 4–6 тактов' },
+];
+const quranState = { page: 1, tajweed: true, font: 'uthmani', size: 26, chapters: null, pageCache: {} };
 (function quranLoadPrefs(){
   try{
     const savedPage = parseInt(localStorage.getItem('quranLastPage'), 10);
     if(savedPage >= 1 && savedPage <= QURAN_TOTAL_PAGES) quranState.page = savedPage;
     if(localStorage.getItem('quranTajweed') === 'off') quranState.tajweed = false;
+    if(localStorage.getItem('quranFont') === 'amiri') quranState.font = 'amiri';
+    const savedSize = parseInt(localStorage.getItem('quranSize'), 10);
+    if(savedSize >= 16 && savedSize <= 48) quranState.size = savedSize;
   }catch(e){}
 })();
 
@@ -7454,6 +7541,8 @@ async function quranRenderPage(pageNum){
     });
     pageEl.innerHTML = html;
     pageEl.setAttribute('data-tajweed', quranState.tajweed ? 'on' : 'off');
+    pageEl.setAttribute('data-font', quranState.font);
+    pageEl.style.fontSize = quranState.size + 'px';
     pageEl.style.display = '';
     loadingEl.style.display = 'none';
     if(scrollEl) scrollEl.scrollTop = 0;
@@ -7486,15 +7575,73 @@ document.getElementById('quranPageNum').addEventListener('click', ()=>{
   if(n) quranGoToPage(n);
 });
 
-const quranTajweedBtn = document.getElementById('quranTajweedBtn');
-function quranUpdateTajweedBtn(){ quranTajweedBtn.classList.toggle('active', quranState.tajweed); }
-quranUpdateTajweedBtn();
-quranTajweedBtn.addEventListener('click', ()=>{
-  quranState.tajweed = !quranState.tajweed;
-  try{ localStorage.setItem('quranTajweed', quranState.tajweed ? 'on' : 'off'); }catch(e){}
-  quranUpdateTajweedBtn();
-  document.getElementById('quranPage').setAttribute('data-tajweed', quranState.tajweed ? 'on' : 'off');
+/* --- настройки: таджвид (переключатель+легенда), шрифт, размер --- */
+document.getElementById('quranLegend').innerHTML = QURAN_TAJWEED_LEGEND.map(item =>
+  `<div class="quran-legend-row"><span class="quran-legend-dot" style="background:${item.color}"></span><span>${item.label}</span></div>`
+).join('');
+
+const quranTajweedToggle = document.getElementById('quranTajweedToggle');
+(function initQuranTajweedToggle(){
+  const knob = quranTajweedToggle.parentElement.querySelector('.slider-knob');
+  const bg = quranTajweedToggle.parentElement.querySelector('.slider');
+  quranTajweedToggle.checked = quranState.tajweed;
+  const paint = () => {
+    if(quranTajweedToggle.checked){
+      bg.style.backgroundColor = 'var(--gold)'; bg.style.borderColor = 'var(--gold)';
+      knob.style.transform = 'translateX(16px)'; knob.style.backgroundColor = 'var(--on-accent)';
+    } else {
+      bg.style.backgroundColor = 'var(--fill-3)'; bg.style.borderColor = 'var(--line)';
+      knob.style.transform = 'translateX(0)'; knob.style.backgroundColor = 'var(--ivory)';
+    }
+  };
+  paint();
+  quranTajweedToggle.addEventListener('change', () => {
+    quranState.tajweed = quranTajweedToggle.checked;
+    try{ localStorage.setItem('quranTajweed', quranState.tajweed ? 'on' : 'off'); }catch(e){}
+    paint();
+    document.getElementById('quranPage').setAttribute('data-tajweed', quranState.tajweed ? 'on' : 'off');
+  });
+})();
+
+function quranUpdateFontChoiceUI(){
+  document.querySelectorAll('#quranFontChoice .len-chip').forEach(c=>c.classList.toggle('active', c.dataset.font===quranState.font));
+}
+quranUpdateFontChoiceUI();
+document.querySelectorAll('#quranFontChoice .len-chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    quranState.font = chip.dataset.font;
+    try{ localStorage.setItem('quranFont', quranState.font); }catch(e){}
+    quranUpdateFontChoiceUI();
+    document.getElementById('quranPage').setAttribute('data-font', quranState.font);
+  });
 });
+
+function quranUpdateSizeChoiceUI(){
+  document.querySelectorAll('#quranSizeChoice .len-chip').forEach(c=>c.classList.toggle('active', parseInt(c.dataset.size,10)===quranState.size));
+}
+quranUpdateSizeChoiceUI();
+document.querySelectorAll('#quranSizeChoice .len-chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    quranState.size = parseInt(chip.dataset.size, 10);
+    try{ localStorage.setItem('quranSize', quranState.size); }catch(e){}
+    quranUpdateSizeChoiceUI();
+    document.getElementById('quranPage').style.fontSize = quranState.size + 'px';
+  });
+});
+
+function openQuranSettingsSheet(){
+  pushSheetHistory();
+  document.getElementById('quranSettingsSheet').classList.add('show');
+  document.getElementById('quranSettingsBackdrop').classList.add('show');
+}
+function closeQuranSettingsSheet(){
+  popSheetHistory();
+  document.getElementById('quranSettingsSheet').classList.remove('show');
+  document.getElementById('quranSettingsBackdrop').classList.remove('show');
+}
+document.getElementById('quranSettingsBtn').addEventListener('click', openQuranSettingsSheet);
+document.getElementById('quranSettingsClose').addEventListener('click', closeQuranSettingsSheet);
+document.getElementById('quranSettingsBackdrop').addEventListener('click', closeQuranSettingsSheet);
 
 /* --- список сур --- */
 async function openQuranSurahSheet(){
