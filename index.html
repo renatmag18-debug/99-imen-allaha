@@ -409,6 +409,21 @@ body{
 .tab.active{ color:var(--on-accent); background:var(--gold); }
 .tab:active{ transform:scale(.92); }
 
+/* Floating shortcut to the chats screen — round so it stays out of the way
+   of whatever's behind it, unlike the old full-width list item it replaces.
+   Stacked above the tabbar (not beside it) since the tabbar is centered and
+   only as wide as its content — on a narrow phone a same-row right-aligned
+   button would overlap its right edge. */
+.chats-float-btn{
+  position:absolute; z-index:6; right:20px; bottom:calc(96px + var(--safe-bottom));
+  width:52px; height:52px; border-radius:50%; border:1px solid var(--nav-border);
+  background:var(--gold); color:var(--on-accent); cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow: 0 16px 36px -14px rgba(0,0,0,0.34);
+}
+.chats-float-btn svg{ width:22px; height:22px; }
+.chats-float-btn:active{ transform:scale(.92); }
+
 /* ================= HOME ================= */
 .android-app-banner{
   display:none; align-items:center; justify-content:center; gap:9px; text-decoration:none;
@@ -1266,13 +1281,13 @@ body{
   background:var(--fill-1); color:var(--ivory); display:flex;align-items:center;justify-content:center;cursor:pointer;
 }
 .code-copy-btn:active{ transform:scale(.92); }
-.add-friend-form{ display:flex; gap:8px; }
+.add-friend-form{ display:flex; gap:6px; }
 .add-friend-form input{
-  flex:1; background:var(--fill-1); border:1px solid var(--line); border-radius:var(--r-input);
-  padding:11px 13px; color:var(--ivory); font-family:var(--font-body); font-size:14px; letter-spacing:.08em; outline:none;
+  flex:1; min-width:0; background:var(--fill-1); border:1px solid var(--line); border-radius:var(--r-input);
+  padding:8px 11px; color:var(--ivory); font-family:var(--font-body); font-size:13px; letter-spacing:.04em; outline:none;
 }
 .add-friend-form input:focus{ border-color:var(--gold); }
-.add-friend-form button{ flex-shrink:0; padding:11px 16px; font-size:13px; }
+.add-friend-form button{ flex-shrink:0; padding:8px 13px; font-size:12px; white-space:nowrap; }
 
 .section-label{
   font-size:10px; letter-spacing:.3em; text-transform:uppercase; color:var(--gold); font-weight:500;
@@ -2185,17 +2200,6 @@ body{
           <button class="btn btn-primary" id="addFriendBtn">Добавить в друзья</button>
         </div>
 
-        <button class="quran-entry-card" id="chatsEntryCard" style="display:none;">
-          <span class="quran-entry-icon">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16a1 1 0 011 1v10a1 1 0 01-1 1H9l-5 4v-4H4a1 1 0 01-1-1V6a1 1 0 011-1z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
-          </span>
-          <span class="quran-entry-text">
-            <span class="quran-entry-title">Сообщения</span>
-            <span class="quran-entry-sub" id="chatsEntrySub">Переписка с друзьями</span>
-          </span>
-          <svg class="quran-entry-chevron" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-
         <div id="friendRequestsSection" style="display:none">
           <div class="section-label">Заявки в друзья</div>
           <div id="friendRequestsList"></div>
@@ -2598,6 +2602,10 @@ body{
       </div>
     </div>
   </div>
+
+  <button class="chats-float-btn" id="chatsFloatBtn" aria-label="Сообщения" style="display:none;">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16a1 1 0 011 1v10a1 1 0 01-1 1H9l-5 4v-4H4a1 1 0 01-1-1V6a1 1 0 011-1z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+  </button>
 
   <div class="tabbar">
     <button class="tab active" data-nav="home">
@@ -4953,6 +4961,8 @@ document.getElementById('brandBtn').addEventListener('click', ()=>go('home'));
 function updateSettingsGearVisibility(){
   const show = state.screen === 'friends' && state.profile && state.profile.authenticated;
   document.getElementById('profileMenuBtn').style.display = show ? 'flex' : 'none';
+  const chatsFloatBtn = document.getElementById('chatsFloatBtn');
+  if(chatsFloatBtn) chatsFloatBtn.style.display = show ? 'flex' : 'none';
   const themeBtn = document.getElementById('themeToggleBtn');
   // Скины без ночного режима делают эту кнопку бессмысленной — не
   // просто гасим её, а полностью прячем, чтобы не выглядела рабочей.
@@ -6307,14 +6317,12 @@ function updateProfileUI(){
   const authCard = document.getElementById('authCard');
   const profileCard = document.getElementById('profileCard');
   const addFriendForm = document.getElementById('addFriendForm');
-  const chatsEntryCard = document.getElementById('chatsEntryCard');
   if(typeof updateSettingsGearVisibility === 'function') updateSettingsGearVisibility();
 
   if(state.profile && state.profile.authenticated){
     authCard.style.display = 'none';
     profileCard.style.display = 'block';
     addFriendForm.style.display = 'flex';
-    chatsEntryCard.style.display = 'flex';
     document.getElementById('usernameDisplay').textContent = state.profile.username;
     renderAvatarInto(document.getElementById('ownAvatarCircle'), state.profile.avatar, state.profile.username);
     loadOwnProfile();
@@ -7433,7 +7441,7 @@ function renderChatsList(){
     return watchPresence(f.uid, online => { if(dot) dot.classList.toggle('online', online); });
   });
 }
-document.getElementById('chatsEntryCard').addEventListener('click', ()=>{
+document.getElementById('chatsFloatBtn').addEventListener('click', ()=>{
   go('chats');
   renderChatsList();
 });
