@@ -923,13 +923,14 @@ body{
 @keyframes spin-wait{ to{ transform:rotate(360deg); } }
 
 .duel-opp-panel{
-  border:1px solid var(--line); border-radius:var(--r-card); padding:12px 14px; margin-bottom:20px;
-  background:var(--fill-1); text-align:left;
+  border:1px solid var(--line); border-radius:var(--r-card); padding:12px 14px; margin:0 20px 14px;
+  background:var(--fill-1); text-align:left; flex-shrink:0;
 }
 .duel-opp-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:11.5px; font-weight:700; color:var(--jade); text-transform:uppercase; letter-spacing:.05em;}
 .duel-lb-row{ display:flex; align-items:center; gap:10px; padding:7px 0; }
 .duel-lb-row + .duel-lb-row{ border-top:1px solid var(--fill-2); }
 .duel-lb-name{ flex-shrink:0; font-size:13px; font-weight:700; color:var(--ivory); max-width:38%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.duel-lb-name.is-me{ color:var(--gold-soft); }
 .duel-lb-bar{ flex:1; height:6px; border-radius:4px; background:var(--fill-3); overflow:hidden;}
 .duel-lb-fill{ height:100%; width:100%; background:linear-gradient(90deg, var(--jade), var(--gold-soft)); border-radius:4px; transform-origin:left; will-change:transform; transition:transform .4s var(--ease);}
 .duel-lb-score{ flex-shrink:0; font-family:var(--font-num); font-size:14px; color:var(--gold-soft); min-width:34px; text-align:right;}
@@ -1562,6 +1563,13 @@ body{
         <div class="duel-timerbar-track"><div class="duel-timerbar-fill" id="duelTimerBarFill"></div></div>
         <span class="duel-timerbar-num" id="duelTimerBarNum">10</span>
       </div>
+      <!-- Живой прогресс по вопросам — часть неподвижной шапки экрана
+           (не внутри .scroll), поэтому не уезжает при прокрутке карточки
+           вопроса и не пропадает между вопросами/на экране результата. -->
+      <div class="duel-opp-panel" id="duelOppPanel" style="display:none">
+        <div class="duel-opp-top"><span>Прогресс — live</span></div>
+        <div id="duelLeaderboard"></div>
+      </div>
       <div class="scroll" id="quizScroll">
 
         <div id="challengeIntro" style="display:none">
@@ -1667,10 +1675,6 @@ body{
         </div>
 
         <div class="q-card" id="qCard" style="display:none">
-          <div class="duel-opp-panel" id="duelOppPanel" style="display:none">
-            <div class="duel-opp-top"><span>Соперники — live</span></div>
-            <div id="duelLeaderboard"></div>
-          </div>
           <div class="q-eyebrow" id="qEyebrow">Что означает это имя?</div>
           <div id="qPromptName">
             <div class="q-ar" id="qAr">الله</div>
@@ -5488,21 +5492,26 @@ function updateOppPanel(){
   const panel = document.getElementById('duelOppPanel');
   if(!duel.active){ panel.style.display='none'; return; }
   panel.style.display='block';
+  const others = Object.keys(duel.players).filter(id=>id!==duel.myId);
   const rows = Object.keys(duel.players)
-    .filter(id=>id!==duel.myId)
-    .map(id=>duel.players[id])
-    .sort((a,b)=> (b.score||0)-(a.score||0));
+    .map(id=>({ ...duel.players[id], isMe: id===duel.myId }))
+    // Прогресс = сколько вопросов пройдено (qIndex), а не сколько отвечено
+    // верно (score) — это отдельная, всегда растущая линия, которая не
+    // откатывается назад при ошибке.
+    .sort((a,b)=> (b.qIndex||0)-(a.qIndex||0));
   const lb = document.getElementById('duelLeaderboard');
-  if(rows.length===0){
+  if(others.length===0){
     lb.innerHTML = '<p style="font-size:12.5px;color:var(--ivory-dim);margin:0;">Пока играете только вы — остальные ещё присоединяются</p>';
     return;
   }
   lb.innerHTML = rows.map(p=>{
-    const pct = duel.len ? Math.round((p.score||0)/duel.len*100) : 0;
+    const pct = duel.len ? Math.round((p.qIndex||0)/duel.len*100) : 0;
+    const nameCls = 'duel-lb-name'+(p.isMe ? ' is-me' : '');
+    const name = escapeHtml(p.name||'Игрок') + (p.isMe ? ' (вы)' : '');
     return `<div class="duel-lb-row">
-      <div class="duel-lb-name">${escapeHtml(p.name||'Игрок')}</div>
+      <div class="${nameCls}">${name}</div>
       <div class="duel-lb-bar"><div class="duel-lb-fill" style="transform:scaleX(${pct/100})"></div></div>
-      <div class="duel-lb-score">${p.score||0}</div>
+      <div class="duel-lb-score">${p.qIndex||0}/${duel.len}</div>
       ${p.finished ? '<div class="duel-lb-done">✓</div>' : ''}
     </div>`;
   }).join('');
