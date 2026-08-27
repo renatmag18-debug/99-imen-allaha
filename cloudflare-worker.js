@@ -17,7 +17,8 @@
  *   POST /api/track-zikr     — Add taps to stats.totalZikrCount (lifetime, all counters combined)
  *   POST /api/set-reminder   — Save daily reminder time (UTC hour 0-23) for a user
  *   POST /api/cancel-reminder — Remove daily reminder for a user
- *   GET /api/leaderboard     — Get leaderboard
+ *   GET /api/leaderboard     — Get leaderboard (optional ?metric=quranPagesRead
+ *                               to rank/slice by that stat instead of zikr count)
  *   POST /api/admin/user-count — Total registered users (single admin account only)
  *   POST /push                — Send a push notification (used by notifyFriend()
  *                               in index.html for duel invites, challenges,
@@ -192,9 +193,11 @@ async function handleAPI(request, env, url) {
     return handleCancelReminder(body, env);
   }
 
-  // GET /api/leaderboard[?username=x] — scoped to that user + their friends when given
+  // GET /api/leaderboard[?username=x][&metric=quranPagesRead] — scoped to
+  // that user + their friends when username is given; metric picks which
+  // stat field to sort/slice-to-100 by (defaults to totalZikrCount).
   if (request.method === 'GET' && path === 'leaderboard') {
-    return handleLeaderboard(env, url.searchParams.get('username'));
+    return handleLeaderboard(env, url.searchParams.get('username'), url.searchParams.get('metric'));
   }
 
   // POST /api/admin/user-count
@@ -662,7 +665,7 @@ async function handleTrackZikr(body, env) {
   return corsResponse(jsonResponse({ ok: true, totalZikrCount: current + delta }));
 }
 
-async function handleLeaderboard(env, scopeUsername) {
+async function handleLeaderboard(env, scopeUsername, metric) {
   // Fetch everyone rather than orderBy+limitToLast: a friends-scoped view needs
   // to find friends regardless of where they rank globally, not just the top slice.
   const leaderRes = await rtdbFetch(`/users.json`, env);
@@ -679,6 +682,12 @@ async function handleLeaderboard(env, scopeUsername) {
     allowed = new Set([scopeKey, ...Object.keys((scopeUser && scopeUser.friends) || {})]);
   }
 
+  // Sorting (and the slice-to-100 below) happens on whichever stat the
+  // caller asked to rank by, not always totalZikrCount — otherwise a
+  // global Quran-pages leaderboard would silently exclude anyone who reads
+  // a lot of Qur'an but doesn't rank in the top 100 by zikr count.
+  const sortKey = metric === 'quranPagesRead' ? 'quranPagesRead' : 'totalZikrCount';
+
   const leaderboard = Object.entries(users)
     .filter(([key, user]) => user.stats && (!allowed || allowed.has(key)))
     .map(([key, user]) => ({
@@ -687,10 +696,11 @@ async function handleLeaderboard(env, scopeUsername) {
       totalZikrCount: user.stats.totalZikrCount || 0,
       totalStudied: user.stats.totalStudied || 0,
       correctAnswers: user.stats.correctAnswers || 0,
+      quranPagesRead: user.stats.quranPagesRead || 0,
       friendsCount: Object.keys(user.friends || {}).length,
       lastActive: user.stats.lastActive
     }))
-    .sort((a, b) => b.totalZikrCount - a.totalZikrCount)
+    .sort((a, b) => b[sortKey] - a[sortKey])
     .slice(0, 100);
 
   return corsResponse(jsonResponse({ leaderboard }));

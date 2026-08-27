@@ -370,12 +370,15 @@ async function apiGetUserCount(username, password) {
   }
 }
 
-// Get leaderboard. Pass a username to scope it to that user + their friends.
-async function apiGetLeaderboard(username) {
+// Get leaderboard. Pass a username to scope it to that user + their friends,
+// and/or a metric ('totalZikrCount' default, or 'quranPagesRead') to rank by.
+async function apiGetLeaderboard(username, metric) {
   try {
-    const url = username
-      ? `${API_BASE}/api/leaderboard?username=${encodeURIComponent(username)}`
-      : `${API_BASE}/api/leaderboard`;
+    const params = new URLSearchParams();
+    if (username) params.set('username', username);
+    if (metric) params.set('metric', metric);
+    const qs = params.toString();
+    const url = `${API_BASE}/api/leaderboard${qs ? '?' + qs : ''}`;
     const res = await fetch(url);
     const data = await res.json();
     if (!res.ok) return { error: data.error || 'Failed to get leaderboard' };

@@ -2031,7 +2031,11 @@ body{
 
         <!-- Leaderboard Section -->
         <div style="margin-top:30px;border-top:1px solid var(--line);padding-top:20px;">
-          <div class="section-label" style="text-align:center;margin-bottom:14px;">Рейтинг по зикрам</div>
+          <div class="section-label" style="text-align:center;margin-bottom:14px;" id="leaderboardTitle">Рейтинг по зикрам</div>
+          <div id="leaderboardMetricChoice" style="display:flex;justify-content:center;gap:8px;margin-bottom:10px;">
+            <button class="len-chip active" data-metric="totalZikrCount">Зикры</button>
+            <button class="len-chip" data-metric="quranPagesRead">Коран</button>
+          </div>
           <div id="leaderboardScopeChoice" style="display:flex;justify-content:center;gap:8px;margin-bottom:20px;">
             <button class="len-chip active" data-scope="global">Глобальный</button>
             <button class="len-chip" data-scope="friends">Друзья</button>
@@ -2947,6 +2951,21 @@ document.querySelectorAll('#leaderboardScopeChoice .len-chip').forEach(chip=>{
   });
 });
 
+const LEADERBOARD_METRICS = {
+  totalZikrCount: { title:'Рейтинг по зикрам', format:(u)=>(u.totalZikrCount||0).toLocaleString('ru-RU') },
+  quranPagesRead: { title:'Рейтинг по прочтению Корана', format:(u)=>(u.quranPagesRead||0)+' стр.' },
+};
+let leaderboardMetric = 'totalZikrCount';
+document.querySelectorAll('#leaderboardMetricChoice .len-chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    document.querySelectorAll('#leaderboardMetricChoice .len-chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    leaderboardMetric = chip.dataset.metric;
+    document.getElementById('leaderboardTitle').textContent = LEADERBOARD_METRICS[leaderboardMetric].title;
+    loadLeaderboard();
+  });
+});
+
 async function loadAdminUserCount(){
   const el = document.getElementById('adminUserCount');
   el.style.display = 'none';
@@ -2979,7 +2998,7 @@ async function loadLeaderboard(){
     return;
   }
 
-  const result = await apiGetLeaderboard(leaderboardScope === 'friends' ? state.profile.username : null);
+  const result = await apiGetLeaderboard(leaderboardScope === 'friends' ? state.profile.username : null, leaderboardMetric);
 
   if(result.error || !result.leaderboard){
     console.warn('loadLeaderboard failed:', result.error);
@@ -3019,7 +3038,7 @@ async function loadLeaderboard(){
       <div class="pod${i === 0 ? ' win' : ''}" data-view-profile="${escapeHtml(u.username)}">
         ${avatarHtml(u, i, 'pod-av')}
         <div class="pod-nm">${escapeHtml(u.username)}</div>
-        <div class="pod-sc">${(u.totalZikrCount||0).toLocaleString('ru-RU')}</div>
+        <div class="pod-sc">${LEADERBOARD_METRICS[leaderboardMetric].format(u)}</div>
         <div class="pod-bar" style="height:${barHeights[i]}px;">${i + 1}</div>
       </div>`;
       }).join('')}
@@ -3032,7 +3051,7 @@ async function loadLeaderboard(){
       <span class="lb-rk">${idx + 1}</span>
       ${avatarHtml(user, idx, 'friend-avatar')}
       <span class="lb-nm">${escapeHtml(user.username)}</span>
-      <span class="lb-sc">${(user.totalZikrCount||0).toLocaleString('ru-RU')}</span>
+      <span class="lb-sc">${LEADERBOARD_METRICS[leaderboardMetric].format(user)}</span>
     </div>`;
   }).join('');
 
@@ -5917,6 +5936,10 @@ async function initProfile(){
       // one-time seed from seedZikrLifetimeTotal()) that bailed out earlier
       // because it ran before login was restored.
       if(typeof flushZikrLifetimeSync === 'function') await flushZikrLifetimeSync();
+      // One-time catch-up so Quran reading progress tracked before this
+      // session's login (or before this feature existed) still reaches the
+      // server, not just pages read from here on via quranMarkPageRead().
+      if(typeof syncQuranPagesRead === 'function') syncQuranPagesRead();
       // Catch up any historical zikr backlog that never reached the server
       // (see reconcileZikrLifetimeTotal for why) — runs automatically
       // whenever credentials are available, no re-login needed.
@@ -7705,6 +7728,22 @@ function quranMarkPageRead(pageNum){
   quranState.readPages.add(pageNum);
   try{ localStorage.setItem(QURAN_READ_PAGES_KEY, JSON.stringify(Array.from(quranState.readPages))); }catch(e){}
   if(typeof updateHomeStats === 'function') updateHomeStats();
+  scheduleQuranPagesSync();
+}
+
+// Feeds the friends' "рейтинг по прочтению Корана" leaderboard — pushes the
+// current count (not a delta; sync-progress overwrites the field outright),
+// debounced so flipping through several new pages quickly doesn't fire one
+// request per page.
+let quranPagesSyncTimer = null;
+function scheduleQuranPagesSync(){
+  if(quranPagesSyncTimer) clearTimeout(quranPagesSyncTimer);
+  quranPagesSyncTimer = setTimeout(syncQuranPagesRead, 800);
+}
+async function syncQuranPagesRead(){
+  if(quranPagesSyncTimer){ clearTimeout(quranPagesSyncTimer); quranPagesSyncTimer = null; }
+  if(!state.profile || !state.profile.authenticated || typeof apiSyncProgress !== 'function') return;
+  await apiSyncProgress(null, { quranPagesRead: quranState.readPages.size });
 }
 
 async function quranFetchChapters(){
