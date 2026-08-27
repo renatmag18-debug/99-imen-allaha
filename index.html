@@ -7440,7 +7440,13 @@ async function startVoiceRecording(){
   try{
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   }catch(e){
-    showToast('Нет доступа к микрофону');
+    // The name distinguishes real causes that all show identically otherwise:
+    // NotAllowedError (permission actually denied), NotFoundError (no mic
+    // hardware seen), NotReadableError (mic busy/hardware fault), SecurityError
+    // (blocked for this origin) — shown directly since there's no console
+    // access on a production install to check otherwise.
+    console.warn('getUserMedia failed:', e);
+    showToast('Нет доступа к микрофону: '+(e.name||e.message||e));
     return;
   }
   chatRecordingStream = stream;
