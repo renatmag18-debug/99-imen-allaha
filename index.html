@@ -2786,31 +2786,6 @@ const PUSH_RELAY_SECRET = "kJNSpd7TCyYe1rF7o9Lij7u4DSEz4tuIVNy7qQIHbh4=";
 let fbDb = null;
 let fbAuth = null;
 let fbStorage = null;
-// TEMPORARY diagnostic timing — narrowing down exactly which step eats the
-// ~10s reported on chat open/send (script load order and self-hosting the
-// SDK away from gstatic.com both failed to change it, so this measures the
-// remaining candidates directly instead of guessing further). Remove once
-// the actual bottleneck is identified.
-const __appStartTime = Date.now();
-let __sendCounter = 0;
-function __diagLog(label){
-  const ms = Date.now() - __appStartTime;
-  console.log(`[diag] ${label}: +${ms}ms`);
-  // A toast disappears in a couple seconds — useless for catching a whole
-  // sequence of these. A small fixed panel that just accumulates lines (never
-  // clears itself) can be screenshotted once after the test instead of
-  // racing to catch each one as it flashes by.
-  let panel = document.getElementById('__diagPanel');
-  if(!panel){
-    panel = document.createElement('div');
-    panel.id = '__diagPanel';
-    panel.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999999;background:rgba(0,0,0,.9);color:#4f4;font:11px/1.5 monospace;padding:6px 8px;max-height:50vh;overflow-y:auto;white-space:pre-wrap;pointer-events:none;';
-    document.body.appendChild(panel);
-  }
-  const row = document.createElement('div');
-  row.textContent = `+${ms}ms  ${label}`;
-  panel.appendChild(row);
-}
 
 // Firebase's SDK scripts used to be blocking <script src> tags right here,
 // ahead of the entire app script below — on a slow or blocked connection to
@@ -2899,41 +2874,22 @@ async function ensureStorage(){
 let fbAuthReady = (async () => {
   try{
     await fbAppScriptReady;
-    __diagLog('app-compat.js loaded');
     await loadScriptTagsInOrder([
       `${FIREBASE_SDK_BASE}/firebase-database-compat.js`,
       `${FIREBASE_SDK_BASE}/firebase-auth-compat.js`
     ]);
-    __diagLog('database+auth scripts loaded');
 
     firebase.initializeApp(FIREBASE_CONFIG);
     fbDb = firebase.database();
     fbAuth = firebase.auth();
-    // .info/connected is Firebase's own live connection-state signal — if
-    // writes stall well after auth is already resolved, this shows whether
-    // the RTDB socket itself is dropping/reconnecting in that window rather
-    // than something in our own code being slow.
-    fbDb.ref('.info/connected').on('value', snap => __diagLog('RTDB .info/connected = ' + snap.val()));
     return new Promise(resolve=>{
       const unsub = fbAuth.onAuthStateChanged(user=>{
-        // Same uid across app relaunches means Auth persistence (IndexedDB,
-        // normally) is working and this is a fast session restore each
-        // time; a DIFFERENT uid every launch would mean a brand new
-        // anonymous account gets created from scratch every time instead —
-        // a real possibility given this exact WebView loading setup
-        // (loadDataWithBaseURL against a file:// origin) already broke
-        // getUserMedia earlier for reasons specific to it, and would also
-        // explain unstable/slow sign-in if repeated account creation from
-        // the same client starts hitting Google's own rate limiting.
-        if(user){ __diagLog('signed in, uid=' + user.uid.slice(0,8) + (user.isAnonymous ? ' (anon)' : '')); unsub(); resolve(user); }
+        if(user){ unsub(); resolve(user); }
       });
-      fbAuth.signInAnonymously().then(()=>{
-        __diagLog('signInAnonymously() call itself resolved');
-      }).catch(e=>{ console.warn('Anonymous sign-in failed:', e); __diagLog('signInAnonymously FAILED: '+e.code); resolve(null); });
+      fbAuth.signInAnonymously().catch(e=>{ console.warn('Anonymous sign-in failed:', e); resolve(null); });
     });
   }catch(e){
     console.warn('Firebase init failed:', e);
-    __diagLog('Firebase init FAILED: '+e);
     return null;
   }
 })();
@@ -7773,19 +7729,10 @@ async function sendCurrentChatMessage(){
   const path = chatPairPath(otherUsername);
   const myKeyVal = fbKey(state.profile.username);
   const ts = firebase.database.ServerValue.TIMESTAMP;
-  // Tags each concurrent call to this function so the diagnostic panel can
-  // tell which send a given log line belongs to when messages are sent in
-  // quick succession (they run as separate overlapping async calls, so
-  // their log lines otherwise interleave with no way to match them up).
-  const __sendId = ++__sendCounter;
   try{
-    __diagLog(`send#${__sendId}: about to await fbAuthReady`);
     await fbAuthReady;
-    __diagLog(`send#${__sendId}: fbAuthReady resolved, pushing message`);
     await fbDb.ref(path+'/messages').push({ from: myKeyVal, text, ts });
-    __diagLog(`send#${__sendId}: message push done`);
     await fbDb.ref(path+'/meta').set({ lastText: text, lastTs: ts, lastFrom: myKeyVal });
-    __diagLog(`send#${__sendId}: meta set done`);
     fbDb.ref(path+'/lastRead/'+myKeyVal).set(ts);
     // Skip the push if they're already looking at this exact conversation —
     // it would just be telling them about a message they're already reading.
