@@ -7416,6 +7416,28 @@ let chatRecordedChunks = [];
 let chatRecordingStream = null;
 let chatRecordingStartTime = 0;
 let chatRecordingTimerHandle = null;
+// True while the CURRENT recording is going through the native Android
+// bridge rather than the page's own getUserMedia()/MediaRecorder — see
+// hasNativeVoiceRecording() below for why that path exists at all.
+let chatUsingNativeRecording = false;
+
+// The Android WebView's own getUserMedia({audio:true}) fails with
+// NotReadableError on real devices even with RECORD_AUDIO granted —
+// confirmed the exact same page records fine in a real Chrome tab, so the
+// bug is in WebView's media-capture pipeline for pages loaded the way this
+// app loads them, not our permission plumbing or the OS mic. When the
+// native bridge is available (i.e. running inside the app, not the plain
+// website), route recording through it instead — same permission, a
+// completely different Android API untouched by that WebView bug.
+function hasNativeVoiceRecording(){
+  return !!(window.AndroidApp && window.AndroidApp.startNativeVoiceRecording);
+}
+function base64ToBlob(base64, mimeType){
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mimeType });
+}
 
 function chatRecordingTick(){
   const sec = Math.floor((Date.now() - chatRecordingStartTime) / 1000);
@@ -7432,6 +7454,17 @@ function stopChatRecordingUI(){
   document.getElementById('chatInputBar').style.display = 'flex';
 }
 async function startVoiceRecording(){
+  if(hasNativeVoiceRecording()){
+    chatUsingNativeRecording = true;
+    window.AndroidApp.startNativeVoiceRecording();
+    chatRecordingStartTime = Date.now();
+    document.getElementById('chatInputBar').style.display = 'none';
+    document.getElementById('chatRecordingBar').style.display = 'flex';
+    chatRecordingTick();
+    chatRecordingTimerHandle = setInterval(chatRecordingTick, 250);
+    return;
+  }
+  chatUsingNativeRecording = false;
   if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined'){
     showToast('Запись голоса не поддерживается на этом устройстве');
     return;
@@ -7462,6 +7495,12 @@ async function startVoiceRecording(){
   chatRecordingTimerHandle = setInterval(chatRecordingTick, 250);
 }
 function cancelVoiceRecording(){
+  if(chatUsingNativeRecording){
+    chatUsingNativeRecording = false;
+    if(window.AndroidApp && window.AndroidApp.cancelNativeVoiceRecording) window.AndroidApp.cancelNativeVoiceRecording();
+    stopChatRecordingUI();
+    return;
+  }
   if(chatRecorder && chatRecorder.state !== 'inactive'){
     chatRecorder.ondataavailable = null;
     chatRecorder.stop();
@@ -7471,6 +7510,13 @@ function cancelVoiceRecording(){
   stopChatRecordingUI();
 }
 async function finishAndSendVoiceRecording(){
+  if(chatUsingNativeRecording){
+    // Result arrives asynchronously via window.onNativeVoiceRecorded/
+    // onNativeVoiceRecordError below, once Kotlin finishes writing the file.
+    if(window.AndroidApp && window.AndroidApp.stopNativeVoiceRecording) window.AndroidApp.stopNativeVoiceRecording();
+    stopChatRecordingUI();
+    return;
+  }
   if(!chatRecorder || chatRecorder.state === 'inactive'){ stopChatRecordingUI(); return; }
   const durationSec = (Date.now() - chatRecordingStartTime) / 1000;
   const recorder = chatRecorder;
@@ -7483,6 +7529,17 @@ async function finishAndSendVoiceRecording(){
   if(durationSec < 1){ showToast('Слишком короткая запись'); return; }
   await sendVoiceMessage(blob, durationSec);
 }
+window.onNativeVoiceRecorded = function(base64, durationSec){
+  chatUsingNativeRecording = false;
+  if(durationSec < 1){ showToast('Слишком короткая запись'); return; }
+  sendVoiceMessage(base64ToBlob(base64, 'audio/mp4'), durationSec);
+};
+window.onNativeVoiceRecordError = function(reason){
+  chatUsingNativeRecording = false;
+  stopChatRecordingUI();
+  console.warn('native voice recording failed:', reason);
+  showToast(reason === 'permission' ? 'Нет доступа к микрофону' : 'Не удалось записать голосовое сообщение');
+};
 document.getElementById('chatMicBtn').addEventListener('click', startVoiceRecording);
 document.getElementById('chatRecordingCancelBtn').addEventListener('click', cancelVoiceRecording);
 document.getElementById('chatRecordingSendBtn').addEventListener('click', finishAndSendVoiceRecording);
