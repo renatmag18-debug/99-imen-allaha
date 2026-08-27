@@ -39,7 +39,7 @@
 <meta name="robots" content="index, follow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Manrope:wght@200;300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Jost:wght@300;400;500;600;700&family=Rubik:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Marcellus&family=Cormorant+Garamond:ital,wght@0,600;1,500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Manrope:wght@200;300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Jost:wght@300;400;500;600;700&family=Rubik:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Marcellus&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Scheherazade+New:wght@400;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Lateef:wght@400;700&family=Aref+Ruqaa:wght@400;700&display=swap" rel="stylesheet">
 <script>
 // Applied before any CSS paints, so a returning user who chose dark mode
 // never sees a flash of the (now-default) light theme first.
@@ -755,6 +755,10 @@ body{
   color:var(--ivory); text-shadow:var(--ink-halo);
 }
 .quran-page[data-font="amiri"]{ font-family:'Amiri', serif; }
+.quran-page[data-font="scheherazade"]{ font-family:'Scheherazade New', serif; }
+.quran-page[data-font="notonaskh"]{ font-family:'Noto Naskh Arabic', serif; }
+.quran-page[data-font="lateef"]{ font-family:'Lateef', serif; }
+.quran-page[data-font="arefruqaa"]{ font-family:'Aref Ruqaa', serif; }
 .quran-status{ text-align:center; color:var(--ivory-dim); font-size:13.5px; padding:60px 20px; line-height:1.7; }
 
 .quran-surah-title{
@@ -810,6 +814,13 @@ body{
 .quran-surah-row .name .meta{ font-size:11.5px; color:var(--ivory-dim); }
 .quran-surah-row .ar{ font-family:var(--font-ar); font-size:19px; color:var(--gold-soft); direction:rtl; flex-shrink:0; }
 
+.quran-legend-toggle{
+  display:flex; align-items:center; justify-content:space-between; width:100%;
+  background:none; border:none; padding:4px 0; margin-top:-8px; cursor:pointer;
+  font-size:12.5px; color:var(--ivory-dim); font-family:var(--font-body);
+}
+.quran-legend-toggle svg{ width:15px; height:15px; transition:transform .2s var(--ease); flex-shrink:0; }
+.quran-legend-toggle.open svg{ transform:rotate(180deg); }
 .quran-legend{ display:flex; flex-direction:column; gap:10px; padding:12px 0 20px; }
 .quran-legend-row{ display:flex; align-items:flex-start; gap:10px; }
 .quran-legend-dot{ width:13px; height:13px; border-radius:50%; margin-top:2px; flex-shrink:0; }
@@ -2153,7 +2164,11 @@ body{
       <div class="section-label" style="margin-top:0;">Шрифт</div>
       <div class="len-choice" id="quranFontChoice" style="justify-content:flex-start;margin-bottom:20px;">
         <div class="len-chip active" data-font="uthmani">Усмани (как в Мусхафе)</div>
-        <div class="len-chip" data-font="amiri">Обычный</div>
+        <div class="len-chip" data-font="amiri" style="font-family:'Amiri',serif;">Амири</div>
+        <div class="len-chip" data-font="scheherazade" style="font-family:'Scheherazade New',serif;">Шахразад</div>
+        <div class="len-chip" data-font="notonaskh" style="font-family:'Noto Naskh Arabic',serif;">Naskh</div>
+        <div class="len-chip" data-font="lateef" style="font-family:'Lateef',serif;">Латиф</div>
+        <div class="len-chip" data-font="arefruqaa" style="font-family:'Aref Ruqaa',serif;">Рукъа</div>
       </div>
 
       <div class="section-label">Размер текста</div>
@@ -2174,8 +2189,11 @@ body{
         </label>
       </div>
 
-      <p class="section-desc" style="margin-top:-8px;">Что означает каждый цвет</p>
-      <div class="quran-legend" id="quranLegend"></div>
+      <button class="quran-legend-toggle" id="quranLegendToggle" type="button">
+        <span>Что означает каждый цвет</span>
+        <svg viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="quran-legend" id="quranLegend" style="display:none;"></div>
 
     </div>
   </div>
@@ -7455,6 +7473,7 @@ updateSettingsGearVisibility();
    реально открыл этот экран, с кэшем в памяти на время сессии.
 ===================================================== */
 const QURAN_TOTAL_PAGES = 604;
+const QURAN_FONTS = ['uthmani','amiri','scheherazade','notonaskh','lateef','arefruqaa'];
 const QURAN_TAJWEED_LEGEND = [
   { color:'#9AA0A6', label:'Не произносится — соединительная хамза, «солнечный» лям и другие непроизносимые буквы' },
   { color:'#FF7E1E', label:'Гунна — носовой призвук, тянется около 2 тактов' },
@@ -7475,7 +7494,8 @@ const quranState = { page: 1, tajweed: true, font: 'uthmani', size: 26, chapters
     const savedPage = parseInt(localStorage.getItem('quranLastPage'), 10);
     if(savedPage >= 1 && savedPage <= QURAN_TOTAL_PAGES) quranState.page = savedPage;
     if(localStorage.getItem('quranTajweed') === 'off') quranState.tajweed = false;
-    if(localStorage.getItem('quranFont') === 'amiri') quranState.font = 'amiri';
+    const savedFont = localStorage.getItem('quranFont');
+    if(QURAN_FONTS.includes(savedFont)) quranState.font = savedFont;
     const savedSize = parseInt(localStorage.getItem('quranSize'), 10);
     if(savedSize >= 16 && savedSize <= 48) quranState.size = savedSize;
   }catch(e){}
@@ -7579,6 +7599,13 @@ document.getElementById('quranPageNum').addEventListener('click', ()=>{
 document.getElementById('quranLegend').innerHTML = QURAN_TAJWEED_LEGEND.map(item =>
   `<div class="quran-legend-row"><span class="quran-legend-dot" style="background:${item.color}"></span><span>${item.label}</span></div>`
 ).join('');
+document.getElementById('quranLegendToggle').addEventListener('click', ()=>{
+  const btn = document.getElementById('quranLegendToggle');
+  const legend = document.getElementById('quranLegend');
+  const open = legend.style.display === 'none';
+  legend.style.display = open ? 'flex' : 'none';
+  btn.classList.toggle('open', open);
+});
 
 const quranTajweedToggle = document.getElementById('quranTajweedToggle');
 (function initQuranTajweedToggle(){
