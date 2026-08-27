@@ -841,6 +841,50 @@ body{
 .quran-surah-row .name .meta{ font-size:11.5px; color:var(--ivory-dim); }
 .quran-surah-row .ar{ font-family:var(--font-ar); font-size:19px; color:var(--gold-soft); direction:rtl; flex-shrink:0; }
 
+/* --- chat: conversation list --- */
+.chat-row{ display:flex; align-items:center; gap:12px; padding:12px 4px; border-bottom:1px solid var(--fill-2); cursor:pointer; }
+.chat-row:last-child{ border-bottom:none; }
+.chat-row-body{ flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
+.chat-row-top{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+.chat-row-name{ font-size:14.5px; color:var(--ivory); font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.chat-row-time{ font-size:11px; color:var(--ivory-dim); flex-shrink:0; }
+.chat-row-preview{ font-size:12.5px; color:var(--ivory-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.chat-row.unread .chat-row-name{ color:var(--gold-soft); }
+.chat-row.unread .chat-row-preview{ color:var(--ivory); }
+.chat-unread-dot{ width:9px; height:9px; border-radius:50%; background:var(--gold); flex-shrink:0; }
+
+/* --- chat: thread --- */
+.chat-thread-title{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:var(--font-display); font-size:15px; font-weight:400; color:var(--ivory); }
+.chat-thread-scroll{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:14px 16px 20px; display:flex; flex-direction:column; }
+.chat-empty-hint{ display:none; text-align:center; color:var(--ivory-dim); font-size:13px; padding:60px 20px; line-height:1.7; }
+.chat-bubble-row{ display:flex; margin-bottom:8px; }
+.chat-bubble-row.mine{ justify-content:flex-end; }
+.chat-bubble{
+  max-width:78%; padding:9px 13px; border-radius:16px; font-size:14px; line-height:1.45;
+  color:var(--ivory); background:var(--panel-2); border:1px solid var(--line);
+  overflow-wrap:break-word; white-space:pre-wrap;
+}
+.chat-bubble-row.mine .chat-bubble{ background:var(--gold); color:var(--on-accent); border-color:var(--gold); border-bottom-right-radius:4px; }
+.chat-bubble-row:not(.mine) .chat-bubble{ border-bottom-left-radius:4px; }
+.chat-bubble-time{ display:block; margin-top:3px; font-size:10.5px; opacity:.65; text-align:right; }
+.chat-day-sep{ text-align:center; font-size:11.5px; color:var(--ivory-dim); margin:10px 0; }
+.chat-input-bar{
+  flex-shrink:0; display:flex; align-items:flex-end; gap:10px;
+  padding:10px 14px calc(12px + var(--safe-bottom));
+  border-top:1px solid var(--line); background:var(--glass); backdrop-filter:blur(14px);
+}
+#chatInput{
+  flex:1; resize:none; max-height:110px; padding:11px 14px; border-radius:18px;
+  border:1px solid var(--line); background:var(--fill-1); color:var(--ivory);
+  font-family:var(--font-body); font-size:14px; outline:none; line-height:1.4;
+}
+.chat-send-btn{
+  width:40px; height:40px; border-radius:50%; border:none; background:var(--gold); color:var(--on-accent);
+  display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;
+}
+.chat-send-btn svg{ width:18px; height:18px; }
+.chat-send-btn:disabled{ opacity:.4; pointer-events:none; }
+
 .quran-legend-toggle{
   display:flex; align-items:center; justify-content:space-between; width:100%;
   background:none; border:none; padding:4px 0; margin-top:-8px; cursor:pointer;
@@ -2030,6 +2074,17 @@ body{
           <button class="btn btn-primary" id="addFriendBtn">Добавить в друзья</button>
         </div>
 
+        <button class="quran-entry-card" id="chatsEntryCard" style="display:none;">
+          <span class="quran-entry-icon">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16a1 1 0 011 1v10a1 1 0 01-1 1H9l-5 4v-4H4a1 1 0 01-1-1V6a1 1 0 011-1z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+          </span>
+          <span class="quran-entry-text">
+            <span class="quran-entry-title">Сообщения</span>
+            <span class="quran-entry-sub" id="chatsEntrySub">Переписка с друзьями</span>
+          </span>
+          <svg class="quran-entry-chevron" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+
         <div id="friendRequestsSection" style="display:none">
           <div class="section-label">Заявки в друзья</div>
           <div id="friendRequestsList"></div>
@@ -2188,6 +2243,41 @@ body{
         <button class="quran-nav-btn" id="quranPrevBtn" aria-label="Предыдущая страница"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button class="quran-page-num" id="quranPageNum">1 / 604</button>
         <button class="quran-nav-btn" id="quranNextBtn" aria-label="Следующая страница"><svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </div>
+    </section>
+
+    <section class="screen" data-screen="chats">
+      <div class="quran-head">
+        <button class="nav-arrow" data-nav="friends" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <div class="section-title" style="flex:1;text-align:center;padding:0;">Сообщения</div>
+        <div style="width:44px;flex-shrink:0;"></div>
+      </div>
+      <div class="scroll">
+        <div id="chatsList"></div>
+        <div class="friend-empty-hint" id="chatsEmptyHint" style="display:none"></div>
+      </div>
+    </section>
+
+    <section class="screen" data-screen="chat">
+      <div class="quran-head">
+        <button class="nav-arrow" data-nav="chats" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <div class="avatar-wrap static" style="width:36px;height:36px;flex-shrink:0;">
+          <div class="friend-avatar" id="chatThreadAvatar" style="width:36px;height:36px;font-size:14px;"></div>
+          <div class="presence-dot" id="chatThreadPresence"></div>
+        </div>
+        <div class="chat-thread-title">
+          <span id="chatThreadName"></span>
+        </div>
+      </div>
+      <div class="chat-thread-scroll" id="chatThreadScroll">
+        <div id="chatThreadMessages"></div>
+        <div class="chat-empty-hint" id="chatThreadEmptyHint">Здесь пока нет сообщений — напишите первым.</div>
+      </div>
+      <div class="chat-input-bar">
+        <textarea id="chatInput" rows="1" placeholder="Сообщение…" maxlength="2000"></textarea>
+        <button class="chat-send-btn" id="chatSendBtn" aria-label="Отправить" disabled>
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 12l16-8-6 8 6 8-16-8z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        </button>
       </div>
     </section>
 
@@ -4635,10 +4725,10 @@ function updateSettingsGearVisibility(){
   // просто гасим её, а полностью прячем, чтобы не выглядела рабочей.
   const skinHasDark = typeof SKINS === 'undefined' || (SKINS[currentSkin()]?.supportsDark ?? true);
   if(themeBtn) themeBtn.style.display = (state.screen === 'home' && skinHasDark) ? 'flex' : 'none';
-  // Коран — полноэкранный ридер со своей нижней панелью (пред./стр./след.);
-  // плавающий док поверх неё только мешал бы перелистыванию.
+  // Коран и переписка — полноэкранные со своей нижней панелью (пред./стр./след.
+  // или строка ввода сообщения); плавающий док поверх неё только мешал бы.
   const dock = document.querySelector('.tabbar');
-  if(dock) dock.style.display = state.screen === 'quran' ? 'none' : '';
+  if(dock) dock.style.display = (state.screen === 'quran' || state.screen === 'chat') ? 'none' : '';
 }
 
 /* =====================================================
@@ -5847,6 +5937,9 @@ state.incomingRequests = [];   // [{uid, name}]
 state.duelInvites = [];        // [{roomId, fromUid, fromName, len, timerSeconds, direction, orderMode}]
 state.challengeInvites = [];   // [{id, fromUid, fromName, score, total, seed, direction}]
 state.dhikrInvites = [];       // [{roomId, fromUid, fromName, zikrTr}]
+state.chatPreviews = {};       // fbKey(friend) -> {meta:{lastText,lastTs,lastFrom}, unread}
+state.activeChat = null;       // {uid, name, avatar} — the friend whose thread is open
+state.pendingChatUsername = null; // set by ?chat= deep link, consumed once friends load
 
 /* ---------------- avatars ---------------- */
 const AVATAR_EMOJIS = ['🌙','⭐','📿','🕌','🤲','📖','🌸','🦋','🍃','⚡','💎','🌊','🏔️','🦅','🐪','✨'];
@@ -5981,12 +6074,14 @@ function updateProfileUI(){
   const authCard = document.getElementById('authCard');
   const profileCard = document.getElementById('profileCard');
   const addFriendForm = document.getElementById('addFriendForm');
+  const chatsEntryCard = document.getElementById('chatsEntryCard');
   if(typeof updateSettingsGearVisibility === 'function') updateSettingsGearVisibility();
 
   if(state.profile && state.profile.authenticated){
     authCard.style.display = 'none';
     profileCard.style.display = 'block';
     addFriendForm.style.display = 'flex';
+    chatsEntryCard.style.display = 'flex';
     document.getElementById('usernameDisplay').textContent = state.profile.username;
     renderAvatarInto(document.getElementById('ownAvatarCircle'), state.profile.avatar, state.profile.username);
     loadOwnProfile();
@@ -6452,7 +6547,15 @@ async function loadFriendRequests(){
 }
 async function listenFriendsRealtime(){
   if(!state.profile || !state.profile.authenticated) return;
-  loadFriends();
+  loadFriends().then(()=>{
+    if(typeof subscribeAllChatPreviews === 'function') subscribeAllChatPreviews();
+    if(state.pendingChatUsername){
+      const target = state.pendingChatUsername;
+      state.pendingChatUsername = null;
+      const friend = state.friendsList.find(f=>fbKey(f.uid)===fbKey(target));
+      if(friend) openChatThread(friend.uid, friend.name, friend.avatar);
+    }
+  });
   loadFriendRequests();
   // Firebase loads asynchronously (see fbAuthReady) — this used to check
   // fbDb synchronously right here, when it's still always null this early,
@@ -6833,7 +6936,8 @@ function notifyFriend(targetUid, title, body, tag, link){
 }
 
 function updateFriendsBadge(){
-  const has = state.incomingRequests.length>0 || state.duelInvites.length>0 || state.challengeInvites.length>0 || state.dhikrInvites.length>0;
+  const hasUnreadChat = Object.values(state.chatPreviews).some(p => p.unread);
+  const has = state.incomingRequests.length>0 || state.duelInvites.length>0 || state.challengeInvites.length>0 || state.dhikrInvites.length>0 || hasUnreadChat;
   document.getElementById('friendsBadge').style.display = has ? 'block' : 'none';
 }
 
@@ -6879,6 +6983,7 @@ function renderFriendsScreen(){
             <div class="friend-name">${escapeHtml(f.name)}</div>
           </div>
           <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+            <button class="friend-action-btn chat" data-chat-friend="${escapeHtml(f.uid)}" title="Написать">💬</button>
             <button class="friend-action-btn duel" data-duel-friend="${escapeHtml(f.uid)}" title="Пригласить на дуэль">⚔️</button>
             <div class="friend-menu-wrap">
               <button class="friend-action-btn menu" data-friend-menu="${escapeHtml(f.uid)}" title="Ещё">⋮</button>
@@ -6913,11 +7018,15 @@ document.getElementById('friendRequestsList').addEventListener('click', e=>{
   else if(declineUid) declineFriendRequest(declineUid.dataset.decline);
 });
 document.getElementById('friendsList').addEventListener('click', e=>{
+  const chatBtn = e.target.closest('[data-chat-friend]');
   const duelBtn = e.target.closest('[data-duel-friend]');
   const menuBtn = e.target.closest('[data-friend-menu]');
   const removeBtn = e.target.closest('[data-remove-friend]');
   const identityEl = e.target.closest('[data-view-profile]');
-  if(duelBtn){
+  if(chatBtn){
+    const f = state.friendsList.find(x=>x.uid===chatBtn.dataset.chatFriend);
+    if(f) openChatThread(f.uid, f.name, f.avatar);
+  } else if(duelBtn){
     if(!fbDb){ showToast('Live-дуэль недоступна: нет соединения с сервером'); return; }
     go('quiz');
     resetQuizView();
@@ -6937,6 +7046,242 @@ document.getElementById('friendsList').addEventListener('click', e=>{
     openProfileView(identityEl.dataset.viewProfile);
   }
 });
+
+/* =====================================================
+   CHAT (Firebase RTDB) — 1:1 text conversations with friends.
+   Data model, all under one canonical path per pair regardless of who
+   opens first (`chats/{lo}/{hi}`, lo/hi = the two fbKeys sorted):
+     chats/{lo}/{hi}/messages/{pushId}   {from, text, ts}
+     chats/{lo}/{hi}/meta                {lastText, lastTs, lastFrom}
+     chats/{lo}/{hi}/lastRead/{myKey}    timestamp — my own read marker
+   Unread = meta.lastFrom is the other person AND meta.lastTs > my lastRead.
+===================================================== */
+function chatPairPath(otherUsername){
+  const [lo, hi] = [fbKey(state.profile.username), fbKey(otherUsername)].sort();
+  return 'chats/'+lo+'/'+hi;
+}
+function formatChatClock(ts){
+  return new Date(ts).toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
+}
+function formatChatDay(ts){
+  const d = new Date(ts), now = new Date();
+  if(d.toDateString() === now.toDateString()) return 'Сегодня';
+  const yesterday = new Date(now); yesterday.setDate(now.getDate()-1);
+  if(d.toDateString() === yesterday.toDateString()) return 'Вчера';
+  return d.toLocaleDateString('ru-RU', {day:'2-digit', month:'long'});
+}
+function formatChatListTime(ts){
+  const d = new Date(ts), now = new Date();
+  if(d.toDateString() === now.toDateString()) return formatChatClock(ts);
+  return d.toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit'});
+}
+
+/* --- conversation list (Friends -> «Сообщения») --- */
+// Raw per-friend RTDB values behind state.chatPreviews' derived {meta, unread} —
+// kept separate so a meta update and a lastRead update (two independent
+// listeners) can each recompute "unread" without clobbering the other's data.
+const chatPreviewRaw = {};
+let chatPreviewUnsubs = [];
+function subscribeAllChatPreviews(){
+  chatPreviewUnsubs.forEach(u=>u());
+  chatPreviewUnsubs = [];
+  if(!state.profile || !state.profile.authenticated) return;
+  const myKeyVal = fbKey(state.profile.username);
+  state.friendsList.forEach(f=>{
+    const otherKey = fbKey(f.uid);
+    chatPreviewRaw[otherKey] = chatPreviewRaw[otherKey] || { meta:null, myLastRead:0 };
+    const recompute = () => {
+      const raw = chatPreviewRaw[otherKey];
+      const unread = !!(raw.meta && raw.meta.lastFrom && raw.meta.lastFrom !== myKeyVal && raw.meta.lastTs > raw.myLastRead);
+      state.chatPreviews[otherKey] = { meta: raw.meta, unread };
+      updateFriendsBadge();
+      if(state.screen === 'chats') renderChatsList();
+    };
+    let metaRef=null, metaListener=null, readRef=null, readListener=null, cancelled=false;
+    fbAuthReady.then(()=>{
+      if(cancelled || !fbDb) return;
+      const path = chatPairPath(f.uid);
+      metaRef = fbDb.ref(path+'/meta');
+      metaListener = snap => { chatPreviewRaw[otherKey].meta = snap.val(); recompute(); };
+      metaRef.on('value', metaListener);
+      readRef = fbDb.ref(path+'/lastRead/'+myKeyVal);
+      readListener = snap => { chatPreviewRaw[otherKey].myLastRead = snap.val() || 0; recompute(); };
+      readRef.on('value', readListener);
+    });
+    chatPreviewUnsubs.push(()=>{
+      cancelled = true;
+      if(metaRef && metaListener) metaRef.off('value', metaListener);
+      if(readRef && readListener) readRef.off('value', readListener);
+    });
+  });
+}
+let chatsListPresenceUnsubs = [];
+function renderChatsList(){
+  const list = document.getElementById('chatsList');
+  const emptyHint = document.getElementById('chatsEmptyHint');
+  if(!state.friendsList.length){
+    list.innerHTML = '';
+    emptyHint.style.display = 'block';
+    emptyHint.textContent = 'Добавьте друзей на вкладке «Друзья», чтобы начать переписку.';
+    return;
+  }
+  emptyHint.style.display = 'none';
+  const myKeyVal = fbKey(state.profile.username);
+  const rows = state.friendsList.map(f=>{
+    const prev = state.chatPreviews[fbKey(f.uid)] || {};
+    return { f, meta: prev.meta, unread: !!prev.unread, ts: prev.meta ? (prev.meta.lastTs||0) : -1 };
+  }).sort((a,b)=> b.ts - a.ts);
+  list.innerHTML = rows.map(({f, meta, unread})=>{
+    const previewText = meta
+      ? escapeHtml((meta.lastFrom===myKeyVal ? 'Вы: ' : '') + (meta.lastText||''))
+      : 'Нет сообщений';
+    const timeText = meta && meta.lastTs ? formatChatListTime(meta.lastTs) : '';
+    return `
+      <div class="chat-row${unread?' unread':''}" data-open-chat="${escapeHtml(f.uid)}">
+        <div class="avatar-wrap static">
+          <div class="friend-avatar" id="chatListAvatar-${escapeHtml(f.uid)}"></div>
+          <div class="presence-dot" id="chatListPresence-${escapeHtml(f.uid)}"></div>
+        </div>
+        <div class="chat-row-body">
+          <div class="chat-row-top"><span class="chat-row-name">${escapeHtml(f.name)}</span><span class="chat-row-time">${timeText}</span></div>
+          <div class="chat-row-preview">${previewText}</div>
+        </div>
+        ${unread ? '<span class="chat-unread-dot"></span>' : ''}
+      </div>`;
+  }).join('');
+  chatsListPresenceUnsubs.forEach(u=>u());
+  chatsListPresenceUnsubs = state.friendsList.map(f=>{
+    renderAvatarInto(document.getElementById('chatListAvatar-'+f.uid), f.avatar, f.name);
+    const dot = document.getElementById('chatListPresence-'+f.uid);
+    return watchPresence(f.uid, online => { if(dot) dot.classList.toggle('online', online); });
+  });
+}
+document.getElementById('chatsEntryCard').addEventListener('click', ()=>{
+  go('chats');
+  renderChatsList();
+});
+document.getElementById('chatsList').addEventListener('click', e=>{
+  const row = e.target.closest('[data-open-chat]');
+  if(!row) return;
+  const f = state.friendsList.find(x=>x.uid===row.dataset.openChat);
+  if(f) openChatThread(f.uid, f.name, f.avatar);
+});
+
+/* --- conversation thread --- */
+let chatThreadUnsub = null;
+let chatThreadKey = null;
+let chatThreadPresenceUnsub = null;
+function closeChatThread(){
+  if(chatThreadUnsub){ chatThreadUnsub(); chatThreadUnsub = null; }
+  if(chatThreadPresenceUnsub){ chatThreadPresenceUnsub(); chatThreadPresenceUnsub = null; }
+  chatThreadKey = null;
+}
+function markChatRead(otherUsername){
+  if(!fbDb || !state.profile) return;
+  fbDb.ref(chatPairPath(otherUsername)+'/lastRead/'+fbKey(state.profile.username)).set(firebase.database.ServerValue.TIMESTAMP);
+}
+function renderChatThreadMessages(messagesObj){
+  const wrap = document.getElementById('chatThreadMessages');
+  const emptyHint = document.getElementById('chatThreadEmptyHint');
+  const scrollEl = document.getElementById('chatThreadScroll');
+  const entries = Object.entries(messagesObj || {}).sort((a,b)=> (a[1].ts||0)-(b[1].ts||0));
+  if(!entries.length){
+    wrap.innerHTML = '';
+    emptyHint.style.display = 'block';
+    return;
+  }
+  emptyHint.style.display = 'none';
+  const myKeyVal = fbKey(state.profile.username);
+  let lastDay = null, html = '';
+  entries.forEach(([id, m])=>{
+    const ts = m.ts || Date.now();
+    const day = new Date(ts).toDateString();
+    if(day !== lastDay){ html += `<div class="chat-day-sep">${formatChatDay(ts)}</div>`; lastDay = day; }
+    const mine = m.from === myKeyVal;
+    html += `<div class="chat-bubble-row${mine?' mine':''}"><div class="chat-bubble">${escapeHtml(m.text||'')}<span class="chat-bubble-time">${formatChatClock(ts)}</span></div></div>`;
+  });
+  wrap.innerHTML = html;
+  scrollEl.scrollTop = scrollEl.scrollHeight;
+}
+function openChatThread(username, name, avatar){
+  if(!state.profile || !state.profile.authenticated){ showToast('Войдите, чтобы писать друзьям'); return; }
+  closeChatThread();
+  state.activeChat = { uid: username, name, avatar };
+  go('chat');
+  document.getElementById('chatThreadName').textContent = name;
+  renderAvatarInto(document.getElementById('chatThreadAvatar'), avatar, name);
+  document.getElementById('chatThreadMessages').innerHTML = '';
+  document.getElementById('chatThreadEmptyHint').style.display = 'none';
+  const dot = document.getElementById('chatThreadPresence');
+  dot.classList.remove('online');
+  chatThreadPresenceUnsub = watchPresence(username, online => dot.classList.toggle('online', online));
+
+  const path = chatPairPath(username);
+  chatThreadKey = path;
+  fbAuthReady.then(()=>{
+    // Bail if the user already switched to a different chat (or Firebase
+    // simply never loads) before this resolved — attaching now would leak
+    // a listener onto a screen nobody's looking at, or mix in another
+    // conversation's messages if the ids happened to collide.
+    if(!fbDb || chatThreadKey !== path) return;
+    const msgsRef = fbDb.ref(path+'/messages').limitToLast(300);
+    const listener = snap => {
+      renderChatThreadMessages(snap.val());
+      markChatRead(username);
+    };
+    msgsRef.on('value', listener);
+    chatThreadUnsub = () => msgsRef.off('value', listener);
+  });
+}
+document.querySelector('[data-screen="chat"] [data-nav="chats"]').addEventListener('click', ()=>{
+  closeChatThread();
+  renderChatsList();
+});
+
+const chatInputEl = document.getElementById('chatInput');
+const chatSendBtn = document.getElementById('chatSendBtn');
+function autoResizeChatInput(){
+  chatInputEl.style.height = 'auto';
+  chatInputEl.style.height = Math.min(chatInputEl.scrollHeight, 110) + 'px';
+}
+chatInputEl.addEventListener('input', ()=>{
+  autoResizeChatInput();
+  chatSendBtn.disabled = !chatInputEl.value.trim();
+});
+chatInputEl.addEventListener('keydown', e=>{
+  if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendCurrentChatMessage(); }
+});
+async function sendCurrentChatMessage(){
+  const text = chatInputEl.value.trim();
+  if(!text || !state.activeChat) return;
+  if(!fbDb){ showToast('Нет соединения с сервером'); return; }
+  const otherUsername = state.activeChat.uid;
+  chatInputEl.value = '';
+  autoResizeChatInput();
+  chatSendBtn.disabled = true;
+  const path = chatPairPath(otherUsername);
+  const myKeyVal = fbKey(state.profile.username);
+  const ts = firebase.database.ServerValue.TIMESTAMP;
+  try{
+    await fbDb.ref(path+'/messages').push({ from: myKeyVal, text, ts });
+    await fbDb.ref(path+'/meta').set({ lastText: text, lastTs: ts, lastFrom: myKeyVal });
+    fbDb.ref(path+'/lastRead/'+myKeyVal).set(ts);
+    notifyFriend(otherUsername, state.profile.username, text.length>100 ? text.slice(0,100)+'…' : text, 'chat-message', baseUrl()+'?chat='+encodeURIComponent(state.profile.username));
+  }catch(e){
+    showToast('Не удалось отправить сообщение');
+  }
+}
+chatSendBtn.addEventListener('click', sendCurrentChatMessage);
+
+// ?chat=<username> deep link (from a chat-message push notification) — opened
+// once state.friendsList has loaded, same pattern as ?room=/?zroom= above.
+(function readChatParam(){
+  const params = new URLSearchParams(location.search);
+  const chat = params.get('chat');
+  if(!chat) return;
+  history.replaceState({}, '', baseUrl());
+  state.pendingChatUsername = chat;
+})();
 
 /* ---------------- avatar picker ---------------- */
 let avatarPickerState = { emoji: AVATAR_EMOJIS[0], color: Object.keys(AVATAR_COLORS)[0] };
