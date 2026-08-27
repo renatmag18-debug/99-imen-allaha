@@ -503,6 +503,7 @@ body{
   transition: transform .2s var(--ease), box-shadow .2s var(--ease), background .25s var(--ease), border-color .25s var(--ease);
 }
 .btn:active{ transform:scale(.96); }
+.btn:disabled{ opacity:.5; cursor:default; pointer-events:none; }
 .btn-primary{ background:var(--gold); color:var(--on-accent); }
 .btn-primary:hover{ background:var(--gold-soft); }
 .btn-ghost{ background:var(--glass); color:var(--ivory); border-color:var(--line); backdrop-filter:blur(12px); }
@@ -1730,6 +1731,14 @@ body{
             <div id="duelResultRows"></div>
           </div>
           <p id="duelWaitNote" style="display:none;text-align:center;color:var(--jade);font-size:13px;margin:-10px 0 18px;">Ждём, пока остальные завершат дуэль…</p>
+          <p id="duelRematchWaitNote" style="display:none;text-align:center;color:var(--jade);font-size:13px;margin:-10px 0 18px;">Ждём подтверждения от других игроков…</p>
+          <div id="duelRematchRequestPanel" style="display:none;text-align:center;margin:0 0 18px;padding:16px;border-radius:var(--r-card);background:var(--fill-sunken);border:1px solid var(--line);">
+            <p id="duelRematchRequestText" style="font-size:13.5px;color:var(--ivory);margin:0 0 12px;"></p>
+            <div style="display:flex;gap:10px;">
+              <button class="btn btn-primary" id="duelRematchConfirmBtn" style="flex:1;">Подтвердить</button>
+              <button class="btn btn-ghost" id="duelRematchDeclineBtn" style="flex:1;">Отклонить</button>
+            </div>
+          </div>
 
           <div class="mistakes-board" id="mistakesBoard" style="display:none">
             <div class="mistakes-title">Ошибки (<span id="mistakesCount">0</span>)</div>
@@ -4952,8 +4961,35 @@ document.getElementById('retryBtn').addEventListener('click', ()=>{
   challengeIntro.style.display = state.challenge ? 'block' : 'none';
 });
 
-document.getElementById('duelRematchBtn').addEventListener('click', ()=>{
-  if(!fbDb || !duel.roomId){ showToast('Нет соединения с сервером дуэли'); return; }
+// Shows the requester a "waiting" note, and everyone else a confirm/decline
+// prompt naming who asked — cleared automatically once the request node
+// itself is gone (confirmed => reset+new round replaces it; declined =>
+// removed outright), so there's no separate "already handled" bookkeeping.
+function updateDuelRematchUI(req){
+  const waitNote = document.getElementById('duelRematchWaitNote');
+  const panel = document.getElementById('duelRematchRequestPanel');
+  const rematchBtn = document.getElementById('duelRematchBtn');
+  if(req && req.fromId === duel.myId){
+    waitNote.style.display = 'block';
+    panel.style.display = 'none';
+    rematchBtn.disabled = true;
+  } else if(req){
+    waitNote.style.display = 'none';
+    panel.style.display = 'block';
+    rematchBtn.disabled = true;
+    document.getElementById('duelRematchRequestText').textContent =
+      (req.fromName||'Игрок')+' хочет сыграть ещё раз в этой комнате';
+  } else {
+    waitNote.style.display = 'none';
+    panel.style.display = 'none';
+    rematchBtn.disabled = false;
+  }
+}
+
+// Actually resets everyone's scores and starts the next round — only ever
+// called once someone still in the room has confirmed the rematch request,
+// never straight from the "Играть ещё раз" click.
+function performDuelRematchReset(){
   const roomRef = fbDb.ref('duels/'+duel.roomId);
   roomRef.transaction(cur=>{
     if(!cur) return cur;
@@ -4964,17 +5000,44 @@ document.getElementById('duelRematchBtn').addEventListener('click', ()=>{
     cur.players = resetPlayers;
     cur.round = (cur.round||1)+1;
     cur.status = 'active';
+    cur.rematchRequest = null;
     return cur;
   });
   showToast('Начинаем новый раунд…');
+}
+
+document.getElementById('duelRematchBtn').addEventListener('click', ()=>{
+  if(!fbDb || !duel.roomId){ showToast('Нет соединения с сервером дуэли'); return; }
+  const others = Object.keys(duel.players).filter(id=>id!==duel.myId);
+  if(others.length === 0){ performDuelRematchReset(); return; }
+  fbDb.ref('duels/'+duel.roomId+'/rematchRequest').set({
+    fromId: duel.myId, fromName: duel.myName,
+    at: firebase.database.ServerValue.TIMESTAMP
+  });
+  showToast('Предложение отправлено — ждём подтверждения…');
 });
 
+document.getElementById('duelRematchConfirmBtn').addEventListener('click', ()=>{
+  if(!fbDb || !duel.roomId) return;
+  performDuelRematchReset();
+});
+document.getElementById('duelRematchDeclineBtn').addEventListener('click', ()=>{
+  if(!fbDb || !duel.roomId) return;
+  fbDb.ref('duels/'+duel.roomId+'/rematchRequest').remove();
+});
+
+// Flags this player as having left instead of removing them — removing
+// used to erase their final score off everyone else's results board mid-
+// view. Whoever's still in the room picks this up via onRoomSnapshot ->
+// notifyDuelPlayersLeft() and sees a "X покинул(а) комнату" toast.
+function signalDuelLeave(){
+  if(fbDb && duel.roomId && duel.myId){
+    fbDb.ref('duels/'+duel.roomId+'/players/'+duel.myId+'/left').set(true);
+  }
+}
+
 document.getElementById('duelLeaveBtn').addEventListener('click', ()=>{
-  // Used to delete this player's entry from duels/{roomId}/players — but that
-  // ran the moment anyone left the post-game results screen, so their final
-  // score vanished from everyone else's results board who was still looking
-  // at it. Leaving now only detaches the local client; the room keeps their
-  // last result until the room is reset by a rematch.
+  signalDuelLeave();
   resetDuel();
   resultWrap.style.display='none';
   quizIntro.style.display='block';
@@ -5023,8 +5086,17 @@ const duel = {
   roomRef:null, players:{}, round:0, lastRound:0, usedIdx:[],
   orderMode:'random', orderPos:0,
   timerInterval:null, timeLeft:10,
-  mode:'classic', targetScore:5, elimination:null, elimTransitioning:false
+  mode:'classic', targetScore:5, elimination:null, elimTransitioning:false,
+  joinTimeoutId:null, invitedUids:[], notifiedLeftIds:new Set()
 };
+
+// Room auto-closes if nobody accepted the invite within this window — an
+// abandoned room otherwise sits open in Firebase (and in the invitee's
+// pending-invites list) forever, with the host stuck on the waiting screen.
+const DUEL_JOIN_WINDOW_MS = 30000;
+function clearDuelJoinTimeout(){
+  if(duel.joinTimeoutId){ clearTimeout(duel.joinTimeoutId); duel.joinTimeoutId = null; }
+}
 
 function persistDuelUsedIdx(){
   if(!fbDb || !duel.roomId || !state.quiz) return;
@@ -5113,17 +5185,21 @@ function startDuelTimer(){
 
 function resetDuel(){
   clearDuelTimer();
+  clearDuelJoinTimeout();
   if(elimRenderTimeout){ clearTimeout(elimRenderTimeout); elimRenderTimeout=null; }
   if(duel.roomRef){ try{ duel.roomRef.off('value', onRoomSnapshot); }catch(e){} }
   Object.assign(duel, {
     active:false, started:false, isHost:false, roomId:null, myId:null, myName:'', hostId:null,
     timerSeconds:0, direction:'n2m', seedStr:null, roomRef:null, players:{}, round:0, lastRound:0, usedIdx:[],
     orderMode:'random', orderPos:0,
-    mode:'classic', targetScore:5, elimination:null, elimTransitioning:false
+    mode:'classic', targetScore:5, elimination:null, elimTransitioning:false,
+    invitedUids:[], notifiedLeftIds:new Set()
   });
   document.getElementById('duelOppPanel').style.display='none';
   document.getElementById('duelWaitNote').style.display='none';
   document.getElementById('duelResultBoard').style.display='none';
+  document.getElementById('duelRematchWaitNote').style.display='none';
+  document.getElementById('duelRematchRequestPanel').style.display='none';
   document.getElementById('eliminationScreen').style.display='none';
 }
 
@@ -5133,12 +5209,28 @@ function attachRoomListener(){
   duel.roomRef.on('value', onRoomSnapshot);
 }
 
+// Someone hitting "Выйти из комнаты" doesn't remove their player entry
+// (that used to erase their final score off everyone else's results board
+// mid-view) — it just flags it. This tells whoever's still in the room.
+function notifyDuelPlayersLeft(){
+  Object.keys(duel.players).forEach(id=>{
+    const p = duel.players[id];
+    if(p && p.left && id !== duel.myId && !duel.notifiedLeftIds.has(id)){
+      duel.notifiedLeftIds.add(id);
+      showToast((p.name||'Игрок')+' покинул(а) комнату');
+    }
+  });
+}
+
 function onRoomSnapshot(snap){
   const val = snap.val();
   if(!val) return;
   duel.isHost = !!(duel.myId && val.hostId===duel.myId);
   duel.hostId = val.hostId;
   duel.players = val.players || {};
+  // A guest joined before the 30s window ran out — the room stays open now.
+  if(duel.joinTimeoutId && Object.keys(duel.players).length > 1) clearDuelJoinTimeout();
+  notifyDuelPlayersLeft();
   duel.mode = val.mode || 'classic';
   duel.targetScore = val.targetScore || 5;
   duel.len = val.len || duel.len;
@@ -5151,6 +5243,8 @@ function onRoomSnapshot(snap){
     if(val.status==='active' && val.elimination) handleEliminationSnapshot(val.elimination);
     return;
   }
+
+  updateDuelRematchUI(val.rematchRequest);
 
   const round = val.round || 1;
   if(val.status==='active' && round !== duel.lastRound){
@@ -5327,6 +5421,7 @@ document.getElementById('elimRematchBtn').addEventListener('click', ()=>{
   showToast('Начинаем новый матч…');
 });
 document.getElementById('elimLeaveBtn').addEventListener('click', ()=>{
+  signalDuelLeave();
   resetDuel();
   quizIntro.style.display='block';
 });
@@ -5468,13 +5563,37 @@ document.getElementById('createDuelBtn').addEventListener('click', ()=>{
     players: { [duel.myId]: { name: duel.myName, score:0, qIndex:0, finished:false } }
   });
   attachRoomListener();
-  duelPickedFriends.forEach(uid=>sendDuelInvite(uid));
+  duel.invitedUids = duelPickedFriends.slice();
+  duel.invitedUids.forEach(uid=>sendDuelInvite(uid));
   duelPickedFriends = [];
   updateDuelPickSummary();
+  startDuelJoinTimeout(duel.roomId);
 
   document.getElementById('duelSetupScreen').style.display='none';
   document.getElementById('duelWaitingScreen').style.display='block';
 });
+
+// Gives invited friends 30 seconds to join before the room auto-closes —
+// otherwise a declined-by-inaction invite leaves the host stuck waiting
+// and the room sitting open in Firebase indefinitely.
+function startDuelJoinTimeout(roomId){
+  clearDuelJoinTimeout();
+  duel.joinTimeoutId = setTimeout(()=>{
+    duel.joinTimeoutId = null;
+    if(duel.roomId !== roomId) return; // already left/replaced this room
+    if(Object.keys(duel.players||{}).length > 1) return; // someone joined
+    if(fbDb){
+      fbDb.ref('duels/'+roomId).remove();
+      duel.invitedUids.forEach(uid=>{
+        fbDb.ref('users/'+fbKey(uid)+'/duelInvites/'+roomId).remove();
+      });
+    }
+    showToast('Никто не присоединился за 30 секунд — комната закрыта');
+    resetDuel();
+    document.getElementById('duelWaitingScreen').style.display='none';
+    quizIntro.style.display='block';
+  }, DUEL_JOIN_WINDOW_MS);
+}
 
 document.getElementById('duelStartBtn').addEventListener('click', ()=>{
   if(!fbDb || !duel.roomId){ showToast('Нет соединения с сервером дуэли'); return; }
@@ -5512,6 +5631,7 @@ document.getElementById('duelInviteMoreBtn').addEventListener('click', ()=>{
   openFriendPicker('Пригласить друзей', selectedUids=>{
     if(!selectedUids.length) return;
     selectedUids.forEach(uid=>sendDuelInvite(uid));
+    duel.invitedUids = duel.invitedUids.concat(selectedUids);
     showToast(selectedUids.length>1 ? 'Приглашения отправлены!' : 'Приглашение отправлено!');
   });
 });
@@ -5522,21 +5642,34 @@ document.getElementById('duelWaitBackBtn').addEventListener('click', ()=>{
 });
 
 function joinDuelAsGuest(roomId, name){
-  duel.roomId = roomId;
-  duel.seedStr = 'duel-'+roomId;
-  duel.myName = name || 'Друг';
-  duel.isHost = false;
+  if(!fbDb) return;
   const roomRef = fbDb.ref('duels/'+roomId);
-  const myRef = roomRef.child('players').push();
-  duel.myId = myRef.key;
-  myRef.set({ name: duel.myName, score:0, qIndex:0, finished:false });
-  attachRoomListener();
-  go('quiz');
-  resetQuizView();
-  document.getElementById('duelJoinScreen').style.display='none';
-  document.getElementById('duelSetupScreen').style.display='none';
-  document.getElementById('quizIntro').style.display='none';
-  document.getElementById('duelWaitingScreen').style.display='block';
+  // The room may have already auto-closed (30s join window expired) by the
+  // time this fires — without this check we'd just recreate a bare room
+  // node with nobody's config (len/mode/direction/...) in it.
+  roomRef.once('value').then(snap=>{
+    if(!snap.val()){
+      showToast('Комната больше не активна — время на присоединение истекло');
+      return;
+    }
+    duel.roomId = roomId;
+    duel.seedStr = 'duel-'+roomId;
+    duel.myName = name || 'Друг';
+    duel.isHost = false;
+    const myRef = roomRef.child('players').push();
+    duel.myId = myRef.key;
+    myRef.set({ name: duel.myName, score:0, qIndex:0, finished:false });
+    attachRoomListener();
+    go('quiz');
+    resetQuizView();
+    document.getElementById('duelJoinScreen').style.display='none';
+    document.getElementById('duelSetupScreen').style.display='none';
+    document.getElementById('quizIntro').style.display='none';
+    document.getElementById('duelWaitingScreen').style.display='block';
+  }).catch(e=>{
+    console.warn('Не удалось проверить комнату:', e);
+    showToast('Не удалось присоединиться — проверьте соединение');
+  });
 }
 document.getElementById('duelJoinBtn').addEventListener('click', ()=>{
   if(!fbDb){ showToast('Нет соединения с сервером дуэли'); return; }
