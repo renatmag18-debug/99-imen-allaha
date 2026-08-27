@@ -2695,7 +2695,6 @@ const PUSH_RELAY_URL = "https://99ism-api.99ism-worker.workers.dev/push";
 const PUSH_RELAY_SECRET = "kJNSpd7TCyYe1rF7o9Lij7u4DSEz4tuIVNy7qQIHbh4=";
 let fbDb = null;
 let fbAuth = null;
-let fbStorage = null;
 
 // Firebase's SDK scripts used to be blocking <script src> tags right here,
 // ahead of the entire app script below — on a slow or blocked connection to
@@ -2725,12 +2724,10 @@ let fbAuthReady = (async () => {
     await loadScriptTag('https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js');
     await loadScriptTag('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js');
     await loadScriptTag('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
-    await loadScriptTag('https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js');
 
     firebase.initializeApp(FIREBASE_CONFIG);
     fbDb = firebase.database();
     fbAuth = firebase.auth();
-    fbStorage = firebase.storage();
     return new Promise(resolve=>{
       const unsub = fbAuth.onAuthStateChanged(user=>{
         if(user){ unsub(); resolve(user); }
@@ -7238,6 +7235,7 @@ function closeChatThread(){
   clearActiveChatViewer();
   chatVoiceAudioEl.pause();
   chatVoicePlayingBtn = null;
+  chatVoicePlayingId = null;
   // Leaving mid-recording (swipe/hardware back, not the composer's own
   // cancel/send) must still release the mic — otherwise it stays actively
   // recording in the background indefinitely.
@@ -7260,21 +7258,28 @@ function renderChatThreadMessages(messagesObj){
   emptyHint.style.display = 'none';
   const myKeyVal = fbKey(state.profile.username);
   let lastDay = null, html = '';
+  // Repopulated on every render — keeps the (possibly large, base64) audio
+  // payload out of the DOM entirely; bubbles only carry the short message id.
+  chatVoiceDataById = {};
   entries.forEach(([id, m])=>{
     const ts = m.ts || Date.now();
     const day = new Date(ts).toDateString();
     if(day !== lastDay){ html += `<div class="chat-day-sep">${formatChatDay(ts)}</div>`; lastDay = day; }
     const mine = m.from === myKeyVal;
-    const bodyHtml = (m.type === 'voice' && m.audioUrl)
-      ? `<button class="chat-voice-play" data-voice-url="${escapeHtml(m.audioUrl)}" aria-label="Воспроизвести">
+    let bodyHtml;
+    if(m.type === 'voice' && m.audioData){
+      chatVoiceDataById[id] = m.audioData;
+      bodyHtml = `<button class="chat-voice-play" data-voice-id="${escapeHtml(id)}" aria-label="Воспроизвести">
            <svg class="icon-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
            <svg class="icon-pause" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
          </button>
          <div class="chat-voice-body">
            <div class="chat-voice-bar"><div class="chat-voice-bar-fill"></div></div>
            <span class="chat-voice-duration">${formatVoiceDuration(m.duration||0)}</span>
-         </div>`
-      : escapeHtml(m.text||'');
+         </div>`;
+    } else {
+      bodyHtml = escapeHtml(m.text||'');
+    }
     html += `<div class="chat-bubble-row${mine?' mine':''}"><div class="chat-bubble${m.type==='voice'?' voice':''}">${bodyHtml}<span class="chat-bubble-time">${formatChatClock(ts)}</span></div></div>`;
   });
   wrap.innerHTML = html;
@@ -7282,14 +7287,15 @@ function renderChatThreadMessages(messagesObj){
   // If a voice message is still playing across this re-render (e.g. a new
   // message just arrived), the old button was just destroyed — reattach the
   // playing/progress UI to its freshly rendered replacement.
-  if(chatVoicePlayingBtn && !chatVoiceAudioEl.paused){
-    const newBtn = wrap.querySelector(`.chat-voice-play[data-voice-url="${CSS.escape(chatVoiceAudioEl.src)}"]`);
+  if(chatVoicePlayingId && !chatVoiceAudioEl.paused){
+    const newBtn = wrap.querySelector(`.chat-voice-play[data-voice-id="${CSS.escape(chatVoicePlayingId)}"]`);
     if(newBtn){
       chatVoicePlayingBtn = newBtn;
       newBtn.querySelector('.icon-play').style.display = 'none';
       newBtn.querySelector('.icon-pause').style.display = '';
     } else {
       chatVoicePlayingBtn = null;
+      chatVoicePlayingId = null;
     }
   }
 }
@@ -7398,6 +7404,13 @@ function formatVoiceDuration(sec){
   return m+':'+String(s).padStart(2,'0');
 }
 
+// Voice messages are stored as base64 data URIs directly in the RTDB message
+// record — no Firebase Storage (that needs the paid Blaze plan; RTDB alone
+// stays on the free Spark tier). A hard cap keeps that practical: RTDB has a
+// real per-value size ceiling, and every conversation's full history syncs
+// down to the message-list listener, so voice notes need to stay small.
+const MAX_VOICE_RECORDING_SEC = 120;
+
 let chatRecorder = null;
 let chatRecordedChunks = [];
 let chatRecordingStream = null;
@@ -7407,6 +7420,10 @@ let chatRecordingTimerHandle = null;
 function chatRecordingTick(){
   const sec = Math.floor((Date.now() - chatRecordingStartTime) / 1000);
   document.getElementById('chatRecordingTimer').textContent = formatVoiceDuration(sec);
+  if(sec >= MAX_VOICE_RECORDING_SEC){
+    showToast('Достигнут лимит записи — '+formatVoiceDuration(MAX_VOICE_RECORDING_SEC));
+    finishAndSendVoiceRecording();
+  }
 }
 function stopChatRecordingUI(){
   if(chatRecordingTimerHandle){ clearInterval(chatRecordingTimerHandle); chatRecordingTimerHandle = null; }
@@ -7464,20 +7481,27 @@ document.getElementById('chatMicBtn').addEventListener('click', startVoiceRecord
 document.getElementById('chatRecordingCancelBtn').addEventListener('click', cancelVoiceRecording);
 document.getElementById('chatRecordingSendBtn').addEventListener('click', finishAndSendVoiceRecording);
 
+function blobToDataURL(blob){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error('FileReader failed'));
+    reader.readAsDataURL(blob);
+  });
+}
 async function sendVoiceMessage(blob, durationSec){
   if(!state.activeChat) return;
-  if(!fbDb || !fbStorage){ showToast('Нет соединения с сервером'); return; }
+  if(!fbDb){ showToast('Нет соединения с сервером'); return; }
   const otherUsername = state.activeChat.uid;
   const path = chatPairPath(otherUsername);
   const myKeyVal = fbKey(state.profile.username);
   const ts = firebase.database.ServerValue.TIMESTAMP;
-  const msgRef = fbDb.ref(path+'/messages').push();
-  const ext = (blob.type || '').includes('mp4') ? 'm4a' : 'webm';
   try{
-    const storageRef = fbStorage.ref('voiceMessages/'+path+'/'+msgRef.key+'.'+ext);
-    await storageRef.put(blob, { contentType: blob.type || 'audio/webm' });
-    const audioUrl = await storageRef.getDownloadURL();
-    await msgRef.set({ from: myKeyVal, type: 'voice', audioUrl, duration: durationSec, ts });
+    // readAsDataURL already prefixes the exact "data:<mime-type>;base64,"
+    // header, so this string can be dropped straight into <audio>.src on
+    // playback with no separate MIME-type bookkeeping.
+    const audioData = await blobToDataURL(blob);
+    await fbDb.ref(path+'/messages').push({ from: myKeyVal, type: 'voice', audioData, duration: durationSec, ts });
     await fbDb.ref(path+'/meta').set({ lastText: '🎤 Голосовое сообщение', lastTs: ts, lastFrom: myKeyVal });
     fbDb.ref(path+'/lastRead/'+myKeyVal).set(ts);
     const viewerSnap = await fbDb.ref('activeChatViewers/'+fbKey(otherUsername)).once('value');
@@ -7495,6 +7519,8 @@ async function sendVoiceMessage(blob, durationSec){
 // messenger handles overlapping voice notes.
 const chatVoiceAudioEl = new Audio();
 let chatVoicePlayingBtn = null;
+let chatVoicePlayingId = null;
+let chatVoiceDataById = {};
 function resetVoiceButtonUI(btn){
   const playIcon = btn.querySelector('.icon-play'), pauseIcon = btn.querySelector('.icon-pause');
   if(playIcon) playIcon.style.display = '';
@@ -7505,14 +7531,17 @@ function resetVoiceButtonUI(btn){
 document.getElementById('chatThreadMessages').addEventListener('click', e=>{
   const btn = e.target.closest('.chat-voice-play');
   if(!btn) return;
-  const url = btn.dataset.voiceUrl;
-  if(chatVoicePlayingBtn === btn && !chatVoiceAudioEl.paused){
+  const id = btn.dataset.voiceId;
+  const src = chatVoiceDataById[id];
+  if(!src) return;
+  if(chatVoicePlayingId === id && !chatVoiceAudioEl.paused){
     chatVoiceAudioEl.pause();
     return;
   }
   if(chatVoicePlayingBtn && chatVoicePlayingBtn !== btn) resetVoiceButtonUI(chatVoicePlayingBtn);
   chatVoicePlayingBtn = btn;
-  if(chatVoiceAudioEl.src !== url) chatVoiceAudioEl.src = url;
+  chatVoicePlayingId = id;
+  if(chatVoiceAudioEl.src !== src) chatVoiceAudioEl.src = src;
   chatVoiceAudioEl.play().catch(()=> showToast('Не удалось воспроизвести'));
 });
 chatVoiceAudioEl.addEventListener('play', ()=>{
@@ -7528,6 +7557,7 @@ chatVoiceAudioEl.addEventListener('pause', ()=>{
 chatVoiceAudioEl.addEventListener('ended', ()=>{
   if(chatVoicePlayingBtn) resetVoiceButtonUI(chatVoicePlayingBtn);
   chatVoicePlayingBtn = null;
+  chatVoicePlayingId = null;
 });
 chatVoiceAudioEl.addEventListener('timeupdate', ()=>{
   if(!chatVoicePlayingBtn || !chatVoiceAudioEl.duration) return;
