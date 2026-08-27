@@ -2916,7 +2916,16 @@ let fbAuthReady = (async () => {
     fbDb.ref('.info/connected').on('value', snap => __diagLog('RTDB .info/connected = ' + snap.val()));
     return new Promise(resolve=>{
       const unsub = fbAuth.onAuthStateChanged(user=>{
-        if(user){ __diagLog('signed in (onAuthStateChanged)'); unsub(); resolve(user); }
+        // Same uid across app relaunches means Auth persistence (IndexedDB,
+        // normally) is working and this is a fast session restore each
+        // time; a DIFFERENT uid every launch would mean a brand new
+        // anonymous account gets created from scratch every time instead —
+        // a real possibility given this exact WebView loading setup
+        // (loadDataWithBaseURL against a file:// origin) already broke
+        // getUserMedia earlier for reasons specific to it, and would also
+        // explain unstable/slow sign-in if repeated account creation from
+        // the same client starts hitting Google's own rate limiting.
+        if(user){ __diagLog('signed in, uid=' + user.uid.slice(0,8) + (user.isAnonymous ? ' (anon)' : '')); unsub(); resolve(user); }
       });
       fbAuth.signInAnonymously().then(()=>{
         __diagLog('signInAnonymously() call itself resolved');
