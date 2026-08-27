@@ -834,24 +834,17 @@ body{
 .quran-page[data-tajweed="off"] tajweed{ color:inherit; }
 
 .quran-verse.search-highlight{ background:var(--accent-tint); border-radius:6px; transition:background .3s; }
-.quran-verse-play, .quran-verse-wbw-btn{
+.quran-verse-play{
   display:inline-flex; align-items:center; justify-content:center;
   width:1.5em; height:1.5em; margin:0 2px; border:none; background:none; padding:0;
   font-size:0.5em; opacity:.6; cursor:pointer; vertical-align:middle;
 }
-.quran-verse-play:active, .quran-verse-wbw-btn:active{ transform:scale(.9); }
-.quran-verse-play.playing, .quran-verse-wbw-btn.open{ opacity:1; }
-.quran-wbw-panel{
-  display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-start;
-  margin:6px 0 16px; padding:12px; border-radius:var(--r-input); background:var(--fill-1); border:1px solid var(--line);
-}
-.quran-word-chip{
-  font-family:var(--font-ar); font-size:0.85em; color:var(--gold-soft); cursor:pointer;
-  padding:2px 6px; border-radius:6px; text-shadow:none;
-}
-.quran-word-chip[data-audio]:active{ transform:scale(.94); }
-.quran-word-chip.playing{ background:var(--accent-tint); color:var(--gold); }
-.quran-word-chip:not([data-audio]){ cursor:default; opacity:.6; }
+.quran-verse-play:active{ transform:scale(.9); }
+.quran-verse-play.playing{ opacity:1; }
+.quran-page[data-audio-btn="off"] .quran-verse-play{ display:none; }
+.quran-word{ cursor:pointer; border-radius:4px; }
+.quran-word.playing{ background:var(--accent-tint); }
+.quran-word:not([data-audio]){ cursor:default; }
 
 .quran-foot{
   flex-shrink:0; display:flex; align-items:center; justify-content:space-between; gap:14px;
@@ -1033,6 +1026,34 @@ body{
 }
 .chat-clip-video{
   display:block; max-width:240px; max-height:320px; width:100%; border-radius:14px; background:#000;
+}
+
+.chat-bubble.pending{ background:none; border:none; padding:0; }
+.chat-bubble-row.mine .chat-bubble.pending{ background:none; border:none; padding:0; }
+.chat-pending-voice{
+  display:flex; align-items:center; gap:9px; min-width:170px;
+  background:var(--gold); color:var(--on-accent); border-radius:18px; padding:11px 16px; font-size:13px;
+}
+.chat-pending-circle{
+  position:relative; width:170px; height:170px; border-radius:50%; overflow:hidden; background:#000;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  background-size:cover; background-position:center top;
+}
+.chat-pending-rect{
+  position:relative; width:220px; height:220px; max-width:70vw; max-height:70vw; border-radius:14px; overflow:hidden; background:#000;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  background-size:cover; background-position:center;
+}
+.chat-pending-circle::after, .chat-pending-rect::after{ content:''; position:absolute; inset:0; background:rgba(0,0,0,.4); }
+.chat-pending-spinner{
+  position:relative; z-index:1; width:26px; height:26px; border-radius:50%; flex-shrink:0;
+  border:3px solid rgba(255,255,255,.3); border-top-color:#fff; animation:chatPendingSpin .8s linear infinite;
+}
+.chat-pending-voice .chat-pending-spinner{ border-color:rgba(0,0,0,.25); border-top-color:var(--on-accent); }
+@keyframes chatPendingSpin{ to{ transform:rotate(360deg); } }
+.chat-pending-pct{
+  position:absolute; z-index:1; bottom:14px; font-size:12px; color:#fff; font-family:var(--font-num);
+  background:rgba(0,0,0,.5); padding:2px 8px; border-radius:8px;
 }
 
 #chatImageViewerOverlay{
@@ -2527,10 +2548,18 @@ body{
       </div>
 
       <div class="section-label">Таджвид</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--line);margin-bottom:16px;">
         <div style="font-size:14px;color:var(--ivory);">Подсветка правил чтения</div>
         <label style="position:relative;display:inline-block;width:40px;height:24px;flex-shrink:0;">
           <input type="checkbox" id="quranTajweedToggle" style="opacity:0;width:0;height:0;" checked>
+          <span class="slider" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:var(--fill-3);transition:.4s;border-radius:24px;border:1px solid var(--line);"></span>
+          <span class="slider-knob" style="position:absolute;content:'';height:18px;width:18px;left:2px;bottom:2px;background-color:var(--ivory);transition:.4s;border-radius:50%;"></span>
+        </label>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:16px;">
+        <div style="font-size:14px;color:var(--ivory);">Значок озвучки аята</div>
+        <label style="position:relative;display:inline-block;width:40px;height:24px;flex-shrink:0;">
+          <input type="checkbox" id="quranAyahAudioToggle" style="opacity:0;width:0;height:0;" checked>
           <span class="slider" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:var(--fill-3);transition:.4s;border-radius:24px;border:1px solid var(--line);"></span>
           <span class="slider-knob" style="position:absolute;content:'';height:18px;width:18px;left:2px;bottom:2px;background-color:var(--ivory);transition:.4s;border-radius:50%;"></span>
         </label>
@@ -7562,6 +7591,10 @@ function clearActiveChatViewer(){
   fbDb.ref('activeChatViewers/'+fbKey(state.profile.username)).remove();
 }
 function closeChatThread(){
+  // Any upload still in flight keeps running (its own try/finally cleans up
+  // when it settles) — only the bubble showing it in THIS thread's view
+  // should disappear, since it belongs to a chat we're now leaving.
+  chatPendingUploads.clear();
   if(chatThreadUnsub){ chatThreadUnsub(); chatThreadUnsub = null; }
   if(chatThreadPresenceUnsub){ chatThreadPresenceUnsub(); chatThreadPresenceUnsub = null; }
   if(chatThreadOtherLastReadUnsub){ chatThreadOtherLastReadUnsub(); chatThreadOtherLastReadUnsub = null; }
@@ -7596,6 +7629,7 @@ function renderChatThreadMessages(messagesObj, isLiveSnapshot){
     wrap.innerHTML = '';
     emptyHint.textContent = 'Здесь пока нет сообщений — напишите первым.';
     emptyHint.style.display = 'block';
+    chatReattachPendingBubbles();
     return;
   }
   emptyHint.style.display = 'none';
@@ -7695,6 +7729,7 @@ function renderChatThreadMessages(messagesObj, isLiveSnapshot){
       chatVoicePlayingId = null;
     }
   }
+  chatReattachPendingBubbles();
 }
 function openChatThread(username, name, avatar){
   if(!state.profile || !state.profile.authenticated){ showToast('Войдите, чтобы писать друзьям'); return; }
@@ -7917,7 +7952,11 @@ async function startVoiceRecording(){
   chatRecordingStream = stream;
   chatRecordedChunks = [];
   const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find(t => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t));
-  chatRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+  // Browser default Opus bitrate is much lower than this — bumped now that
+  // voice messages upload to Storage (Blaze plan) instead of embedding
+  // base64 in RTDB, so there's no size budget forcing it low anymore.
+  const recorderOpts = mimeType ? { mimeType, audioBitsPerSecond: 128000 } : { audioBitsPerSecond: 128000 };
+  chatRecorder = new MediaRecorder(stream, recorderOpts);
   chatRecorder.ondataavailable = e => { if(e.data && e.data.size > 0) chatRecordedChunks.push(e.data); };
   chatRecorder.start();
   chatRecordingStartTime = Date.now();
@@ -7994,13 +8033,88 @@ function extensionForMime(mime, kind){
 // Storage to actually be enabled on the Firebase project (Blaze plan) —
 // callers should let the surrounding try/catch's "failed to send" toast
 // cover the case where it isn't.
-async function uploadChatMedia(path, msgKey, blob, kind){
+// onProgress (optional) is called with a 0-1 fraction as the upload runs —
+// storageRef.put() returns an UploadTask, not a plain promise, specifically
+// so callers can attach this 'state_changed' listener before it resolves.
+async function uploadChatMedia(path, msgKey, blob, kind, onProgress){
   const storage = await ensureStorage();
   const ext = extensionForMime(blob.type, kind);
   const storageRef = storage.ref(`chatMedia/${path}/${msgKey}.${ext}`);
   const fallbackType = kind === 'audio' ? 'audio/mp4' : kind === 'image' ? 'image/jpeg' : 'video/mp4';
-  await storageRef.put(blob, { contentType: blob.type || fallbackType });
+  const task = storageRef.put(blob, { contentType: blob.type || fallbackType });
+  await new Promise((resolve, reject) => {
+    task.on('state_changed',
+      snap => { if(onProgress && snap.totalBytes) onProgress(snap.bytesTransferred / snap.totalBytes); },
+      reject,
+      resolve
+    );
+  });
   return await storageRef.getDownloadURL();
+}
+
+/* --- outgoing-upload progress bubbles (voice/video-circle/photo/clip) ---
+   Firebase's own message-list listener only shows a message once it's fully
+   written (audioUrl/videoUrl/etc. already uploaded) — with nothing shown in
+   between, sending a video looks identical to the send silently failing.
+   These render a local-only "sending…" bubble the instant a send starts,
+   fed by uploadChatMedia's progress callback, and are removed once the real
+   message exists (the live listener's next render then shows it for real). */
+let chatPendingUploads = new Map();
+let chatPendingCounter = 0;
+function chatPendingBubbleHtml(entry){
+  const pct = Math.round((entry.progress || 0) * 100);
+  let mediaHtml;
+  if(entry.kind === 'voice'){
+    mediaHtml = `<div class="chat-pending-voice">
+        <div class="chat-pending-spinner"></div>
+        <span>Отправка… <span class="chat-pending-num">${pct}</span>%</span>
+      </div>`;
+  } else {
+    const shapeClass = entry.kind === 'video' ? 'chat-pending-circle' : 'chat-pending-rect';
+    const bgStyle = entry.previewUrl ? ` style="background-image:url(${entry.previewUrl})"` : '';
+    mediaHtml = `<div class="${shapeClass}"${bgStyle}>
+        <div class="chat-pending-spinner"></div>
+        <span class="chat-pending-pct"><span class="chat-pending-num">${pct}</span>%</span>
+      </div>`;
+  }
+  return `<div class="chat-bubble-row mine" id="chatPending-${entry.tempId}"><div class="chat-bubble pending">${mediaHtml}</div></div>`;
+}
+function chatAppendPendingBubbleDom(tempId){
+  const entry = chatPendingUploads.get(tempId);
+  const wrap = document.getElementById('chatThreadMessages');
+  if(!entry || !wrap || document.getElementById('chatPending-'+tempId)) return;
+  wrap.insertAdjacentHTML('beforeend', chatPendingBubbleHtml(entry));
+  document.getElementById('chatThreadEmptyHint').style.display = 'none';
+  const scrollEl = document.getElementById('chatThreadScroll');
+  if(scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight;
+}
+// kind: 'voice' | 'video' (circle) | 'image' | 'clip'. previewUrl is shown
+// as the bubble's background — a local object/data URL, never uploaded.
+function chatAddPendingBubble(kind, previewUrl){
+  const tempId = 'p' + (++chatPendingCounter);
+  chatPendingUploads.set(tempId, { tempId, kind, previewUrl, progress: 0 });
+  chatAppendPendingBubbleDom(tempId);
+  return tempId;
+}
+function chatUpdatePendingProgress(tempId, fraction){
+  const entry = chatPendingUploads.get(tempId);
+  if(!entry) return;
+  entry.progress = fraction;
+  const node = document.getElementById('chatPending-'+tempId);
+  const numEl = node && node.querySelector('.chat-pending-num');
+  if(numEl) numEl.textContent = Math.round(fraction * 100);
+}
+function chatRemovePendingBubble(tempId){
+  chatPendingUploads.delete(tempId);
+  const node = document.getElementById('chatPending-'+tempId);
+  if(node) node.remove();
+}
+// renderChatThreadMessages rebuilds #chatThreadMessages from scratch on
+// every Firebase snapshot (e.g. the friend's own message arriving mid-
+// upload) — that wipes any pending bubble appended via direct DOM insertion,
+// so it has to be re-appended after every such rebuild. Called from there.
+function chatReattachPendingBubbles(){
+  chatPendingUploads.forEach((entry, tempId) => chatAppendPendingBubbleDom(tempId));
 }
 
 /* --- gallery attachments: photo / video picked via the system file picker --- */
@@ -8029,6 +8143,45 @@ function resizeImageBlob(blob){
     img.src = url;
   });
 }
+// Same first-frame-grab technique as generateVideoPoster, but on a local
+// (not-yet-uploaded) Blob and awaited up front — the pending bubble needs
+// its preview immediately, not filled in asynchronously after the fact.
+function chatLocalVideoPoster(blob){
+  return new Promise(resolve=>{
+    const video = document.createElement('video');
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = 'auto';
+    const url = URL.createObjectURL(blob);
+    let done = false;
+    const finish = (dataUrl) => {
+      if(done) return;
+      done = true;
+      URL.revokeObjectURL(url);
+      video.remove();
+      resolve(dataUrl || null);
+    };
+    const safetyTimeout = setTimeout(()=> finish(null), 4000);
+    video.addEventListener('loadeddata', () => {
+      try{ video.currentTime = 0.1; }catch(e){ clearTimeout(safetyTimeout); finish(null); }
+    }, { once:true });
+    video.addEventListener('seeked', () => {
+      try{
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 240;
+        canvas.height = video.videoHeight || 240;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        clearTimeout(safetyTimeout);
+        finish(canvas.toDataURL('image/jpeg', 0.7));
+      }catch(e){ clearTimeout(safetyTimeout); finish(null); }
+    }, { once:true });
+    video.addEventListener('error', () => { clearTimeout(safetyTimeout); finish(null); }, { once:true });
+    video.style.position = 'fixed';
+    video.style.left = '-9999px';
+    document.body.appendChild(video);
+    video.src = url;
+  });
+}
 async function sendImageMessage(blob){
   if(!state.activeChat) return;
   if(!fbDb){ showToast('Нет соединения с сервером'); return; }
@@ -8036,10 +8189,13 @@ async function sendImageMessage(blob){
   const path = chatPairPath(otherUsername);
   const myKeyVal = fbKey(state.profile.username);
   const ts = firebase.database.ServerValue.TIMESTAMP;
+  let previewUrl = null;
+  try{ previewUrl = URL.createObjectURL(blob); }catch(e){}
+  const tempId = chatAddPendingBubble('image', previewUrl);
   try{
     const resized = await resizeImageBlob(blob);
     const msgRef = fbDb.ref(path+'/messages').push();
-    const imageUrl = await uploadChatMedia(path, msgRef.key, resized, 'image');
+    const imageUrl = await uploadChatMedia(path, msgRef.key, resized, 'image', pct => chatUpdatePendingProgress(tempId, pct));
     await msgRef.set({ from: myKeyVal, type: 'image', imageUrl, ts });
     await fbDb.ref(path+'/meta').set({ lastText: '📷 Фото', lastTs: ts, lastFrom: myKeyVal });
     fbDb.ref(path+'/lastRead/'+myKeyVal).set(ts);
@@ -8050,6 +8206,9 @@ async function sendImageMessage(blob){
   }catch(e){
     console.warn('sendImageMessage failed:', e);
     showToast('Не удалось отправить фото');
+  }finally{
+    chatRemovePendingBubble(tempId);
+    if(previewUrl) URL.revokeObjectURL(previewUrl);
   }
 }
 async function sendClipMessage(blob){
@@ -8059,9 +8218,11 @@ async function sendClipMessage(blob){
   const path = chatPairPath(otherUsername);
   const myKeyVal = fbKey(state.profile.username);
   const ts = firebase.database.ServerValue.TIMESTAMP;
+  const previewUrl = await chatLocalVideoPoster(blob);
+  const tempId = chatAddPendingBubble('clip', previewUrl);
   try{
     const msgRef = fbDb.ref(path+'/messages').push();
-    const clipUrl = await uploadChatMedia(path, msgRef.key, blob, 'clip');
+    const clipUrl = await uploadChatMedia(path, msgRef.key, blob, 'clip', pct => chatUpdatePendingProgress(tempId, pct));
     await msgRef.set({ from: myKeyVal, type: 'clip', clipUrl, ts });
     await fbDb.ref(path+'/meta').set({ lastText: '🎬 Видео', lastTs: ts, lastFrom: myKeyVal });
     fbDb.ref(path+'/lastRead/'+myKeyVal).set(ts);
@@ -8072,6 +8233,8 @@ async function sendClipMessage(blob){
   }catch(e){
     console.warn('sendClipMessage failed:', e);
     showToast('Не удалось отправить видео');
+  }finally{
+    chatRemovePendingBubble(tempId);
   }
 }
 document.getElementById('chatAttachBtn').addEventListener('click', ()=>{
@@ -8093,12 +8256,13 @@ async function sendVoiceMessage(blob, durationSec){
   const path = chatPairPath(otherUsername);
   const myKeyVal = fbKey(state.profile.username);
   const ts = firebase.database.ServerValue.TIMESTAMP;
+  const tempId = chatAddPendingBubble('voice', null);
   try{
     // Reserve the message id up front so the Storage path and the RTDB
     // record agree on it, without writing the (still-uploading) message
     // into the thread until the file is actually available to play.
     const msgRef = fbDb.ref(path+'/messages').push();
-    const audioUrl = await uploadChatMedia(path, msgRef.key, blob, 'audio');
+    const audioUrl = await uploadChatMedia(path, msgRef.key, blob, 'audio', pct => chatUpdatePendingProgress(tempId, pct));
     await msgRef.set({ from: myKeyVal, type: 'voice', audioUrl, duration: durationSec, ts });
     await fbDb.ref(path+'/meta').set({ lastText: '🎤 Голосовое сообщение', lastTs: ts, lastFrom: myKeyVal });
     fbDb.ref(path+'/lastRead/'+myKeyVal).set(ts);
@@ -8109,6 +8273,8 @@ async function sendVoiceMessage(blob, durationSec){
   }catch(e){
     console.warn('sendVoiceMessage failed:', e);
     showToast('Не удалось отправить голосовое сообщение');
+  }finally{
+    chatRemovePendingBubble(tempId);
   }
 }
 
@@ -8151,12 +8317,17 @@ async function sendVideoMessage(blob){
   const path = chatPairPath(otherUsername);
   const myKeyVal = fbKey(state.profile.username);
   const ts = firebase.database.ServerValue.TIMESTAMP;
+  const previewUrl = await chatLocalVideoPoster(blob);
+  const tempId = chatAddPendingBubble('video', previewUrl);
   try{
     // .push() just generates a local key synchronously (no network round
     // trip), so it can run alongside getVideoDuration() without an extra
     // await of its own.
     const msgRef = fbDb.ref(path+'/messages').push();
-    const [durationSec, videoUrl] = await Promise.all([getVideoDuration(blob), uploadChatMedia(path, msgRef.key, blob, 'video')]);
+    const [durationSec, videoUrl] = await Promise.all([
+      getVideoDuration(blob),
+      uploadChatMedia(path, msgRef.key, blob, 'video', pct => chatUpdatePendingProgress(tempId, pct))
+    ]);
     await msgRef.set({ from: myKeyVal, type: 'video', videoUrl, duration: durationSec, ts });
     await fbDb.ref(path+'/meta').set({ lastText: '⭕ Видео-кружок', lastTs: ts, lastFrom: myKeyVal });
     fbDb.ref(path+'/lastRead/'+myKeyVal).set(ts);
@@ -8167,6 +8338,8 @@ async function sendVideoMessage(blob){
   }catch(e){
     console.warn('sendVideoMessage failed:', e);
     showToast('Не удалось отправить видео-кружок');
+  }finally{
+    chatRemovePendingBubble(tempId);
   }
 }
 
@@ -8231,7 +8404,10 @@ async function startVideoCircleRecording(){
   const preview = document.getElementById('chatVideoRecordPreview');
   preview.srcObject = stream;
   const mimeType = ['video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'].find(t => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t));
-  chatVideoRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+  // Same reasoning as the voice recorder above — no more base64-in-RTDB
+  // size budget forcing this low now that video circles upload to Storage.
+  const recorderOpts = mimeType ? { mimeType, videoBitsPerSecond: 2500000 } : { videoBitsPerSecond: 2500000 };
+  chatVideoRecorder = new MediaRecorder(stream, recorderOpts);
   chatVideoRecorder.ondataavailable = e => { if(e.data && e.data.size > 0) chatVideoRecordedChunks.push(e.data); };
   chatVideoRecorder.start();
   chatVideoRecordingStartTime = Date.now();
@@ -9234,7 +9410,7 @@ const QURAN_SURAH_TRANSLIT = [
 // reading-progress position. They diverge in 'browse' mode (looking up a
 // surah/ayah) so that browsing away doesn't overwrite where you left off
 // reading, and doesn't get counted as pages read — see `mode` below.
-const quranState = { page: 1, bookmarkPage: 1, mode: 'progress', tajweed: true, font: 'uthmani', size: 26, chapters: null, pageCache: {}, audioCache: {}, readPages: new Set(), highlightVerseKey: null };
+const quranState = { page: 1, bookmarkPage: 1, mode: 'progress', tajweed: true, showAyahAudioBtn: true, font: 'uthmani', size: 26, chapters: null, pageCache: {}, audioCache: {}, readPages: new Set(), highlightVerseKey: null };
 // Mishari al-`Afasy — a widely recognizable, popular recitation, used as the
 // single default rather than exposing reciter choice (which would multiply
 // the audio-cache/UI surface for a feature this app doesn't otherwise need).
@@ -9278,6 +9454,7 @@ const QURAN_PROGRESS_RESET_VERSION = 2;
     }
 
     if(localStorage.getItem('quranTajweed') === 'off') quranState.tajweed = false;
+    if(localStorage.getItem('quranAyahAudioBtn') === 'off') quranState.showAyahAudioBtn = false;
     const savedFont = localStorage.getItem('quranFont');
     if(QURAN_FONTS.includes(savedFont)) quranState.font = savedFont;
     const savedSize = parseInt(localStorage.getItem('quranSize'), 10);
@@ -9326,15 +9503,16 @@ function quranSurahDisplayName(chapter){
 
 async function quranFetchPage(pageNum){
   if(quranState.pageCache[pageNum]) return quranState.pageCache[pageNum];
-  // words=true + word_fields brings each word's own plain text and audio_url
-  // alongside the per-verse tajweed HTML (text_uthmani_tajweed) in the same
-  // call, used to build the word-by-word panel (quranToggleWordByWord below).
-  // The tajweed HTML itself is left untouched: it is one already-colored
-  // string per verse where a tajweed rule can span across a word boundary
-  // (idgham/ikhafa carry into the next word), so there is no reliable way to
-  // cut it apart into per-word spans -- word-by-word is rendered as a
-  // separate strip built straight from `words`, not by slicing this string.
-  const resp = await fetch(`https://api.quran.com/api/v4/verses/by_page/${pageNum}?words=true&word_fields=text_uthmani,audio_url,char_type_name&fields=text_uthmani_tajweed`);
+  // Each word carries its own text_uthmani_tajweed — a per-word tajweed
+  // rendering (tag name `rule` instead of the verse-level `tajweed`) that
+  // correctly SPLITS a rule spanning two words (idgham/ikhafa) across both
+  // words' own strings, unlike the single verse-level text_uthmani_tajweed
+  // string, which has no clean word boundaries to cut on (confirmed against
+  // real verses — naively slicing that string by space produced totally
+  // wrong word counts). Rendering word-by-word from this field instead of
+  // the verse-level one is what makes each word directly tappable while
+  // keeping the same tajweed coloring.
+  const resp = await fetch(`https://api.quran.com/api/v4/verses/by_page/${pageNum}?words=true&word_fields=text_uthmani_tajweed,audio_url,char_type_name&fields=text_uthmani_tajweed`);
   if(!resp.ok) throw new Error('bad status ' + resp.status);
   const data = await resp.json();
   quranState.pageCache[pageNum] = data.verses;
@@ -9359,29 +9537,23 @@ async function quranFetchPageAudio(pageNum){
     return {};
   }
 }
-// Toggles a small strip of tappable word chips directly under one verse,
-// built straight from that verse's own `words` array (see quranFetchPage) --
-// each chip plays that single word's recitation on tap. Only one panel is
-// open at a time; re-tapping the same verse's own button just closes it.
-function quranToggleWordByWord(btn){
-  const verseKey = btn.dataset.verseKey;
-  const verseEl = btn.closest('.quran-verse');
-  const wasOpenForThisVerse = btn.classList.contains('open');
-  document.querySelectorAll('.quran-wbw-panel').forEach(p => p.remove());
-  document.querySelectorAll('.quran-verse-wbw-btn.open').forEach(b => b.classList.remove('open'));
-  if(wasOpenForThisVerse) return;
-  const verses = quranState.pageCache[quranState.page] || [];
-  const v = verses.find(x => x.verse_key === verseKey);
-  if(!v || !v.words) return;
-  const panel = document.createElement('div');
-  panel.className = 'quran-wbw-panel';
-  panel.dir = 'rtl';
-  panel.innerHTML = v.words.filter(w => w.char_type_name === 'word').map(w => {
+// Builds one verse's Arabic text as a run of per-word spans, each carrying
+// that word's own recitation audio_url so tapping it plays just that word —
+// falls back to the plain (non-tappable) verse-level tajweed string if
+// `words` is ever missing, rather than rendering nothing.
+function quranBuildVerseHtml(v){
+  if(!v.words || !v.words.length) return v.text_uthmani_tajweed;
+  return v.words.map(w => {
+    if(w.char_type_name === 'end'){
+      return `<span class="end">${escapeHtml(w.text_uthmani_tajweed || '')}</span>`;
+    }
+    // The word-level field uses <rule class=...> instead of the verse-level
+    // <tajweed class=...> for the exact same rule/color classes — normalized
+    // to `tajweed` here so both share the one set of tajweed CSS rules.
+    const colored = (w.text_uthmani_tajweed || '').replace(/<(\/?)rule\b/g, '<$1tajweed');
     const audioAttr = w.audio_url ? ` data-audio="${escapeHtml(QURAN_AUDIO_BASE + w.audio_url)}"` : '';
-    return `<span class="quran-word-chip"${audioAttr}>${escapeHtml(w.text_uthmani)}</span>`;
-  }).join('');
-  verseEl.insertAdjacentElement('afterend', panel);
-  btn.classList.add('open');
+    return `<span class="quran-word"${audioAttr}>${colored}</span>`;
+  }).join(' ');
 }
 
 async function quranRenderPage(pageNum){
@@ -9419,11 +9591,11 @@ async function quranRenderPage(pageNum){
       }
       const audioUrl = audioMap[v.verse_key] || '';
       const playBtn = audioUrl ? `<button type="button" class="quran-verse-play" data-audio="${escapeHtml(audioUrl)}" aria-label="Слушать аят">🔊</button>` : '';
-      const wbwBtn = (v.words && v.words.length) ? `<button type="button" class="quran-verse-wbw-btn" data-verse-key="${escapeHtml(v.verse_key)}" aria-label="Слово за словом">🔤</button>` : '';
-      html += `<span class="quran-verse" data-verse-key="${escapeHtml(v.verse_key)}">${v.text_uthmani_tajweed}${playBtn}${wbwBtn}</span> `;
+      html += `<span class="quran-verse" data-verse-key="${escapeHtml(v.verse_key)}">${quranBuildVerseHtml(v)}${playBtn}</span> `;
     });
     pageEl.innerHTML = html;
     pageEl.setAttribute('data-tajweed', quranState.tajweed ? 'on' : 'off');
+    pageEl.setAttribute('data-audio-btn', quranState.showAyahAudioBtn ? 'on' : 'off');
     pageEl.setAttribute('data-font', quranState.font);
     pageEl.style.fontSize = quranState.size + 'px';
     pageEl.style.display = '';
@@ -9505,10 +9677,8 @@ function quranPauseAudio(){
 document.getElementById('quranPage').addEventListener('click', e=>{
   const playBtn = e.target.closest('.quran-verse-play');
   if(playBtn){ quranPlayAudio(playBtn.dataset.audio, playBtn); return; }
-  const wordChip = e.target.closest('.quran-word-chip');
-  if(wordChip){ quranPlayAudio(wordChip.dataset.audio, wordChip); return; }
-  const wbwBtn = e.target.closest('.quran-verse-wbw-btn');
-  if(wbwBtn){ quranToggleWordByWord(wbwBtn); return; }
+  const wordEl = e.target.closest('.quran-word');
+  if(wordEl){ quranPlayAudio(wordEl.dataset.audio, wordEl); return; }
 });
 
 function openQuranScreen(){
@@ -9572,6 +9742,29 @@ const quranTajweedToggle = document.getElementById('quranTajweedToggle');
     try{ localStorage.setItem('quranTajweed', quranState.tajweed ? 'on' : 'off'); }catch(e){}
     paint();
     document.getElementById('quranPage').setAttribute('data-tajweed', quranState.tajweed ? 'on' : 'off');
+  });
+})();
+
+const quranAyahAudioToggle = document.getElementById('quranAyahAudioToggle');
+(function initQuranAyahAudioToggle(){
+  const knob = quranAyahAudioToggle.parentElement.querySelector('.slider-knob');
+  const bg = quranAyahAudioToggle.parentElement.querySelector('.slider');
+  quranAyahAudioToggle.checked = quranState.showAyahAudioBtn;
+  const paint = () => {
+    if(quranAyahAudioToggle.checked){
+      bg.style.backgroundColor = 'var(--gold)'; bg.style.borderColor = 'var(--gold)';
+      knob.style.transform = 'translateX(16px)'; knob.style.backgroundColor = 'var(--on-accent)';
+    } else {
+      bg.style.backgroundColor = 'var(--fill-3)'; bg.style.borderColor = 'var(--line)';
+      knob.style.transform = 'translateX(0)'; knob.style.backgroundColor = 'var(--ivory)';
+    }
+  };
+  paint();
+  quranAyahAudioToggle.addEventListener('change', () => {
+    quranState.showAyahAudioBtn = quranAyahAudioToggle.checked;
+    try{ localStorage.setItem('quranAyahAudioBtn', quranState.showAyahAudioBtn ? 'on' : 'off'); }catch(e){}
+    paint();
+    document.getElementById('quranPage').setAttribute('data-audio-btn', quranState.showAyahAudioBtn ? 'on' : 'off');
   });
 })();
 
