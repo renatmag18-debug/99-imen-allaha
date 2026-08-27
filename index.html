@@ -7453,8 +7453,15 @@ function renderChatThreadMessages(messagesObj, isLiveSnapshot){
     if(day !== lastDay){ html += `<div class="chat-day-sep">${formatChatDay(ts)}</div>`; lastDay = day; }
     const mine = m.from === myKeyVal;
     let bodyHtml;
-    if(m.type === 'voice' && m.audioData){
-      chatMediaDataById[id] = m.audioData;
+    // Checked on m.type alone, not "and the data is present" — the local
+    // chat cache (see saveChatCache) deliberately strips audioData/videoData
+    // before storing, so a bubble rendered from that cache while the live
+    // Firebase listener is still catching up would otherwise fail this
+    // condition entirely and fall through to the empty-text branch below,
+    // making the whole voice/video message vanish rather than just being
+    // briefly untappable until the real data arrives.
+    if(m.type === 'voice'){
+      if(m.audioData) chatMediaDataById[id] = m.audioData;
       bodyHtml = `<button class="chat-voice-play" data-voice-id="${escapeHtml(id)}" aria-label="Воспроизвести">
            <svg class="icon-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
            <svg class="icon-pause" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
@@ -7463,10 +7470,12 @@ function renderChatThreadMessages(messagesObj, isLiveSnapshot){
            <div class="chat-voice-bar"><div class="chat-voice-bar-fill"></div></div>
            <span class="chat-voice-duration" data-total="${m.duration||0}">${formatVoiceDuration(m.duration||0)}</span>
          </div>`;
-    } else if(m.type === 'video' && m.videoData){
-      chatMediaDataById[id] = m.videoData;
+    } else if(m.type === 'video'){
+      if(m.videoData){
+        chatMediaDataById[id] = m.videoData;
+        if(!chatVideoPosterById[id]) generateVideoPoster(id, m.videoData);
+      }
       const poster = chatVideoPosterById[id];
-      if(!poster) generateVideoPoster(id, m.videoData);
       const posterStyle = poster ? ` style="background-image:url(${poster});background-size:cover;background-position:center top;"` : '';
       bodyHtml = `<div class="chat-video-circle" data-video-id="${escapeHtml(id)}"${posterStyle}>
            <button class="chat-video-circle-play" aria-label="Воспроизвести">
