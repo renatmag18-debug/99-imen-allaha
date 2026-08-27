@@ -1226,7 +1226,7 @@ body{
   background:var(--fill-2); color:var(--ivory-dim); cursor:default;
 }
 .profile-view-add-friend[hidden]{ display:none; }
-.friend-name{ flex:1; font-size:13.5px; font-weight:700; color:var(--ivory); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.friend-name{ flex:1; font-size:13.5px; font-weight:700; color:var(--ivory); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:10px; }
 .friend-actions{ display:flex; gap:6px; flex-shrink:0; }
 .friend-action-btn{
   width:34px; height:34px; border-radius:var(--r-input); border:1px solid var(--line); background:var(--fill-1);
@@ -2999,6 +2999,7 @@ const tabs = document.querySelectorAll('.tab');
 let isPopping = false;
 function go(name, replace = false){
   if(!screens[name]) return;
+  const prevScreen = state.screen;
   const doSwitch = ()=>{
     Object.values(screens).forEach(s=>s.classList.remove('active'));
     screens[name].classList.add('active');
@@ -3007,6 +3008,11 @@ function go(name, replace = false){
     window.scrollTo(0,0);
     const sc = screens[name].querySelector('.scroll'); if(sc) sc.scrollTop = 0;
     if(typeof updateSettingsGearVisibility === 'function') updateSettingsGearVisibility();
+    // Leaving the thread by any route (swipe/hardware back, not just its own
+    // back arrow) must still detach its listener and clear "I'm looking at
+    // this chat" — otherwise a stale activeChatViewers entry could suppress
+    // push notifications for that friend forever.
+    if(prevScreen === 'chat' && name !== 'chat' && typeof closeChatThread === 'function') closeChatThread();
   };
   
   if(!isPopping) {
@@ -7171,10 +7177,18 @@ document.getElementById('chatsList').addEventListener('click', e=>{
 let chatThreadUnsub = null;
 let chatThreadKey = null;
 let chatThreadPresenceUnsub = null;
+// Mirrors `presence`: while a thread is open, activeChatViewers/{myKey} names
+// who I'm looking at, so the sender can skip a push notification that would
+// just be telling me about a message I'm already reading live.
+function clearActiveChatViewer(){
+  if(!fbDb || !state.profile) return;
+  fbDb.ref('activeChatViewers/'+fbKey(state.profile.username)).remove();
+}
 function closeChatThread(){
   if(chatThreadUnsub){ chatThreadUnsub(); chatThreadUnsub = null; }
   if(chatThreadPresenceUnsub){ chatThreadPresenceUnsub(); chatThreadPresenceUnsub = null; }
   chatThreadKey = null;
+  clearActiveChatViewer();
 }
 function markChatRead(otherUsername){
   if(!fbDb || !state.profile) return;
@@ -7224,6 +7238,9 @@ function openChatThread(username, name, avatar){
     // a listener onto a screen nobody's looking at, or mix in another
     // conversation's messages if the ids happened to collide.
     if(!fbDb || chatThreadKey !== path) return;
+    const viewerRef = fbDb.ref('activeChatViewers/'+fbKey(state.profile.username));
+    viewerRef.set(fbKey(username));
+    viewerRef.onDisconnect().remove();
     const msgsRef = fbDb.ref(path+'/messages').limitToLast(300);
     const listener = snap => {
       renderChatThreadMessages(snap.val());
@@ -7240,10 +7257,7 @@ function openChatThread(username, name, avatar){
     chatThreadUnsub = () => msgsRef.off('value', listener);
   });
 }
-document.querySelector('[data-screen="chat"] [data-nav="chats"]').addEventListener('click', ()=>{
-  closeChatThread();
-  renderChatsList();
-});
+document.querySelector('[data-screen="chat"] [data-nav="chats"]').addEventListener('click', renderChatsList);
 
 const chatInputEl = document.getElementById('chatInput');
 const chatSendBtn = document.getElementById('chatSendBtn');
@@ -7273,7 +7287,12 @@ async function sendCurrentChatMessage(){
     await fbDb.ref(path+'/messages').push({ from: myKeyVal, text, ts });
     await fbDb.ref(path+'/meta').set({ lastText: text, lastTs: ts, lastFrom: myKeyVal });
     fbDb.ref(path+'/lastRead/'+myKeyVal).set(ts);
-    notifyFriend(otherUsername, state.profile.username, text.length>100 ? text.slice(0,100)+'…' : text, 'chat-message', baseUrl()+'?chat='+encodeURIComponent(state.profile.username));
+    // Skip the push if they're already looking at this exact conversation —
+    // it would just be telling them about a message they're already reading.
+    const viewerSnap = await fbDb.ref('activeChatViewers/'+fbKey(otherUsername)).once('value');
+    if(viewerSnap.val() !== myKeyVal){
+      notifyFriend(otherUsername, state.profile.username, text.length>100 ? text.slice(0,100)+'…' : text, 'chat-message', baseUrl()+'?chat='+encodeURIComponent(state.profile.username));
+    }
   }catch(e){
     // Most likely cause the first time this ships: the `chats/` RTDB path
     // has no security rule yet, so Firebase rejects the write outright
