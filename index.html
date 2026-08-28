@@ -7478,10 +7478,32 @@ function callResetState(){
     (callState.listeners||[]).forEach(off => { try{ off(); }catch(e){} });
     if(callState.ringTimeoutHandle) clearTimeout(callState.ringTimeoutHandle);
     if(callState.durationHandle) clearInterval(callState.durationHandle);
+    if(callState.connectTimeoutHandle) clearTimeout(callState.connectTimeoutHandle);
   }
   stopCallTone();
   callState = null;
   renderCallOverlay();
+}
+
+// Both sides flip uiMode to 'active' well before the native WebRTC side
+// actually finishes connecting (ICE/DTLS) — normally that's a couple of
+// seconds, but with only STUN and no TURN (see CallManager's own comment)
+// two peers on unfriendly NATs can simply never connect, and previously
+// that just sat on "Соединение…" forever with no way out but the end-call
+// button — indistinguishable from the app being stuck. This turns that into
+// a clear, retriable failure instead of a silent hang.
+const CALL_CONNECT_TIMEOUT_MS = 20000;
+function startConnectTimeout(){
+  if(!callState || callState.connectTimeoutHandle) return;
+  callState.connectTimeoutHandle = setTimeout(()=>{
+    if(callState && !callState.connected){
+      showToast('Не удалось установить соединение');
+      endCurrentCall(false);
+    }
+  }, CALL_CONNECT_TIMEOUT_MS);
+}
+function stopConnectTimeout(){
+  if(callState && callState.connectTimeoutHandle){ clearTimeout(callState.connectTimeoutHandle); callState.connectTimeoutHandle = null; }
 }
 
 function renderCallOverlay(){
@@ -7535,6 +7557,7 @@ function callAttachCommonListeners(callId, remoteRole){
         callState.uiMode = 'active';
         stopCallTone();
         renderCallOverlay();
+        startConnectTimeout();
       }
     } else if(status === 'declined' || status === 'ended' || status === 'cancelled' || status === 'missed'){
       const msg = status === 'declined' ? 'Звонок отклонён' : (status === 'missed' ? 'Нет ответа' : 'Звонок завершён');
@@ -7646,6 +7669,7 @@ async function acceptIncomingCall(){
     stopCallTone();
     callState.uiMode = 'active';
     renderCallOverlay();
+    startConnectTimeout();
     fbDb.ref('incomingCall/'+myKeyVal).remove();
     await fbDb.ref(callPath(callId)+'/status').set('active');
     window.AndroidApp.answerCall(offerSdp, !!callState.video);
@@ -7723,6 +7747,7 @@ window.onCallStateChange = function(connState){
   if(!callState) return;
   if(connState === 'connected'){
     callState.connected = true;
+    stopConnectTimeout();
     callStartDurationTimer();
     renderCallOverlay();
   } else if(connState === 'failed' || connState === 'closed'){
