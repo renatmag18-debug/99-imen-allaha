@@ -960,7 +960,7 @@ body{
 .chat-sticker-tile{
   aspect-ratio:1; border-radius:12px; overflow:hidden; border:none; padding:0; cursor:pointer; background:var(--fill-1);
 }
-.chat-sticker-tile img{ width:100%; height:100%; object-fit:cover; display:block; }
+.chat-sticker-tile img, .chat-sticker-tile video{ width:100%; height:100%; object-fit:cover; display:block; }
 .chat-sticker-tile:active{ transform:scale(.93); }
 .chat-sticker-create-tile{
   aspect-ratio:1; border-radius:12px; border:1.5px dashed var(--line); background:none;
@@ -1080,7 +1080,7 @@ body{
    bubble-free treatment as the image/clip types above. */
 .chat-bubble.sticker{ background:none; border:none; padding:0; }
 .chat-bubble-row.mine .chat-bubble.sticker{ background:none; border:none; padding:0; }
-.chat-sticker-img{ display:block; width:140px; height:140px; object-fit:cover; border-radius:16px; }
+.chat-sticker-img, .chat-sticker-vid{ display:block; width:140px; height:140px; object-fit:cover; border-radius:16px; }
 .chat-bubble.emoji-sticker .chat-bubble-time{
   width:fit-content; margin-left:auto; margin-top:2px; opacity:1;
   background:var(--fill-1); color:var(--ivory-dim); padding:1px 7px; border-radius:8px; font-size:10px;
@@ -1164,7 +1164,7 @@ body{
   position:relative; width:min(78vw,320px); height:min(78vw,320px); border-radius:20px; overflow:hidden;
   background:#000; touch-action:none; cursor:grab;
 }
-#stickerEditorImg{ position:absolute; top:50%; left:50%; max-width:none; user-select:none; -webkit-user-drag:none; pointer-events:none; }
+#stickerEditorImg, #stickerEditorVideo{ position:absolute; top:50%; left:50%; max-width:none; user-select:none; -webkit-user-drag:none; pointer-events:none; }
 .sticker-editor-controls{ display:flex; align-items:center; gap:10px; margin-top:22px; width:min(78vw,320px); color:var(--ivory-dim); }
 .sticker-editor-controls input[type="range"]{ flex:1; accent-color:var(--gold); }
 
@@ -2628,7 +2628,7 @@ body{
           <div class="chat-emoji-grid" id="chatEmojiGrid"></div>
           <div class="chat-sticker-grid" id="chatStickerGrid" style="display:none;"></div>
         </div>
-        <input type="file" id="chatStickerCreateInput" accept="image/*" style="display:none;">
+        <input type="file" id="chatStickerCreateInput" accept="image/*,video/*" style="display:none;">
         <button class="chat-send-btn" id="chatAttachBtn" aria-label="Прикрепить фото или видео">
           <svg viewBox="0 0 24 24" fill="none"><path d="M21.44 11.05l-9.19 9.19a5.5 5.5 0 01-7.78-7.78l9.19-9.19a3.5 3.5 0 014.95 4.95l-9.19 9.19a1.5 1.5 0 01-2.12-2.12l8.49-8.49" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
@@ -2713,6 +2713,7 @@ body{
     </div>
     <div class="sticker-editor-viewport" id="stickerEditorViewport">
       <img id="stickerEditorImg" draggable="false" alt="">
+      <video id="stickerEditorVideo" muted playsinline style="display:none;"></video>
     </div>
     <div class="sticker-editor-controls">
       <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
@@ -8418,7 +8419,9 @@ function renderChatThreadMessages(messagesObj, isLiveSnapshot){
     } else if(m.type === 'image'){
       bodyHtml = `<img class="chat-image-thumb" src="${escapeHtml(m.imageUrl||'')}" alt="Фото">`;
     } else if(m.type === 'sticker'){
-      bodyHtml = `<img class="chat-sticker-img" src="${escapeHtml(m.stickerUrl||'')}" alt="Стикер">`;
+      bodyHtml = m.stickerType === 'video'
+        ? `<video class="chat-sticker-vid" src="${escapeHtml(m.stickerUrl||'')}" muted loop autoplay playsinline></video>`
+        : `<img class="chat-sticker-img" src="${escapeHtml(m.stickerUrl||'')}" alt="Стикер">`;
     } else if(m.type === 'clip'){
       if(m.clipUrl && !chatVideoPosterById[id]) generateVideoPoster(id, m.clipUrl);
       const clipPoster = chatVideoPosterById[id];
@@ -8727,9 +8730,17 @@ function renderChatStickerGrid(){
       <svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
       Создать
     </button>`;
-  const tilesHtml = stickers.map((dataUrl, i) =>
-    `<button type="button" class="chat-sticker-tile" data-sticker-index="${i}"><img src="${dataUrl}" alt="Стикер"></button>`
-  ).join('');
+  // Library entries are either a plain dataURL string (a photo sticker) or
+  // { type:'video', url } (an animated one, already uploaded once at
+  // creation time — see finishStickerVideoDone) — the tile just renders
+  // whichever media tag the entry calls for.
+  const tilesHtml = stickers.map((item, i) => {
+    const isVideo = item && typeof item === 'object' && item.type === 'video';
+    const mediaHtml = isVideo
+      ? `<video src="${escapeHtml(item.url)}" muted loop autoplay playsinline></video>`
+      : `<img src="${escapeHtml(item)}" alt="Стикер">`;
+    return `<button type="button" class="chat-sticker-tile" data-sticker-index="${i}">${mediaHtml}</button>`;
+  }).join('');
   grid.innerHTML = createTile + tilesHtml;
 }
 document.getElementById('chatStickerGrid').addEventListener('click', e=>{
@@ -8740,8 +8751,8 @@ document.getElementById('chatStickerGrid').addEventListener('click', e=>{
   const tile = e.target.closest('.chat-sticker-tile');
   if(!tile) return;
   const stickers = loadMyStickers();
-  const dataUrl = stickers[Number(tile.dataset.stickerIndex)];
-  if(dataUrl && typeof sendStickerMessage === 'function') sendStickerMessage(dataUrl);
+  const item = stickers[Number(tile.dataset.stickerIndex)];
+  if(item && typeof sendStickerMessage === 'function') sendStickerMessage(item);
   closeChatEmojiPanel();
 });
 document.getElementById('chatStickerCreateInput').addEventListener('change', e=>{
@@ -8750,50 +8761,78 @@ document.getElementById('chatStickerCreateInput').addEventListener('change', e=>
   if(file) openStickerEditor(file);
 });
 
-/* --- sticker editor: crop/zoom/pan a photo before saving it as a sticker ---
+/* --- sticker editor: crop/zoom/pan a photo (or a short video) before
+   saving it as a sticker ---
    A dead-center auto-crop used to be the only option — fine for a portrait
    already centered on the subject, but anything off-center just got cut
    off with no way to fix it. The square viewport here *is* the crop
    window: what's visible on screen when "Готово" is tapped is exactly
-   what gets saved, at a fixed 512px output regardless of on-screen size. */
+   what gets saved. A photo saves at a fixed 512px output regardless of
+   on-screen size; a video goes through finishStickerVideoDone instead,
+   since cropping a clip means re-rendering every frame, not one draw. */
+const MAX_STICKER_VIDEO_SECONDS = 6;
 let stickerEditorState = null;
 function openStickerEditor(file){
+  const isVideo = !!(file.type && file.type.startsWith('video/'));
   const imgEl = document.getElementById('stickerEditorImg');
+  const videoEl = document.getElementById('stickerEditorVideo');
   const viewport = document.getElementById('stickerEditorViewport');
   const zoomSlider = document.getElementById('stickerEditorZoom');
   const url = URL.createObjectURL(file);
-  imgEl.onload = () => {
+  imgEl.style.display = isVideo ? 'none' : '';
+  videoEl.style.display = isVideo ? '' : 'none';
+  const setup = (naturalW, naturalH) => {
     const size = viewport.getBoundingClientRect().width;
-    // The scale at which the image exactly covers the square viewport with
+    // The scale at which the media exactly covers the square viewport with
     // no gap on either axis — the floor of the zoom range, not a fixed 1x,
-    // since a very wide or very tall photo needs a different minimum than
+    // since a very wide or very tall source needs a different minimum than
     // a square one to avoid showing empty space around the edges.
-    const minScale = Math.max(size / imgEl.naturalWidth, size / imgEl.naturalHeight);
+    const minScale = Math.max(size / naturalW, size / naturalH);
     stickerEditorState = {
-      url, size,
-      naturalW: imgEl.naturalWidth, naturalH: imgEl.naturalHeight,
+      url, size, isVideo,
+      naturalW, naturalH,
       minScale, scale: minScale,
-      translateX: 0, translateY: 0
+      translateX: 0, translateY: 0,
+      duration: isVideo ? videoEl.duration : 0
     };
     zoomSlider.value = 100;
     applyStickerEditorTransform();
     document.getElementById('stickerEditorOverlay').classList.add('show');
   };
-  imgEl.onerror = () => { URL.revokeObjectURL(url); showToast('Не удалось открыть фото'); };
-  imgEl.src = url;
+  if(isVideo){
+    videoEl.onloadeddata = () => {
+      if(videoEl.duration > MAX_STICKER_VIDEO_SECONDS){
+        URL.revokeObjectURL(url);
+        videoEl.removeAttribute('src'); videoEl.load();
+        showToast(`Видео длиннее ${MAX_STICKER_VIDEO_SECONDS} секунд — выберите короче`);
+        return;
+      }
+      setup(videoEl.videoWidth, videoEl.videoHeight);
+    };
+    videoEl.onerror = () => { URL.revokeObjectURL(url); showToast('Не удалось открыть видео'); };
+    videoEl.src = url;
+  } else {
+    imgEl.onload = () => setup(imgEl.naturalWidth, imgEl.naturalHeight);
+    imgEl.onerror = () => { URL.revokeObjectURL(url); showToast('Не удалось открыть фото'); };
+    imgEl.src = url;
+  }
 }
 function closeStickerEditor(){
   document.getElementById('stickerEditorOverlay').classList.remove('show');
+  const videoEl = document.getElementById('stickerEditorVideo');
+  videoEl.pause();
+  videoEl.removeAttribute('src');
+  videoEl.load();
   if(stickerEditorState) URL.revokeObjectURL(stickerEditorState.url);
   stickerEditorState = null;
 }
 function applyStickerEditorTransform(){
   const s = stickerEditorState;
   if(!s) return;
-  const imgEl = document.getElementById('stickerEditorImg');
-  imgEl.style.width = (s.naturalW * s.scale) + 'px';
-  imgEl.style.height = (s.naturalH * s.scale) + 'px';
-  imgEl.style.transform = `translate(-50%,-50%) translate(${s.translateX}px, ${s.translateY}px)`;
+  const mediaEl = document.getElementById(s.isVideo ? 'stickerEditorVideo' : 'stickerEditorImg');
+  mediaEl.style.width = (s.naturalW * s.scale) + 'px';
+  mediaEl.style.height = (s.naturalH * s.scale) + 'px';
+  mediaEl.style.transform = `translate(-50%,-50%) translate(${s.translateX}px, ${s.translateY}px)`;
 }
 // Keeps the pan within "the image still fully covers the viewport" — past
 // this the crop window would include empty space beyond the photo's edge.
@@ -8834,6 +8873,7 @@ document.getElementById('stickerEditorCancel').addEventListener('click', closeSt
 document.getElementById('stickerEditorDone').addEventListener('click', ()=>{
   const s = stickerEditorState;
   if(!s) return;
+  if(s.isVideo){ finishStickerVideoDone(s); return; }
   const imgEl = document.getElementById('stickerEditorImg');
   const outSize = 512;
   // Solves applyStickerEditorTransform's placement backwards: given the
@@ -8854,6 +8894,85 @@ document.getElementById('stickerEditorDone').addEventListener('click', ()=>{
   renderChatStickerGrid();
   closeStickerEditor();
 });
+// Cropping a video can't be one drawImage the way a photo is — it means
+// redrawing every frame — so this plays the clip through once, redrawing
+// the picked crop window onto an offscreen square canvas each frame, and
+// records *that* canvas with MediaRecorder. canvas.captureStream() carries
+// no audio track, so the saved sticker comes out silent by construction —
+// the same GIF-style silent loop as any other messenger's video sticker.
+// Uploaded once here (unlike a photo sticker, re-uploaded on every send —
+// see sendStickerMessage) since re-encoding a clip on every send would be
+// far more expensive than the small bookkeeping saved by skipping this.
+async function finishStickerVideoDone(s){
+  if(!state.activeChat){ closeStickerEditor(); return; }
+  const videoEl = document.getElementById('stickerEditorVideo');
+  const doneBtn = document.getElementById('stickerEditorDone');
+  const outSize = 360;
+  const srcSize = s.size / s.scale;
+  const srcCenterX = s.naturalW/2 - s.translateX/s.scale;
+  const srcCenterY = s.naturalH/2 - s.translateY/s.scale;
+  const sx = srcCenterX - srcSize/2, sy = srcCenterY - srcSize/2;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = outSize; canvas.height = outSize;
+  const ctx = canvas.getContext('2d');
+
+  doneBtn.disabled = true;
+  showToast('Обработка видео…');
+
+  const stream = canvas.captureStream(24);
+  const mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
+    .find(t => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) || '';
+  const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+  const chunks = [];
+  recorder.ondataavailable = e => { if(e.data.size) chunks.push(e.data); };
+  const stopped = new Promise(resolve => { recorder.onstop = resolve; });
+
+  let rafId = null;
+  const drawFrame = () => {
+    ctx.drawImage(videoEl, sx, sy, srcSize, srcSize, 0, 0, outSize, outSize);
+    rafId = requestAnimationFrame(drawFrame);
+  };
+
+  videoEl.currentTime = 0;
+  recorder.start();
+  drawFrame();
+  try{
+    await videoEl.play();
+    // duration is guaranteed finite and <= MAX_STICKER_VIDEO_SECONDS here —
+    // openStickerEditor already rejected anything longer before this state
+    // could exist — so the timeout is just a safety net against 'ended'
+    // never firing, not the expected way this resolves.
+    await Promise.race([
+      new Promise(resolve => videoEl.addEventListener('ended', resolve, { once:true })),
+      new Promise(resolve => setTimeout(resolve, (s.duration + 1) * 1000))
+    ]);
+  } finally {
+    cancelAnimationFrame(rafId);
+    recorder.stop();
+    await stopped;
+  }
+
+  doneBtn.disabled = false;
+  const blob = new Blob(chunks, { type: mimeType || 'video/webm' });
+  if(!blob.size){
+    showToast('Не удалось создать стикер');
+    closeStickerEditor();
+    return;
+  }
+  try{
+    const path = chatPairPath(state.activeChat.uid);
+    const url = await uploadChatMedia(path, 'sticker-'+Date.now(), blob, 'clip');
+    const stickers = loadMyStickers();
+    stickers.push({ type: 'video', url });
+    saveMyStickers(stickers);
+    renderChatStickerGrid();
+  }catch(e){
+    console.warn('sticker video save failed:', e);
+    showToast('Не удалось сохранить стикер');
+  }
+  closeStickerEditor();
+}
 async function sendCurrentChatMessage(){
   const text = chatInputEl.value.trim();
   if(!text || !state.activeChat) return;
@@ -9237,23 +9356,36 @@ async function sendImageMessage(blob){
     if(previewUrl) URL.revokeObjectURL(previewUrl);
   }
 }
-// Re-uploads on every send rather than caching the Storage URL after the
-// first time a given sticker goes out — simpler, and a personal sticker
+// A photo sticker re-uploads on every send rather than caching the Storage
+// URL after the first time it goes out — simpler, and a personal sticker
 // library is small and sent occasionally enough that the extra upload
-// isn't worth the bookkeeping it'd take to avoid.
-async function sendStickerMessage(dataUrl){
+// isn't worth the bookkeeping it'd take to avoid. A video sticker (item is
+// { type:'video', url }) skips that: it was already uploaded once at
+// creation time (see finishStickerVideoDone), so sending just points a new
+// message at that same file — re-encoding the clip on every send would
+// actually cost something, unlike re-uploading a already-small photo.
+async function sendStickerMessage(item){
   if(!state.activeChat) return;
   if(!fbDb){ showToast('Нет соединения с сервером'); return; }
+  const isVideo = !!(item && typeof item === 'object' && item.type === 'video');
   const otherUsername = state.activeChat.uid;
   const path = chatPairPath(otherUsername);
   const myKeyVal = fbKey(state.profile.username);
   const ts = firebase.database.ServerValue.TIMESTAMP;
-  const tempId = chatAddPendingBubble('image', dataUrl);
+  const tempId = chatAddPendingBubble('image', isVideo ? null : item);
   try{
-    const blob = await (await fetch(dataUrl)).blob();
     const msgRef = fbDb.ref(path+'/messages').push();
-    const stickerUrl = await uploadChatMedia(path, msgRef.key, blob, 'image', pct => chatUpdatePendingProgress(tempId, pct));
-    await msgRef.set({ from: myKeyVal, type: 'sticker', stickerUrl, ts });
+    let stickerUrl;
+    if(isVideo){
+      stickerUrl = item.url;
+      chatUpdatePendingProgress(tempId, 1);
+    } else {
+      const blob = await (await fetch(item)).blob();
+      stickerUrl = await uploadChatMedia(path, msgRef.key, blob, 'image', pct => chatUpdatePendingProgress(tempId, pct));
+    }
+    const msgData = { from: myKeyVal, type: 'sticker', stickerUrl, ts };
+    if(isVideo) msgData.stickerType = 'video';
+    await msgRef.set(msgData);
     await fbDb.ref(path+'/meta').set({ lastText: '🖼 Стикер', lastTs: ts, lastFrom: myKeyVal });
     fbDb.ref(path+'/lastRead/'+myKeyVal).set(ts);
     const viewerSnap = await fbDb.ref('activeChatViewers/'+fbKey(otherUsername)).once('value');
