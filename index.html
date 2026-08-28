@@ -7716,6 +7716,11 @@ function callResetState(){
   stopCallTone();
   callState = null;
   renderCallOverlay();
+  // Every call-ending path (hangup, decline, missed, cancelled, a status
+  // listener reacting to the other side ending it) funnels through here —
+  // one stop call covers all of them, matching the one start call each
+  // placed/incoming call makes below.
+  if(window.AndroidApp && window.AndroidApp.setCallForegroundActive) window.AndroidApp.setCallForegroundActive(false, '', false);
 }
 
 // Both sides flip uiMode to 'active' well before the native WebRTC side
@@ -7825,6 +7830,11 @@ async function startOutgoingCall(otherUsername, otherName, otherAvatar, withVide
   const callId = callRef.key;
   callState = { callId, role:'caller', uiMode:'outgoing', video: !!withVideo, otherUsername, otherName, otherAvatar, listeners:[] };
   renderCallOverlay();
+  // Keeps the process alive (a foreground service, not just this Activity)
+  // for the whole call — ringing included, not just once connected — since
+  // Doze/App Standby throttling a backgrounded process mid-ICE-negotiation
+  // is exactly the kind of thing that reads as "calls just don't connect".
+  if(window.AndroidApp && window.AndroidApp.setCallForegroundActive) window.AndroidApp.setCallForegroundActive(true, otherName || otherUsername, !!withVideo);
   try{
     await callRef.set({
       caller: myKeyVal, callee: otherKeyVal,
@@ -7879,6 +7889,11 @@ function watchIncomingCalls(){
       otherAvatar: friend ? friend.avatar : null, listeners:[]
     };
     renderCallOverlay();
+    // Same reasoning as startOutgoingCall's own call — started the instant
+    // the incoming ring is known, not on accept, since a backgrounded
+    // process getting throttled *before* the user even taps accept would
+    // just read as the phone silently never having rung at all.
+    if(window.AndroidApp && window.AndroidApp.setCallForegroundActive) window.AndroidApp.setCallForegroundActive(true, callState.otherName, !!callState.video);
     startCallRingtone();
     callAttachCommonListeners(val.callId, 'caller');
   });
