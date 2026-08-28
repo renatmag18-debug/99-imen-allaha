@@ -895,6 +895,17 @@ async function handlePush(request, env) {
           message: {
             token,
             data: { title, body: msgBody || '', tag: tag || 'ism-notify', link: link || 'https://99ism.ru/' },
+            // webpush.headers.Urgency only affects delivery to an actual web
+            // push subscription — it's meaningless to the native Android FCM
+            // SDK this app actually uses. Without android.priority explicitly
+            // set, a data-only message defaults to normal priority, which
+            // Doze/App Standby can delay by minutes on an idle phone on
+            // mobile data — fine for most notifications, but this endpoint
+            // also carries incoming-call pushes with a 30s ring timeout on
+            // the caller's side, where a delayed push means a call that
+            // "rings but nobody answers" even though the callee's phone
+            // never actually showed anything in time.
+            android: { priority: 'high' },
             webpush: { headers: { Urgency: 'high' } }
           }
         })
