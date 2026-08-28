@@ -907,7 +907,10 @@ body{
 .chat-unread-dot{ width:9px; height:9px; border-radius:50%; background:var(--gold); flex-shrink:0; }
 
 /* --- chat: thread --- */
-.chat-thread-title{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:var(--font-display); font-size:15px; font-weight:400; color:var(--ivory); }
+.chat-thread-title{ flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; overflow:hidden; }
+.chat-thread-title #chatThreadName{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:var(--font-display); font-size:15px; font-weight:400; color:var(--ivory); }
+.chat-thread-status{ font-size:11px; color:var(--jade); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.chat-thread-status:empty{ display:none; }
 .chat-thread-scroll{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:14px 16px 20px; display:flex; flex-direction:column; }
 .chat-empty-hint{ display:none; text-align:center; color:var(--ivory-dim); font-size:13px; padding:60px 20px; line-height:1.7; }
 .chat-bubble-row{ display:flex; margin-bottom:8px; }
@@ -2526,6 +2529,7 @@ body{
         </div>
         <div class="chat-thread-title">
           <span id="chatThreadName"></span>
+          <span class="chat-thread-status" id="chatThreadStatus"></span>
         </div>
         <button class="chat-call-btn" id="chatVideoCallBtn" aria-label="Видеозвонок" style="display:none;">
           <svg viewBox="0 0 24 24" fill="none"><path d="M4 7a2 2 0 012-2h7a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V7z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M20 9.5l-3 2v1l3 2v-5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
@@ -8094,6 +8098,7 @@ document.getElementById('chatsList').addEventListener('click', e=>{
 let chatThreadUnsub = null;
 let chatThreadKey = null;
 let chatThreadPresenceUnsub = null;
+let chatThreadTypingUnsub = null;
 // Read receipts: the friend's own lastRead timestamp for this thread, kept
 // live so "sent" vs "read" checkmarks on my own messages update in real
 // time without needing per-message read state.
@@ -8186,7 +8191,9 @@ function closeChatThread(){
   chatPendingUploads.clear();
   if(chatThreadUnsub){ chatThreadUnsub(); chatThreadUnsub = null; }
   if(chatThreadPresenceUnsub){ chatThreadPresenceUnsub(); chatThreadPresenceUnsub = null; }
+  if(chatThreadTypingUnsub){ chatThreadTypingUnsub(); chatThreadTypingUnsub = null; }
   if(chatThreadOtherLastReadUnsub){ chatThreadOtherLastReadUnsub(); chatThreadOtherLastReadUnsub = null; }
+  if(typeof chatClearTyping === 'function') chatClearTyping();
   chatThreadKey = null;
   clearActiveChatViewer();
   chatVoiceAudioEl.pause();
@@ -8397,6 +8404,16 @@ function openChatThread(username, name, avatar){
 
   const path = chatPairPath(username);
   chatThreadKey = path;
+  document.getElementById('chatThreadStatus').textContent = '';
+  fbAuthReady.then(()=>{
+    if(!fbDb || chatThreadKey !== path) return;
+    const typingRef = fbDb.ref(path+'/typing/'+fbKey(username));
+    const typingListener = snap => {
+      document.getElementById('chatThreadStatus').textContent = snap.val() ? 'печатает…' : '';
+    };
+    typingRef.on('value', typingListener);
+    chatThreadTypingUnsub = () => typingRef.off('value', typingListener);
+  });
   fbAuthReady.then(()=>{
     // Bail if the user already switched to a different chat (or Firebase
     // simply never loads) before this resolved — attaching now would leak
@@ -8453,9 +8470,40 @@ function updateChatComposerButtons(){
   chatMicBtn.style.display = hasText ? 'none' : 'flex';
   document.getElementById('chatVideoCircleBtn').style.display = hasText ? 'none' : 'flex';
 }
+/* --- typing indicator ---
+   "I'm typing" is written as chats/{pair}/typing/{myKey}:true, cleared
+   after a few seconds of no keystrokes, on send, or on leaving the thread
+   — plus onDisconnect().remove() so an app kill/network drop mid-typing
+   doesn't leave the other side staring at a stuck "печатает…" forever. */
+let chatTypingClearTimer = null;
+let chatTypingActive = false;
+function chatNotifyTyping(){
+  if(!fbDb || !state.profile || !state.activeChat) return;
+  // Only the first keystroke of a burst actually writes to Firebase — every
+  // later keystroke in the same burst just pushes the auto-clear timer back,
+  // rather than re-writing (and re-notifying) on every single character.
+  if(!chatTypingActive){
+    chatTypingActive = true;
+    const ref = fbDb.ref(chatPairPath(state.activeChat.uid)+'/typing/'+fbKey(state.profile.username));
+    ref.set(true);
+    ref.onDisconnect().remove();
+  }
+  clearTimeout(chatTypingClearTimer);
+  chatTypingClearTimer = setTimeout(chatClearTyping, 4000);
+}
+function chatClearTyping(){
+  clearTimeout(chatTypingClearTimer);
+  chatTypingClearTimer = null;
+  if(!chatTypingActive) return;
+  chatTypingActive = false;
+  if(fbDb && state.profile && state.activeChat){
+    fbDb.ref(chatPairPath(state.activeChat.uid)+'/typing/'+fbKey(state.profile.username)).remove();
+  }
+}
 chatInputEl.addEventListener('input', ()=>{
   autoResizeChatInput();
   updateChatComposerButtons();
+  if(chatInputEl.value.trim()) chatNotifyTyping(); else chatClearTyping();
 });
 async function sendCurrentChatMessage(){
   const text = chatInputEl.value.trim();
@@ -8465,6 +8513,7 @@ async function sendCurrentChatMessage(){
   chatInputEl.value = '';
   autoResizeChatInput();
   updateChatComposerButtons();
+  chatClearTyping();
   const path = chatPairPath(otherUsername);
   const myKeyVal = fbKey(state.profile.username);
   const ts = firebase.database.ServerValue.TIMESTAMP;
