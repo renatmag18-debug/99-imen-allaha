@@ -5532,7 +5532,32 @@ document.getElementById('sideDrawerList').addEventListener('click', e=>{
   }
 });
 
-// Swipe left-to-right from the screen's left edge opens the drawer; swipe
+// The left half of the screen (center, or anywhere left of it) is reserved
+// for the drawer's own open-swipe — #stage's own tab-switch swipe (see
+// initStageSwipe further down) claims the rest. A first pass reserved only
+// a thin strip right at the edge — in practice that was too thin to
+// reliably start a real swipe on, reading as "doesn't work at all" rather
+// than just "hard to aim".
+//
+// Two different-sized zones, not one, because there's a *third* existing
+// gesture sharing this same corner: "Global Edge Swipe to Go Back" further
+// down this file already claims the outermost edge (x<40) for
+// history.back() on a rightward swipe, and since it checks `location.hash`
+// (truthy essentially always, given go() sets it on every screen change)
+// that fires on *every* such swipe there regardless of anything else.
+// isInDrawerOpenZone excludes that strip so the two gestures never both
+// fire on the same touch (opening the drawer while history.back() also ran
+// right alongside it is what actually made the very first version of this
+// look completely broken, not just hard to aim) — isInDrawerReservedZone
+// (the full half, edge included) is for keeping the *tab-switch* swipe out
+// of both this zone and that one.
+function isInDrawerOpenZone(x){
+  return x > 40 && x <= window.innerWidth * 0.5;
+}
+function isInDrawerReservedZone(x){
+  return x <= window.innerWidth * 0.5;
+}
+// Swipe left-to-right starting in that zone opens the drawer; swipe
 // right-to-left (anywhere — the drawer's already covering the screen at
 // that point, so there's no "wrong place to start" the way there is for
 // opening it) closes it. Discrete threshold-based (touchstart→touchend),
@@ -5540,20 +5565,13 @@ document.getElementById('sideDrawerList').addEventListener('click', e=>{
 // than a live drag-follows-finger reveal — much simpler, and everywhere
 // else in the app already treats a swipe this way, not as a drag.
 (function(){
-  const EDGE_ZONE_PX = 28;
   const SWIPE_THRESHOLD_PX = 60;
   let sx = 0, sy = 0, tracking = false;
   document.addEventListener('touchstart', e=>{
     if(!e.touches || !e.touches.length){ tracking = false; return; }
     const drawerOpen = document.getElementById('sideDrawer').classList.contains('show');
     const t = e.touches[0];
-    // Opening only arms from a thin strip at the very left edge — anywhere
-    // else on screen already has its own horizontal swipes (quran sheet
-    // prev/next, etc.) a broader open-gesture would collide with. Native
-    // side excludes this same strip from Android's own edge-back gesture
-    // (see MainActivity's systemGestureExclusionRects) so it actually
-    // reaches here instead of being swallowed first.
-    if(!drawerOpen && t.clientX > EDGE_ZONE_PX){ tracking = false; return; }
+    if(!drawerOpen && !isInDrawerOpenZone(t.clientX)){ tracking = false; return; }
     sx = t.clientX; sy = t.clientY;
     tracking = true;
   }, {passive:true});
@@ -11888,7 +11906,7 @@ async function quranHandleSearchInput(query){
     tracking = false; axis = null;
     if(e.touches.length !== 1) return;
     sx = e.touches[0].clientX; sy = e.touches[0].clientY;
-    if(sx < 44) return; // left edge is the history-back gesture
+    if(isInDrawerReservedZone(sx)) return; // left half reserved for the side-drawer's open-swipe / the edge-swipe-back gesture — see isInDrawerReservedZone
     if(e.target.closest('.sheet, input, textarea, .tabbar')) return;
     if(document.querySelector('.sheet.show')) return;
     tracking = true;
