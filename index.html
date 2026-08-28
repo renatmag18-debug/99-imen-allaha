@@ -727,6 +727,39 @@ body{
 #pendingInviteModal.show{ transform:translate(-50%,-50%) scale(1); opacity:1; pointer-events:auto; }
 #pendingInviteContent .invite-banner{ margin-bottom:0; }
 #pendingInviteContent .invite-banner + .invite-banner{ margin-top:12px; }
+/* Left-side nav drawer — background:var(--glass) + backdrop-filter is the
+   same translucent-glass treatment .chat-input-bar/.chat-emoji-panel already
+   use, so the home screen bleeds through blurred rather than the drawer
+   reading as an opaque card slapped on top; since --glass/--line/--ivory/
+   --gold are all per-theme custom properties, this adapts to every skin for
+   free instead of needing its own per-theme rules. */
+#sideDrawer{
+  position:fixed; top:0; left:0; bottom:0; z-index:21; width:min(80vw,300px);
+  background:var(--glass); backdrop-filter:blur(24px) saturate(1.5); -webkit-backdrop-filter:blur(24px) saturate(1.5);
+  border-right:1px solid var(--line); box-shadow:20px 0 60px -12px rgba(0,0,0,0.45);
+  transform:translateX(-100%); transition:transform .38s var(--ease);
+  pointer-events:none; display:flex; flex-direction:column;
+  padding:calc(16px + var(--safe-top)) 0 calc(16px + var(--safe-bottom));
+}
+#sideDrawer.show{ transform:translateX(0); pointer-events:auto; }
+.side-drawer-head{ display:flex; align-items:center; justify-content:space-between; padding:0 16px 16px; flex-shrink:0; }
+.side-drawer-list{ display:flex; flex-direction:column; gap:2px; overflow-y:auto; padding:6px 10px; }
+.side-drawer-item{
+  display:flex; align-items:center; gap:14px; width:100%; padding:13px 12px; border-radius:var(--r-input);
+  background:none; border:none; color:var(--ivory); font-family:var(--font-body); font-size:15px;
+  text-align:left; cursor:pointer;
+}
+.side-drawer-item:active{ background:var(--fill-1); }
+.side-drawer-item svg{ width:21px; height:21px; flex-shrink:0; color:var(--gold); }
+.drawer-cfg-row{ display:flex; align-items:center; gap:8px; padding:11px 0; border-bottom:1px solid var(--line); }
+.drawer-cfg-row:last-child{ border-bottom:none; }
+.drawer-cfg-name{ flex:1; font-size:14px; color:var(--ivory); }
+.drawer-cfg-move{
+  width:30px; height:30px; border-radius:50%; border:1px solid var(--line); background:var(--glass);
+  color:var(--ivory-dim); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; padding:0;
+}
+.drawer-cfg-move:disabled{ opacity:.3; pointer-events:none; }
+.drawer-cfg-move svg{ width:14px; height:14px; }
 .sheet-handle{ width:40px; height:4px; border-radius:3px; background:var(--line); margin:2px auto 14px; }
 .sheet-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;}
 .sheet-idx{ font-family:var(--font-num); font-size:13px; color:var(--jade); }
@@ -1822,6 +1855,9 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
       Асма-уль-Хусна
     </div>
     <div style="position:relative;display:flex;align-items:center;gap:8px;">
+      <button class="icon-btn" id="sideDrawerBtn" title="Меню">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
       <button class="icon-btn" id="themeToggleBtn" title="Сменить тему" style="display:none;">
         <svg class="icon-sun" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.6"/><path d="M12 2.5v2.5M12 19v2.5M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2.5 12H5M19 12h2.5M4.2 19.8L6 18M18 6l1.8-1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
         <svg class="icon-moon" viewBox="0 0 24 24" fill="none"><path d="M20.2 13.1A8.2 8.2 0 1110.9 3.8a6.3 6.3 0 009.3 9.3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>
@@ -2590,6 +2626,10 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
           <div id="reminderActiveLabel" style="display:none;font-size:12.5px;color:var(--gold);margin-bottom:20px;"></div>
         </div>
 
+        <div class="section-label">Меню слева</div>
+        <p class="section-desc" style="margin-top:0;">Что показывать в меню слева (значок ☰ вверху) и в каком порядке — стрелками меняете порядок, переключателем скрываете пункт.</p>
+        <div id="sideDrawerCustomizeList" style="margin-bottom:24px;"></div>
+
         <div class="section-label">Данные приложения</div>
         <div style="display:flex;gap:8px;margin-bottom:20px;">
           <button id="exportBackupBtn" class="btn btn-primary" style="flex:1;">Сохранить (Бэкап)</button>
@@ -2808,6 +2848,17 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
     <button type="button" class="chat-msg-action-item danger" id="chatDeleteForEveryone" style="display:none;">Удалить у всех</button>
     <button type="button" class="chat-msg-action-item danger" id="chatDeleteForMe">Удалить у себя</button>
     <button type="button" class="chat-msg-action-item" id="chatDeleteCancel">Отмена</button>
+  </div>
+
+  <div class="sheet-backdrop" id="sideDrawerBackdrop"></div>
+  <div id="sideDrawer">
+    <div class="side-drawer-head">
+      <span class="brand-mark" style="font-size:22px;">٩٩</span>
+      <button class="icon-btn" id="sideDrawerClose" aria-label="Закрыть">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="side-drawer-list" id="sideDrawerList"></div>
   </div>
 
   <div id="callOverlay">
@@ -5387,6 +5438,157 @@ function updateSettingsGearVisibility(){
   const dock = document.querySelector('.tabbar');
   if(dock) dock.style.display = (state.screen === 'quran' || state.screen === 'chat') ? 'none' : '';
 }
+
+/* =====================================================
+   SIDE DRAWER — left-side nav menu (☰ in the topbar), with a
+   Settings-editable list of what shows in it and in what order.
+   Per-device only (localStorage), same as e.g. miscFavorites — this is a UI
+   preference, not account data worth syncing.
+===================================================== */
+const SIDE_DRAWER_ITEMS_META = {
+  favorites: {
+    label: 'Избранное',
+    icon: '<svg viewBox="0 0 24 24" fill="none"><path d="M6 3h12a1 1 0 011 1v17l-7-4-7 4V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>'
+  },
+  quran: {
+    label: 'Коран',
+    icon: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 19.5A2.5 2.5 0 016.5 17H20V4H6.5A2.5 2.5 0 004 6.5v13z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M4 19.5A2.5 2.5 0 016.5 22H20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>'
+  },
+  chats: {
+    label: 'Сообщения',
+    icon: '<svg viewBox="0 0 24 24" fill="none"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>'
+  },
+  settings: {
+    label: 'Настройки',
+    icon: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="1.5"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  }
+};
+const SIDE_DRAWER_DEFAULT_ORDER = ['favorites', 'quran', 'chats', 'settings'];
+
+function loadSideDrawerOrder(){
+  try{
+    const saved = JSON.parse(localStorage.getItem('sideDrawerOrder') || 'null');
+    if(Array.isArray(saved)){
+      // Drops any key that no longer exists, and appends (at the end) any
+      // key that exists now but predates whenever this was last saved —
+      // a future item added to SIDE_DRAWER_ITEMS_META still needs to show
+      // up somewhere for someone with an already-customized order.
+      const known = saved.filter(k => SIDE_DRAWER_ITEMS_META[k]);
+      const missing = SIDE_DRAWER_DEFAULT_ORDER.filter(k => !known.includes(k));
+      return known.concat(missing);
+    }
+  }catch(e){}
+  return SIDE_DRAWER_DEFAULT_ORDER.slice();
+}
+function loadSideDrawerHidden(){
+  try{ return new Set(JSON.parse(localStorage.getItem('sideDrawerHidden') || '[]')); }catch(e){ return new Set(); }
+}
+function saveSideDrawerOrder(){ try{ localStorage.setItem('sideDrawerOrder', JSON.stringify(sideDrawerOrder)); }catch(e){} }
+function saveSideDrawerHidden(){ try{ localStorage.setItem('sideDrawerHidden', JSON.stringify(Array.from(sideDrawerHidden))); }catch(e){} }
+
+let sideDrawerOrder = loadSideDrawerOrder();
+let sideDrawerHidden = loadSideDrawerHidden();
+
+function renderSideDrawer(){
+  const list = document.getElementById('sideDrawerList');
+  const visible = sideDrawerOrder.filter(k => !sideDrawerHidden.has(k));
+  list.innerHTML = visible.map(k =>
+    `<button type="button" class="side-drawer-item" data-drawer-key="${k}">${SIDE_DRAWER_ITEMS_META[k].icon}<span>${SIDE_DRAWER_ITEMS_META[k].label}</span></button>`
+  ).join('');
+}
+function openSideDrawer(){
+  renderSideDrawer();
+  document.getElementById('sideDrawerBackdrop').classList.add('show');
+  document.getElementById('sideDrawer').classList.add('show');
+}
+function closeSideDrawer(){
+  document.getElementById('sideDrawerBackdrop').classList.remove('show');
+  document.getElementById('sideDrawer').classList.remove('show');
+}
+document.getElementById('sideDrawerBtn').addEventListener('click', openSideDrawer);
+document.getElementById('sideDrawerClose').addEventListener('click', closeSideDrawer);
+document.getElementById('sideDrawerBackdrop').addEventListener('click', closeSideDrawer);
+document.getElementById('sideDrawerList').addEventListener('click', e=>{
+  const btn = e.target.closest('.side-drawer-item');
+  if(!btn) return;
+  const key = btn.dataset.drawerKey;
+  closeSideDrawer();
+  // Each destination reuses the exact same navigation its own existing
+  // entry point already does (the misc screen's ★ segment button, the
+  // Quran entry card, the friends screen's chats float button) rather than
+  // reimplementing what "open X" means a second time here.
+  if(key === 'favorites'){
+    go('misc');
+    const favBtn = document.querySelector('#miscSegment .seg-btn[data-misc="favorites"]');
+    if(favBtn) favBtn.click();
+  } else if(key === 'quran'){
+    go('quran');
+    if(typeof openQuranScreen === 'function') openQuranScreen();
+  } else if(key === 'chats'){
+    go('chats');
+    if(typeof renderChatsList === 'function') renderChatsList();
+  } else if(key === 'settings'){
+    go('settings');
+  }
+});
+
+// Same imperative toggle-style pattern as #weeklyNotifToggle elsewhere in
+// this file — this codebase doesn't rely on a CSS :checked-sibling rule for
+// these switches, so a freshly-rendered row needs its visual state set the
+// same way a change event does.
+function applyDrawerToggleStyle(checkbox){
+  const bg = checkbox.parentElement.querySelector('.slider');
+  const knob = checkbox.parentElement.querySelector('.slider-knob');
+  if(!bg || !knob) return;
+  if(checkbox.checked){
+    bg.style.backgroundColor = 'var(--gold)'; bg.style.borderColor = 'var(--gold)';
+    knob.style.transform = 'translateX(16px)'; knob.style.backgroundColor = 'var(--on-accent)';
+  } else {
+    bg.style.backgroundColor = 'var(--fill-3)'; bg.style.borderColor = 'var(--line)';
+    knob.style.transform = 'translateX(0)'; knob.style.backgroundColor = 'var(--ivory)';
+  }
+}
+function renderSideDrawerCustomizeSettings(){
+  const wrap = document.getElementById('sideDrawerCustomizeList');
+  if(!wrap) return;
+  wrap.innerHTML = sideDrawerOrder.map((k, i) => `
+    <div class="drawer-cfg-row" data-key="${k}">
+      <button type="button" class="drawer-cfg-move" data-dir="up" aria-label="Выше"${i===0 ? ' disabled' : ''}>
+        <svg viewBox="0 0 24 24" fill="none"><path d="M6 15l6-6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button type="button" class="drawer-cfg-move" data-dir="down" aria-label="Ниже"${i===sideDrawerOrder.length-1 ? ' disabled' : ''}>
+        <svg viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <span class="drawer-cfg-name">${SIDE_DRAWER_ITEMS_META[k].label}</span>
+      <label style="position:relative;display:inline-block;width:40px;height:24px;flex-shrink:0;">
+        <input type="checkbox" class="drawer-cfg-toggle" style="opacity:0;width:0;height:0;"${sideDrawerHidden.has(k) ? '' : ' checked'}>
+        <span class="slider" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:var(--fill-3);transition:.4s;border-radius:24px;border:1px solid var(--line);"></span>
+        <span class="slider-knob" style="position:absolute;content:'';height:18px;width:18px;left:2px;bottom:2px;background-color:var(--ivory);transition:.4s;border-radius:50%;"></span>
+      </label>
+    </div>
+  `).join('');
+  wrap.querySelectorAll('.drawer-cfg-toggle').forEach(applyDrawerToggleStyle);
+}
+document.getElementById('sideDrawerCustomizeList').addEventListener('click', e=>{
+  const moveBtn = e.target.closest('.drawer-cfg-move');
+  if(!moveBtn) return;
+  const key = moveBtn.closest('.drawer-cfg-row').dataset.key;
+  const idx = sideDrawerOrder.indexOf(key);
+  const swapIdx = idx + (moveBtn.dataset.dir === 'up' ? -1 : 1);
+  if(swapIdx < 0 || swapIdx >= sideDrawerOrder.length) return;
+  [sideDrawerOrder[idx], sideDrawerOrder[swapIdx]] = [sideDrawerOrder[swapIdx], sideDrawerOrder[idx]];
+  saveSideDrawerOrder();
+  renderSideDrawerCustomizeSettings();
+});
+document.getElementById('sideDrawerCustomizeList').addEventListener('change', e=>{
+  const toggle = e.target.closest('.drawer-cfg-toggle');
+  if(!toggle) return;
+  const key = toggle.closest('.drawer-cfg-row').dataset.key;
+  if(toggle.checked) sideDrawerHidden.delete(key); else sideDrawerHidden.add(key);
+  saveSideDrawerHidden();
+  applyDrawerToggleStyle(toggle);
+});
+renderSideDrawerCustomizeSettings();
 
 /* =====================================================
    QUIZ
