@@ -917,8 +917,17 @@ body{
 .chat-bubble-row.mine{ justify-content:flex-end; }
 @keyframes chatBubbleIn{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:translateY(0); } }
 .chat-bubble-row.new-message{ animation:chatBubbleIn .45s var(--ease); }
+/* Wraps the bubble plus its optional reaction chips so both sit together on
+   the right/left edge (whichever the row's mine/not-mine side is) instead of
+   the reactions row defaulting to the flex row's own alignment. max-width
+   lives here now, not on .chat-bubble itself — a bubble narrower than that
+   cap still needs to hug its own content width, which align-items:flex-end/
+   flex-start (rather than the flex column default of stretch) gives it. */
+.chat-bubble-col{ display:flex; flex-direction:column; max-width:78%; }
+.chat-bubble-row.mine .chat-bubble-col{ align-items:flex-end; }
+.chat-bubble-row:not(.mine) .chat-bubble-col{ align-items:flex-start; }
 .chat-bubble{
-  max-width:78%; padding:9px 13px; border-radius:16px; font-size:14px; line-height:1.45;
+  padding:9px 13px; border-radius:16px; font-size:14px; line-height:1.45;
   color:var(--ivory); background:var(--panel-2); border:1px solid var(--line);
   overflow-wrap:break-word; white-space:pre-wrap;
 }
@@ -930,6 +939,39 @@ body{
 .chat-bubble-check.read{ opacity:1; color:var(--jade); }
 .chat-bubble-check.read .chat-bubble-check-2{ opacity:1; }
 .chat-day-sep{ text-align:center; font-size:11.5px; color:var(--ivory-dim); margin:10px 0; }
+/* Tucked slightly under the bubble's bottom edge (negative margin) rather
+   than stacked cleanly below it — same overlapping-pill treatment Telegram
+   uses, so a reaction reads as attached to its message, not as its own
+   separate line. */
+.chat-msg-reactions{ display:flex; flex-wrap:wrap; gap:3px; margin-top:-8px; position:relative; z-index:1; }
+.chat-msg-reaction{
+  display:flex; align-items:center; gap:3px; padding:3px 7px; border-radius:11px; cursor:pointer;
+  background:var(--panel-2); border:1px solid var(--line); font-size:12.5px; line-height:1.2;
+}
+.chat-msg-reaction.mine{ background:var(--gold); border-color:var(--gold); }
+.chat-msg-reaction-count{ font-size:10.5px; font-family:var(--font-num); color:var(--ivory-dim); }
+.chat-msg-reaction.mine .chat-msg-reaction-count{ color:var(--on-accent); opacity:.8; }
+.chat-msg-reaction-picker{ display:flex; justify-content:space-between; gap:2px; padding:2px 2px 14px; }
+.chat-msg-reaction-pick{
+  flex:1; background:none; border:none; font-size:26px; padding:8px 0; border-radius:12px; cursor:pointer;
+  transition:transform .12s var(--ease), background .12s var(--ease);
+}
+.chat-msg-reaction-pick:active{ background:var(--fill-1); transform:scale(1.2); }
+/* No border-based divider between items — #chatDeleteForEveryone is
+   conditionally hidden (see openChatDeleteConfirm), and a structural
+   selector like :first-of-type can't tell "hidden" from "not there", so
+   whichever button ends up first *visible* would otherwise be left with a
+   stray top border and nothing visible above it. Plain padding + an
+   :active tap state reads cleanly without needing that distinction. */
+.chat-msg-action-item{
+  display:flex; align-items:center; gap:11px; width:100%; text-align:left; padding:14px 8px;
+  background:none; border:none; border-radius:var(--r-input); color:var(--ivory);
+  font-family:var(--font-body); font-size:14.5px; cursor:pointer;
+}
+.chat-msg-action-item:active{ background:var(--fill-1); }
+.chat-msg-action-item svg{ width:19px; height:19px; flex-shrink:0; }
+.chat-msg-action-item.danger{ color:var(--rose); }
+#chatDeleteConfirmSheet{ padding-bottom:calc(14px + var(--safe-bottom)); }
 .chat-input-bar{
   position:relative; flex-shrink:0; display:flex; align-items:flex-end; gap:10px;
   padding:10px 14px calc(12px + var(--safe-bottom));
@@ -1184,7 +1226,13 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 .sticker-editor-controls{ display:flex; align-items:center; gap:10px; margin-top:22px; width:min(78vw,320px); color:var(--ivory-dim); }
 .sticker-editor-controls input[type="range"]{ flex:1; accent-color:var(--gold); }
 
-.chat-bubble.pending{ background:none; border:none; padding:0; }
+/* Pending bubbles render straight inside .chat-bubble-row (no
+   .chat-bubble-col wrapper — see chatPendingBubbleHtml), so they never
+   picked up that wrapper's max-width:78%; restated here since .chat-bubble
+   itself no longer carries it. In practice every pending shape (circle/
+   rect/voice) already self-constrains via its own fixed width, so this is
+   belt and braces rather than a fix for an actually-observed overflow. */
+.chat-bubble.pending{ max-width:78%; background:none; border:none; padding:0; }
 .chat-bubble-row.mine .chat-bubble.pending{ background:none; border:none; padding:0; }
 .chat-pending-voice{
   display:flex; align-items:center; gap:9px; min-width:170px;
@@ -2735,6 +2783,31 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
       <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
       <input type="range" id="stickerEditorZoom" min="100" max="300" value="100">
     </div>
+  </div>
+
+  <div class="sheet-backdrop" id="chatMsgActionsBackdrop"></div>
+  <div class="sheet" id="chatMsgActionsSheet">
+    <div class="sheet-handle"></div>
+    <div class="chat-msg-reaction-picker" id="chatMsgReactionPicker">
+      <button type="button" class="chat-msg-reaction-pick" data-emoji="👍">👍</button>
+      <button type="button" class="chat-msg-reaction-pick" data-emoji="❤️">❤️</button>
+      <button type="button" class="chat-msg-reaction-pick" data-emoji="😂">😂</button>
+      <button type="button" class="chat-msg-reaction-pick" data-emoji="😮">😮</button>
+      <button type="button" class="chat-msg-reaction-pick" data-emoji="😢">😢</button>
+      <button type="button" class="chat-msg-reaction-pick" data-emoji="🙏">🙏</button>
+    </div>
+    <button type="button" class="chat-msg-action-item danger" id="chatMsgActionDelete">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2m2 0v13a2 2 0 01-2 2H9a2 2 0 01-2-2V7h10z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Удалить
+    </button>
+  </div>
+
+  <div class="sheet-backdrop" id="chatDeleteConfirmBackdrop"></div>
+  <div class="sheet" id="chatDeleteConfirmSheet">
+    <div class="sheet-handle"></div>
+    <button type="button" class="chat-msg-action-item danger" id="chatDeleteForEveryone" style="display:none;">Удалить у всех</button>
+    <button type="button" class="chat-msg-action-item danger" id="chatDeleteForMe">Удалить у себя</button>
+    <button type="button" class="chat-msg-action-item" id="chatDeleteCancel">Отмена</button>
   </div>
 
   <div id="callOverlay">
@@ -8329,6 +8402,8 @@ function closeChatThread(){
   if(chatThreadOtherLastReadUnsub){ chatThreadOtherLastReadUnsub(); chatThreadOtherLastReadUnsub = null; }
   if(typeof chatClearTyping === 'function') chatClearTyping();
   if(typeof closeChatEmojiPanel === 'function') closeChatEmojiPanel();
+  if(typeof closeChatMsgActions === 'function') closeChatMsgActions();
+  if(typeof closeChatDeleteConfirm === 'function') closeChatDeleteConfirm();
   chatThreadKey = null;
   clearActiveChatViewer();
   chatVoiceAudioEl.pause();
@@ -8381,7 +8456,14 @@ function renderChatThreadMessages(messagesObj, isLiveSnapshot){
   const wrap = document.getElementById('chatThreadMessages');
   const emptyHint = document.getElementById('chatThreadEmptyHint');
   const scrollEl = document.getElementById('chatThreadScroll');
-  const entries = Object.entries(messagesObj || {}).sort((a,b)=> (a[1].ts||0)-(b[1].ts||0));
+  const myKeyVal = fbKey(state.profile.username);
+  // "Delete for me" (see deleteChatMessage) never removes the message node
+  // itself — the other side still needs to see it — it just tombstones it
+  // under my own key, so filtering it out here is the only place that
+  // distinction actually takes effect.
+  const entries = Object.entries(messagesObj || {})
+    .filter(([id, m]) => !(m.deletedFor && m.deletedFor[myKeyVal]))
+    .sort((a,b)=> (a[1].ts||0)-(b[1].ts||0));
   if(!entries.length){
     wrap.innerHTML = '';
     emptyHint.textContent = 'Здесь пока нет сообщений — напишите первым.';
@@ -8390,7 +8472,6 @@ function renderChatThreadMessages(messagesObj, isLiveSnapshot){
     return;
   }
   emptyHint.style.display = 'none';
-  const myKeyVal = fbKey(state.profile.username);
   let lastDay = null, html = '';
   // Repopulated on every render — keeps the (possibly large, base64) media
   // payload out of the DOM entirely; bubbles only carry the short message id.
@@ -8506,7 +8587,29 @@ function renderChatThreadMessages(messagesObj, isLiveSnapshot){
     // re-render, since the whole list is rebuilt from scratch on each
     // Firebase snapshot.
     const isNewBubble = chatThreadFirstRenderDone && !chatRenderedMessageIds.has(id);
-    html += `<div class="chat-bubble-row${mine?' mine':''}${isNewBubble?' new-message':''}"><div class="chat-bubble${bubbleClass}">${bodyHtml}<span class="chat-bubble-time">${formatChatClock(ts)}${checkHtml}</span></div></div>`;
+    // One reaction per person (m.reactions is { [userKey]: emoji }, not a
+    // list) — grouped by emoji here purely for display, since two people
+    // reacting with the same emoji in a 1-1 chat should show one chip with
+    // a count of 2, not two identical chips.
+    let reactionsHtml = '';
+    if(m.reactions){
+      const byEmoji = {};
+      Object.entries(m.reactions).forEach(([uKey, emoji]) => {
+        (byEmoji[emoji] = byEmoji[emoji] || []).push(uKey);
+      });
+      const chips = Object.entries(byEmoji).map(([emoji, users]) => {
+        const isMineReaction = users.includes(myKeyVal);
+        const countHtml = users.length > 1 ? `<span class="chat-msg-reaction-count">${users.length}</span>` : '';
+        // escapeHtml on the visible text too, not just the attribute — a
+        // reaction's emoji value is only ever one of the picker's own fixed
+        // set from this client, but RTDB's own rules don't enforce that
+        // shape, so a tampered client writing something HTML-shaped here
+        // must not be able to inject markup into a friend's rendered chat.
+        return `<button type="button" class="chat-msg-reaction${isMineReaction?' mine':''}" data-emoji="${escapeHtml(emoji)}">${escapeHtml(emoji)}${countHtml}</button>`;
+      }).join('');
+      if(chips) reactionsHtml = `<div class="chat-msg-reactions">${chips}</div>`;
+    }
+    html += `<div class="chat-bubble-row${mine?' mine':''}${isNewBubble?' new-message':''}" data-msg-id="${escapeHtml(id)}"><div class="chat-bubble-col"><div class="chat-bubble${bubbleClass}">${bodyHtml}<span class="chat-bubble-time">${formatChatClock(ts)}${checkHtml}</span></div>${reactionsHtml}</div></div>`;
   });
   entries.forEach(([id])=> chatRenderedMessageIds.add(id));
   chatThreadFirstRenderDone = true;
@@ -9870,6 +9973,18 @@ document.getElementById('chatClipViewerOverlay').addEventListener('click', e=>{
   if(e.target.id === 'chatClipViewerOverlay') closeClipViewer();
 });
 document.getElementById('chatThreadMessages').addEventListener('click', e=>{
+  // A long-press that just opened the actions sheet (see chatLongPressFired
+  // below) still ends in the same pointerup/click a normal tap would — left
+  // unguarded, releasing the press would *also* fire whatever tapping that
+  // bubble normally does (start voice playback, open a viewer, ...) right
+  // underneath the sheet that just opened.
+  if(chatLongPressFired){ chatLongPressFired = false; return; }
+  const reactionChip = e.target.closest('.chat-msg-reaction');
+  if(reactionChip){
+    const row = reactionChip.closest('.chat-bubble-row[data-msg-id]');
+    if(row) toggleChatMsgReaction(row.dataset.msgId, reactionChip.dataset.emoji);
+    return;
+  }
   const imageThumb = e.target.closest('.chat-image-thumb');
   if(imageThumb){
     openImageViewer(imageThumb.src);
@@ -9944,6 +10059,118 @@ document.getElementById('chatThreadMessages').addEventListener('click', e=>{
   if(chatVoiceAudioEl.src !== src) chatVoiceAudioEl.src = src;
   chatVoiceAudioEl.play().catch(()=> showToast('Не удалось воспроизвести'));
 });
+
+/* --- message actions: reactions + delete (long-press a bubble) ---
+   Long-press (not tap, so it can't collide with a bubble's own tap action —
+   play a voice message, open a viewer, ...) opens a bottom sheet with a
+   Telegram-style quick-reaction row plus "Удалить". Deleting offers "for
+   everyone" only on your own messages — same convention Telegram itself
+   uses in a private chat: you can only retract what you sent; a friend's
+   message can only be hidden on your own side. */
+let chatLongPressTimer = null;
+let chatLongPressStart = null;
+let chatLongPressFired = false;
+let chatMsgActionsTargetId = null;
+(function(){
+  const wrap = document.getElementById('chatThreadMessages');
+  const LONG_PRESS_MS = 450;
+  const MOVE_CANCEL_PX = 10;
+  wrap.addEventListener('pointerdown', e=>{
+    const row = e.target.closest('.chat-bubble-row[data-msg-id]');
+    if(!row) return;
+    chatLongPressStart = { x: e.clientX, y: e.clientY };
+    clearTimeout(chatLongPressTimer);
+    chatLongPressTimer = setTimeout(()=>{
+      chatLongPressTimer = null;
+      chatLongPressFired = true;
+      if(navigator.vibrate) navigator.vibrate(12);
+      openChatMsgActions(row.dataset.msgId, row.classList.contains('mine'));
+    }, LONG_PRESS_MS);
+  });
+  wrap.addEventListener('pointermove', e=>{
+    if(!chatLongPressTimer || !chatLongPressStart) return;
+    if(Math.hypot(e.clientX - chatLongPressStart.x, e.clientY - chatLongPressStart.y) > MOVE_CANCEL_PX){
+      clearTimeout(chatLongPressTimer);
+      chatLongPressTimer = null;
+    }
+  });
+  ['pointerup','pointercancel','pointerleave'].forEach(evt => wrap.addEventListener(evt, ()=>{
+    clearTimeout(chatLongPressTimer);
+    chatLongPressTimer = null;
+  }));
+})();
+function openChatMsgActions(msgId, mine){
+  chatMsgActionsTargetId = msgId;
+  document.getElementById('chatMsgActionsBackdrop').classList.add('show');
+  document.getElementById('chatMsgActionsSheet').classList.add('show');
+}
+function closeChatMsgActions(){
+  document.getElementById('chatMsgActionsBackdrop').classList.remove('show');
+  document.getElementById('chatMsgActionsSheet').classList.remove('show');
+}
+document.getElementById('chatMsgActionsBackdrop').addEventListener('click', closeChatMsgActions);
+document.getElementById('chatMsgReactionPicker').addEventListener('click', e=>{
+  const btn = e.target.closest('.chat-msg-reaction-pick');
+  if(!btn || !chatMsgActionsTargetId) return;
+  toggleChatMsgReaction(chatMsgActionsTargetId, btn.dataset.emoji);
+  closeChatMsgActions();
+});
+document.getElementById('chatMsgActionDelete').addEventListener('click', ()=>{
+  const msgId = chatMsgActionsTargetId;
+  closeChatMsgActions();
+  openChatDeleteConfirm(msgId);
+});
+function openChatDeleteConfirm(msgId){
+  const m = chatThreadLastMessagesObj && chatThreadLastMessagesObj[msgId];
+  if(!m || !state.profile) return;
+  chatMsgActionsTargetId = msgId;
+  const mine = m.from === fbKey(state.profile.username);
+  document.getElementById('chatDeleteForEveryone').style.display = mine ? '' : 'none';
+  document.getElementById('chatDeleteConfirmBackdrop').classList.add('show');
+  document.getElementById('chatDeleteConfirmSheet').classList.add('show');
+}
+function closeChatDeleteConfirm(){
+  document.getElementById('chatDeleteConfirmBackdrop').classList.remove('show');
+  document.getElementById('chatDeleteConfirmSheet').classList.remove('show');
+}
+document.getElementById('chatDeleteConfirmBackdrop').addEventListener('click', closeChatDeleteConfirm);
+document.getElementById('chatDeleteCancel').addEventListener('click', closeChatDeleteConfirm);
+document.getElementById('chatDeleteForEveryone').addEventListener('click', ()=>{
+  const msgId = chatMsgActionsTargetId;
+  closeChatDeleteConfirm();
+  deleteChatMessage(msgId, true);
+});
+document.getElementById('chatDeleteForMe').addEventListener('click', ()=>{
+  const msgId = chatMsgActionsTargetId;
+  closeChatDeleteConfirm();
+  deleteChatMessage(msgId, false);
+});
+// Tapping a reaction you're already part of removes it; tapping a
+// different emoji (whether the bubble had none yet, or someone else's
+// reaction already sits there) replaces it — one reaction per person per
+// message, same as messages/{id}/reactions being keyed by user, not a list.
+function toggleChatMsgReaction(msgId, emoji){
+  if(!fbDb || !state.activeChat || !state.profile) return;
+  const path = chatPairPath(state.activeChat.uid);
+  const myKeyVal = fbKey(state.profile.username);
+  const m = chatThreadLastMessagesObj && chatThreadLastMessagesObj[msgId];
+  const existing = m && m.reactions && m.reactions[myKeyVal];
+  const ref = fbDb.ref(path+'/messages/'+msgId+'/reactions/'+myKeyVal);
+  if(existing === emoji) ref.remove(); else ref.set(emoji);
+}
+// forEveryone removes the message node outright (both sides' listeners
+// drop it on their next render); otherwise this only tombstones it under
+// my own key (see renderChatThreadMessages' own filter) — the message
+// itself, and the friend's copy of it, are untouched.
+function deleteChatMessage(msgId, forEveryone){
+  if(!fbDb || !state.activeChat || !state.profile) return;
+  const path = chatPairPath(state.activeChat.uid);
+  if(forEveryone){
+    fbDb.ref(path+'/messages/'+msgId).remove();
+  } else {
+    fbDb.ref(path+'/messages/'+msgId+'/deletedFor/'+fbKey(state.profile.username)).set(true);
+  }
+}
 // Neither event bubbles, but a capture-phase listener on an ancestor still
 // catches them — see chatInitialLoadStickUntil's comment for why this only
 // re-pins scroll during the short window after a chat opens. <img> fires
