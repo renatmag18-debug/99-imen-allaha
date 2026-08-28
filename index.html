@@ -5532,6 +5532,44 @@ document.getElementById('sideDrawerList').addEventListener('click', e=>{
   }
 });
 
+// Swipe left-to-right from the screen's left edge opens the drawer; swipe
+// right-to-left (anywhere — the drawer's already covering the screen at
+// that point, so there's no "wrong place to start" the way there is for
+// opening it) closes it. Discrete threshold-based (touchstart→touchend),
+// same as the sheet-body prev/next swipe elsewhere in this file, rather
+// than a live drag-follows-finger reveal — much simpler, and everywhere
+// else in the app already treats a swipe this way, not as a drag.
+(function(){
+  const EDGE_ZONE_PX = 28;
+  const SWIPE_THRESHOLD_PX = 60;
+  let sx = 0, sy = 0, tracking = false;
+  document.addEventListener('touchstart', e=>{
+    if(!e.touches || !e.touches.length){ tracking = false; return; }
+    const drawerOpen = document.getElementById('sideDrawer').classList.contains('show');
+    const t = e.touches[0];
+    // Opening only arms from a thin strip at the very left edge — anywhere
+    // else on screen already has its own horizontal swipes (quran sheet
+    // prev/next, etc.) a broader open-gesture would collide with. Native
+    // side excludes this same strip from Android's own edge-back gesture
+    // (see MainActivity's systemGestureExclusionRects) so it actually
+    // reaches here instead of being swallowed first.
+    if(!drawerOpen && t.clientX > EDGE_ZONE_PX){ tracking = false; return; }
+    sx = t.clientX; sy = t.clientY;
+    tracking = true;
+  }, {passive:true});
+  document.addEventListener('touchend', e=>{
+    if(!tracking) return;
+    tracking = false;
+    if(!e.changedTouches || !e.changedTouches.length) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - sx, dy = t.clientY - sy;
+    if(Math.abs(dx) < SWIPE_THRESHOLD_PX || Math.abs(dx) < Math.abs(dy)) return;
+    const drawerOpen = document.getElementById('sideDrawer').classList.contains('show');
+    if(dx > 0 && !drawerOpen) openSideDrawer();
+    else if(dx < 0 && drawerOpen) closeSideDrawer();
+  }, {passive:true});
+})();
+
 // Same imperative toggle-style pattern as #weeklyNotifToggle elsewhere in
 // this file — this codebase doesn't rely on a CSS :checked-sibling rule for
 // these switches, so a freshly-rendered row needs its visual state set the
