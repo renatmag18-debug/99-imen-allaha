@@ -1101,6 +1101,16 @@ body{
 .chat-clip-video{
   display:block; width:100%; max-height:320px; border-radius:14px; background:#000;
 }
+/* Chromium's native <video controls> shows its own huge center "start
+   playback" circle-and-triangle whenever the element is paused — a second,
+   visually mismatched play affordance stacked on top of our own custom one
+   (the clip poster's play button, or the poster image itself once a real
+   <video> replaces it) rather than the real first frame the user expects to
+   see. Every <video> in the app already gets a real poster/first-frame one
+   way or another (see chatVideoPosterById), so this generic fallback icon
+   never needs to show anywhere — only the control bar underneath (play/
+   pause, scrub, volume) is still wanted, not this. */
+video::-webkit-media-controls-start-playback-button{ display:none !important; }
 /* Shown instead of a live <video> until it's actually tapped — the native
    <video controls> element starts fetching/buffering (and shows its own
    loading spinner) the moment it exists at all, which with nothing cached
@@ -9770,10 +9780,15 @@ document.getElementById('chatImageViewerOverlay').addEventListener('click', e=>{
 // this WebView (no onShowCustomView support to grant the request). Carries
 // over the inline player's current position/play state so tapping fullscreen
 // mid-playback doesn't restart the clip from the beginning.
-function openClipViewer(src, startTime, autoplay){
+function openClipViewer(src, startTime, autoplay, poster){
   chatVoiceAudioEl.pause();
   const overlay = document.getElementById('chatClipViewerOverlay');
   const videoEl = document.getElementById('chatClipViewerEl');
+  // Without this, the element shows a plain black box (no frame decoded
+  // yet) until playback actually starts — the same real first-frame
+  // thumbnail already generated for the poster/circle (see
+  // generateVideoPoster) fills that gap instead.
+  videoEl.poster = poster || '';
   videoEl.src = src;
   overlay.classList.add('show');
   if(startTime) videoEl.currentTime = startTime;
@@ -9806,11 +9821,12 @@ document.getElementById('chatThreadMessages').addEventListener('click', e=>{
     // exists; data-clip-src on the wrap is the one thing always there.
     const clipVideo = wrap.querySelector('.chat-clip-video');
     const wasPlaying = clipVideo && !clipVideo.paused;
+    const clipPosterUrl = chatVideoPosterById[wrap.dataset.videoId];
     if(clipVideo){
       clipVideo.pause();
-      openClipViewer(clipVideo.currentSrc || clipVideo.src, clipVideo.currentTime, wasPlaying);
+      openClipViewer(clipVideo.currentSrc || clipVideo.src, clipVideo.currentTime, wasPlaying, clipPosterUrl);
     } else {
-      openClipViewer(wrap.dataset.clipSrc, 0, true);
+      openClipViewer(wrap.dataset.clipSrc, 0, true, clipPosterUrl);
     }
     return;
   }
