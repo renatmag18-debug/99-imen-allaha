@@ -6960,6 +6960,13 @@ async function loadFriendRequests(){
 }
 async function listenFriendsRealtime(){
   if(!state.profile || !state.profile.authenticated) return;
+  // Paint whatever the dialog list looked like last session immediately —
+  // subscribeAllChatPreviews() below overwrites it with live data the
+  // moment Firebase actually catches up, same pattern as loadChatCache()
+  // for an individual thread.
+  if(typeof loadChatPreviewsCache === 'function') loadChatPreviewsCache();
+  if(state.screen === 'chats') renderChatsList();
+  updateFriendsBadge();
   loadFriends().then(()=>{
     if(typeof subscribeAllChatPreviews === 'function') subscribeAllChatPreviews();
     if(state.pendingChatUsername){
@@ -7801,6 +7808,21 @@ function loadChatCache(path){
     return raw ? JSON.parse(raw) : null;
   }catch(e){ return null; }
 }
+// Same idea as the per-thread cache above, but for the dialog list itself
+// (last message text/time, unread dot) — without this, the "Сообщения"
+// screen showed every conversation as "Нет сообщений" until Firebase
+// finished loading, even for chats that plainly have history, which reads
+// as the whole list being broken/slow rather than just still syncing.
+function chatPreviewsCacheKey(){ return 'chatPreviewsCache_'+fbKey(state.profile.username); }
+function saveChatPreviewsCache(){
+  try{ localStorage.setItem(chatPreviewsCacheKey(), JSON.stringify(state.chatPreviews)); }catch(e){ /* best-effort */ }
+}
+function loadChatPreviewsCache(){
+  try{
+    const raw = localStorage.getItem(chatPreviewsCacheKey());
+    if(raw) state.chatPreviews = JSON.parse(raw);
+  }catch(e){ /* best-effort */ }
+}
 function formatChatClock(ts){
   return new Date(ts).toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
 }
@@ -7837,6 +7859,7 @@ function subscribeAllChatPreviews(){
       state.chatPreviews[otherKey] = { meta: raw.meta, unread };
       updateFriendsBadge();
       if(state.screen === 'chats') renderChatsList();
+      if(typeof saveChatPreviewsCache === 'function') saveChatPreviewsCache();
     };
     let metaRef=null, metaListener=null, readRef=null, readListener=null, cancelled=false;
     fbAuthReady.then(()=>{
