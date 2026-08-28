@@ -7418,12 +7418,65 @@ function callPath(callId){ return 'calls/'+callId; }
 // or in progress — only one at a time, in either direction.
 let callState = null;
 
+// Synthesized ringback (caller, while the other side's phone is ringing)
+// and ringtone (callee, on an incoming call) tones — there's no system
+// dialer here to provide these, and shipping actual audio files just for
+// a couple of beep patterns isn't worth the extra network request, so
+// they're generated on the fly with the Web Audio API instead.
+let callToneCtx = null;
+let callToneInterval = null;
+function ensureCallToneCtx(){
+  if(!callToneCtx){
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(AC) callToneCtx = new AC();
+  }
+  if(callToneCtx && callToneCtx.state === 'suspended') callToneCtx.resume();
+  return callToneCtx;
+}
+function playCallToneBurst(freq, durationMs){
+  const ctx = ensureCallToneCtx();
+  if(!ctx) return;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = freq;
+  gain.gain.value = 0.15;
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + durationMs / 1000);
+}
+function stopCallTone(){
+  if(callToneInterval){ clearInterval(callToneInterval); callToneInterval = null; }
+}
+// Classic single-tone ringback cadence (~1s on, ~4s off) — this is what the
+// caller hears while waiting for the other side to answer.
+function startCallRingback(){
+  stopCallTone();
+  playCallToneBurst(425, 1000);
+  callToneInterval = setInterval(()=> playCallToneBurst(425, 1000), 5000);
+}
+// Short double-beep plus vibration for the callee — an incoming call is
+// unprompted, so it needs to actually grab attention rather than just sit
+// quietly as an on-screen banner.
+function startCallRingtone(){
+  stopCallTone();
+  const ring = () => {
+    playCallToneBurst(600, 220);
+    setTimeout(()=> playCallToneBurst(600, 220), 320);
+    if(navigator.vibrate) navigator.vibrate([300, 200, 300]);
+  };
+  ring();
+  callToneInterval = setInterval(ring, 2000);
+}
+
 function callResetState(){
   if(callState){
     (callState.listeners||[]).forEach(off => { try{ off(); }catch(e){} });
     if(callState.ringTimeoutHandle) clearTimeout(callState.ringTimeoutHandle);
     if(callState.durationHandle) clearInterval(callState.durationHandle);
   }
+  stopCallTone();
   callState = null;
   renderCallOverlay();
 }
@@ -7477,6 +7530,7 @@ function callAttachCommonListeners(callId, remoteRole){
       if(callState.ringTimeoutHandle){ clearTimeout(callState.ringTimeoutHandle); callState.ringTimeoutHandle = null; }
       if(callState.uiMode !== 'active'){
         callState.uiMode = 'active';
+        stopCallTone();
         renderCallOverlay();
       }
     } else if(status === 'declined' || status === 'ended' || status === 'cancelled' || status === 'missed'){
@@ -7530,6 +7584,7 @@ async function startOutgoingCall(otherUsername, otherName, otherAvatar){
     callResetState();
     return;
   }
+  startCallRingback();
   fbDb.ref('incomingCall/'+otherKeyVal).set({ callId, callerUsername: state.profile.username, callerName: state.profile.username, ts: firebase.database.ServerValue.TIMESTAMP });
   notifyFriend(otherUsername, '📞 Входящий звонок', state.profile.username+' звонит', 'incoming-call', baseUrl());
   callAttachCommonListeners(callId, 'callee');
@@ -7565,6 +7620,7 @@ function watchIncomingCalls(){
       otherAvatar: friend ? friend.avatar : null, listeners:[]
     };
     renderCallOverlay();
+    startCallRingtone();
     callAttachCommonListeners(val.callId, 'caller');
   });
 }
@@ -7577,10 +7633,18 @@ async function acceptIncomingCall(){
     const offerSnap = await fbDb.ref(callPath(callId)+'/offer/sdp').once('value');
     const offerSdp = offerSnap.val();
     if(!offerSdp || !callState || callState.callId !== callId){ throw new Error('no offer'); }
-    fbDb.ref('incomingCall/'+myKeyVal).remove();
-    await fbDb.ref(callPath(callId)+'/status').set('active');
+    // uiMode flips to 'active' (and the ringtone stops) *before* the
+    // incomingCall node is removed below — watchIncomingCalls()'s own
+    // listener reacts to that removal too, and would otherwise mistake it
+    // for a decline/cancel (still seeing uiMode 'incoming') and reset
+    // callState to null out from under this very function, right as the
+    // `await` below returns — crashing on the next line with "Cannot set
+    // properties of null".
+    stopCallTone();
     callState.uiMode = 'active';
     renderCallOverlay();
+    fbDb.ref('incomingCall/'+myKeyVal).remove();
+    await fbDb.ref(callPath(callId)+'/status').set('active');
     window.AndroidApp.answerCall(offerSdp);
   }catch(e){
     console.warn('acceptIncomingCall failed:', e);
