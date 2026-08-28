@@ -1055,7 +1055,13 @@ body{
   position:relative; width:min(78vw,340px); height:min(78vw,340px); border-radius:50%; overflow:hidden;
   background:#000; box-shadow:0 10px 40px rgba(0,0,0,.5);
 }
-#chatVideoViewerSpinner{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:32px; height:32px; }
+/* margin-based centering, not transform:translate — .chat-pending-spinner's
+   own spin animation (see @keyframes chatPendingSpin) drives `transform`
+   directly, and a static transform:translate(-50%,-50%) here would fight it:
+   the browser can't blend a translate and a rotate into one transform list,
+   so each animation cycle visibly snapped between "centered" and "rotated,
+   not centered" instead of spinning cleanly in place. */
+#chatVideoViewerSpinner{ position:absolute; top:50%; left:50%; margin:-16px 0 0 -16px; width:32px; height:32px; }
 /* object-position biased to the top: a portrait recording cropped into a
    square/circle by default centers the crop, which cuts an equal sliver off
    the top and bottom — for a face shot that reads as "the top got cut off"
@@ -8247,6 +8253,15 @@ let chatInitialLoadStickUntil = 0;
 // around and avoids redoing the canvas grab on every re-render.
 let chatVideoPosterById = {};
 let chatVideoPosterPending = new Set();
+// A <video> element with no .poster at all falls back to WebView's own
+// built-in placeholder graphic (a big gray circle-and-triangle icon) the
+// instant it's in the DOM, before a single frame has actually decoded —
+// independent of the `controls` attribute, and independent of how soon
+// the real poster (see chatVideoPosterById) shows up. Every video viewer
+// sets *some* poster before ever setting `src`, falling back to this
+// transparent 1x1 pixel when the real first frame isn't ready yet, so
+// that generic icon can never appear even for the brief gap before it is.
+const BLANK_VIDEO_POSTER = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
 // A regular (non-circle) video attachment's real width/height, as
 // "w/h" — same lifetime/reasoning as chatVideoPosterById, just for
 // reserving the right box shape instead of the right thumbnail.
@@ -8429,9 +8444,13 @@ function renderChatThreadMessages(messagesObj, isLiveSnapshot){
     } else if(m.type === 'image'){
       bodyHtml = `<img class="chat-image-thumb" src="${escapeHtml(m.imageUrl||'')}" alt="Фото">`;
     } else if(m.type === 'sticker'){
-      bodyHtml = m.stickerType === 'video'
-        ? `<video class="chat-sticker-vid" src="${escapeHtml(m.stickerUrl||'')}" muted loop autoplay playsinline></video>`
-        : `<img class="chat-sticker-img" src="${escapeHtml(m.stickerUrl||'')}" alt="Стикер">`;
+      if(m.stickerType === 'video'){
+        if(m.stickerUrl && !chatVideoPosterById[id]) generateVideoPoster(id, m.stickerUrl);
+        const stickerPoster = chatVideoPosterById[id] || BLANK_VIDEO_POSTER;
+        bodyHtml = `<video class="chat-sticker-vid" data-video-id="${escapeHtml(id)}" poster="${escapeHtml(stickerPoster)}" src="${escapeHtml(m.stickerUrl||'')}" muted loop autoplay playsinline></video>`;
+      } else {
+        bodyHtml = `<img class="chat-sticker-img" src="${escapeHtml(m.stickerUrl||'')}" alt="Стикер">`;
+      }
     } else if(m.type === 'clip'){
       if(m.clipUrl && !chatVideoPosterById[id]) generateVideoPoster(id, m.clipUrl);
       const clipPoster = chatVideoPosterById[id];
@@ -8746,8 +8765,12 @@ function renderChatStickerGrid(){
   // whichever media tag the entry calls for.
   const tilesHtml = stickers.map((item, i) => {
     const isVideo = item && typeof item === 'object' && item.type === 'video';
+    // item.poster is missing only for a video sticker saved before this
+    // field existed — BLANK_VIDEO_POSTER still beats leaving .poster unset
+    // (the browser's own generic play-icon placeholder) for the brief gap
+    // before the real video data loads.
     const mediaHtml = isVideo
-      ? `<video src="${escapeHtml(item.url)}" muted loop autoplay playsinline></video>`
+      ? `<video src="${escapeHtml(item.url)}" poster="${escapeHtml(item.poster || BLANK_VIDEO_POSTER)}" muted loop autoplay playsinline></video>`
       : `<img src="${escapeHtml(item)}" alt="Стикер">`;
     return `<button type="button" class="chat-sticker-tile" data-sticker-index="${i}">${mediaHtml}</button>`;
   }).join('');
@@ -8945,6 +8968,21 @@ async function finishStickerVideoDone(s){
   };
 
   videoEl.currentTime = 0;
+  await new Promise(resolve => {
+    if(videoEl.readyState >= 2 && !videoEl.seeking) { resolve(); return; }
+    // Some devices never fire 'seeked' for a no-op seek (already at time 0)
+    // — a short timeout keeps this from hanging forever rather than being
+    // how it's expected to resolve.
+    const t = setTimeout(resolve, 500);
+    videoEl.addEventListener('seeked', () => { clearTimeout(t); resolve(); }, { once:true });
+  });
+  // Grabbed once, from the exact same crop window, before recording starts —
+  // this is the real first frame of the sticker being created, used as its
+  // .poster everywhere it's shown (grid tile, sent message bubble) so
+  // nothing ever needs to fall back to a blank/placeholder while a video
+  // sticker's own data is still loading.
+  ctx.drawImage(videoEl, sx, sy, srcSize, srcSize, 0, 0, outSize, outSize);
+  const posterDataUrl = canvas.toDataURL('image/jpeg', 0.75);
   recorder.start();
   drawFrame();
   try{
@@ -8974,7 +9012,7 @@ async function finishStickerVideoDone(s){
     const path = chatPairPath(state.activeChat.uid);
     const url = await uploadChatMedia(path, 'sticker-'+Date.now(), blob, 'clip');
     const stickers = loadMyStickers();
-    stickers.push({ type: 'video', url });
+    stickers.push({ type: 'video', url, poster: posterDataUrl });
     saveMyStickers(stickers);
     renderChatStickerGrid();
   }catch(e){
@@ -9352,6 +9390,14 @@ async function sendImageMessage(blob){
     const msgRef = fbDb.ref(path+'/messages').push();
     const imageUrl = await uploadChatMedia(path, msgRef.key, resized, 'image', pct => chatUpdatePendingProgress(tempId, pct));
     await msgRef.set({ from: myKeyVal, type: 'image', imageUrl, ts });
+    // The live message listener already redraws the thread with the real
+    // bubble the instant the write above lands — removing the pending one
+    // here, not after the housekeeping writes below (meta/lastRead/viewer
+    // presence, each its own round trip), is what keeps the two in sync.
+    // Left any later and the real bubble briefly renders *alongside* the
+    // still-showing pending one, looking like the message doubled and then
+    // one copy vanished.
+    chatRemovePendingBubble(tempId);
     await fbDb.ref(path+'/meta').set({ lastText: '📷 Фото', lastTs: ts, lastFrom: myKeyVal });
     fbDb.ref(path+'/lastRead/'+myKeyVal).set(ts);
     const viewerSnap = await fbDb.ref('activeChatViewers/'+fbKey(otherUsername)).once('value');
@@ -9396,6 +9442,8 @@ async function sendStickerMessage(item){
     const msgData = { from: myKeyVal, type: 'sticker', stickerUrl, ts };
     if(isVideo) msgData.stickerType = 'video';
     await msgRef.set(msgData);
+    // See sendImageMessage's own comment on why this runs right here.
+    chatRemovePendingBubble(tempId);
     await fbDb.ref(path+'/meta').set({ lastText: '🖼 Стикер', lastTs: ts, lastFrom: myKeyVal });
     fbDb.ref(path+'/lastRead/'+myKeyVal).set(ts);
     const viewerSnap = await fbDb.ref('activeChatViewers/'+fbKey(otherUsername)).once('value');
@@ -9422,6 +9470,8 @@ async function sendClipMessage(blob){
     const msgRef = fbDb.ref(path+'/messages').push();
     const clipUrl = await uploadChatMedia(path, msgRef.key, blob, 'clip', pct => chatUpdatePendingProgress(tempId, pct));
     await msgRef.set({ from: myKeyVal, type: 'clip', clipUrl, ts });
+    // See sendImageMessage's own comment on why this runs right here.
+    chatRemovePendingBubble(tempId);
     await fbDb.ref(path+'/meta').set({ lastText: '🎬 Видео', lastTs: ts, lastFrom: myKeyVal });
     fbDb.ref(path+'/lastRead/'+myKeyVal).set(ts);
     const viewerSnap = await fbDb.ref('activeChatViewers/'+fbKey(otherUsername)).once('value');
@@ -9462,6 +9512,8 @@ async function sendVoiceMessage(blob, durationSec){
     const msgRef = fbDb.ref(path+'/messages').push();
     const audioUrl = await uploadChatMedia(path, msgRef.key, blob, 'audio', pct => chatUpdatePendingProgress(tempId, pct));
     await msgRef.set({ from: myKeyVal, type: 'voice', audioUrl, duration: durationSec, ts });
+    // See sendImageMessage's own comment on why this runs right here.
+    chatRemovePendingBubble(tempId);
     await fbDb.ref(path+'/meta').set({ lastText: '🎤 Голосовое сообщение', lastTs: ts, lastFrom: myKeyVal });
     fbDb.ref(path+'/lastRead/'+myKeyVal).set(ts);
     const viewerSnap = await fbDb.ref('activeChatViewers/'+fbKey(otherUsername)).once('value');
@@ -9527,6 +9579,8 @@ async function sendVideoMessage(blob){
       uploadChatMedia(path, msgRef.key, blob, 'video', pct => chatUpdatePendingProgress(tempId, pct))
     ]);
     await msgRef.set({ from: myKeyVal, type: 'video', videoUrl, duration: durationSec, ts });
+    // See sendImageMessage's own comment on why this runs right here.
+    chatRemovePendingBubble(tempId);
     await fbDb.ref(path+'/meta').set({ lastText: '⭕ Видео-кружок', lastTs: ts, lastFrom: myKeyVal });
     fbDb.ref(path+'/lastRead/'+myKeyVal).set(ts);
     const viewerSnap = await fbDb.ref('activeChatViewers/'+fbKey(otherUsername)).once('value');
@@ -9715,6 +9769,8 @@ function generateVideoPoster(id, src){
           clipPoster.insertAdjacentHTML('beforeend', `<span class="chat-clip-poster-duration">${formatVoiceDuration(chatVideoDurationById[id])}</span>`);
         }
       }
+      const stickerVid = document.querySelector(`.chat-sticker-vid[data-video-id="${CSS.escape(id)}"]`);
+      if(stickerVid) stickerVid.poster = dataUrl;
     } catch(e) {
       console.warn('video poster generation failed:', e);
     }
@@ -9735,8 +9791,12 @@ function openVideoViewer(src, poster){
   // first-frame poster already generated for the closed circle (see
   // generateVideoPoster) means the real first frame shows there instead,
   // with just a small spinner (not a fake play button — this view autoplays)
-  // on top until playback actually starts.
-  videoEl.poster = poster || '';
+  // on top until playback actually starts. Falls back to a blank pixel
+  // rather than '' when that poster isn't generated yet (e.g. a message
+  // that just this second arrived) — an empty poster is the same as no
+  // poster at all to the browser, so it'd fall straight back to that same
+  // generic icon for however long the real one takes to show up.
+  videoEl.poster = poster || BLANK_VIDEO_POSTER;
   videoEl.src = src;
   spinner.style.display = 'block';
   overlay.classList.add('show');
@@ -9784,11 +9844,13 @@ function openClipViewer(src, startTime, autoplay, poster){
   chatVoiceAudioEl.pause();
   const overlay = document.getElementById('chatClipViewerOverlay');
   const videoEl = document.getElementById('chatClipViewerEl');
-  // Without this, the element shows a plain black box (no frame decoded
-  // yet) until playback actually starts — the same real first-frame
-  // thumbnail already generated for the poster/circle (see
-  // generateVideoPoster) fills that gap instead.
-  videoEl.poster = poster || '';
+  // Without this, the browser falls back to its own generic gray
+  // circle-and-triangle placeholder (not a blank box) until a frame
+  // decodes — the same real first-frame thumbnail already generated for
+  // the poster/circle (see generateVideoPoster) fills that gap instead;
+  // BLANK_VIDEO_POSTER covers the case where that isn't ready yet, since
+  // an empty poster is the same as no poster to the browser.
+  videoEl.poster = poster || BLANK_VIDEO_POSTER;
   videoEl.src = src;
   overlay.classList.add('show');
   if(startTime) videoEl.currentTime = startTime;
@@ -9850,8 +9912,10 @@ document.getElementById('chatThreadMessages').addEventListener('click', e=>{
     video.src = wrap.dataset.clipSrc;
     const aspect = chatVideoAspectById[id];
     if(aspect) video.style.aspectRatio = aspect;
-    const posterUrl = chatVideoPosterById[id];
-    if(posterUrl) video.poster = posterUrl;
+    // Same reasoning as openVideoViewer/openClipViewer's own poster
+    // fallback — an unset poster here would flash the browser's generic
+    // gray play-icon placeholder over what a second ago was a real photo.
+    video.poster = chatVideoPosterById[id] || BLANK_VIDEO_POSTER;
     poster.replaceWith(video);
     video.play().catch(()=>{});
     return;
