@@ -8585,7 +8585,15 @@ function closeChatEmojiPanel(){
 }
 document.getElementById('chatEmojiBtn').addEventListener('click', ()=>{
   renderChatEmojiPanel();
-  document.getElementById('chatEmojiPanel').classList.toggle('show');
+  const panel = document.getElementById('chatEmojiPanel');
+  const opening = !panel.classList.contains('show');
+  panel.classList.toggle('show');
+  // Blurring when opening dismisses the keyboard — without this, tapping
+  // the emoji button while already typing left the keyboard up underneath
+  // the panel, both fighting for the same space at the bottom of the
+  // screen and squeezing the text field (which sits between them) out of
+  // view entirely. Only one of {keyboard, panel} should ever be up.
+  if(opening) chatInputEl.blur();
 });
 // Opening the keyboard (tapping the text field) puts the emoji panel in the
 // way of it on a small screen — same "one or the other, not both" behavior
@@ -8612,6 +8620,7 @@ async function sendCurrentChatMessage(){
   autoResizeChatInput();
   updateChatComposerButtons();
   chatClearTyping();
+  closeChatEmojiPanel();
   const path = chatPairPath(otherUsername);
   const myKeyVal = fbKey(state.profile.username);
   const ts = firebase.database.ServerValue.TIMESTAMP;
