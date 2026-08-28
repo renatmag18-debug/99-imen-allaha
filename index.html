@@ -743,6 +743,12 @@ body{
 .nav-arrow{ width:44px;height:44px;border-radius:50%; border:1px solid var(--line); background:var(--glass); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--ivory);}
 .nav-arrow:active{ transform:scale(.9); }
 .nav-arrow svg{width:18px;height:18px;}
+.chat-call-btn{
+  width:40px; height:40px; border-radius:50%; border:1px solid var(--line); background:var(--glass);
+  display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--jade); flex-shrink:0;
+}
+.chat-call-btn:active{ transform:scale(.9); }
+.chat-call-btn svg{ width:18px; height:18px; }
 
 /* ================= QURAN READER =================
    Страницы приходят с api.quran.com (/verses/by_page/N) — та же
@@ -1083,6 +1089,34 @@ body{
 }
 #chatImageViewerOverlay.show{ opacity:1; pointer-events:auto; }
 #chatImageViewerImg{ max-width:92vw; max-height:88vh; border-radius:10px; object-fit:contain; }
+
+#callOverlay{
+  position:fixed; inset:0; z-index:70; background:linear-gradient(180deg, var(--bg), var(--panel-2));
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+  opacity:0; pointer-events:none; transition:opacity .2s var(--ease);
+  padding:40px 20px calc(60px + var(--safe-bottom));
+}
+#callOverlay.show{ opacity:1; pointer-events:auto; }
+.call-avatar-wrap{ margin-bottom:10px; }
+.call-name{ font-family:var(--font-display); font-size:24px; font-weight:300; color:var(--ivory); text-align:center; }
+.call-status{ font-size:14px; color:var(--ivory-dim); margin-bottom:auto; }
+.call-actions{ display:flex; align-items:center; gap:28px; margin-top:auto; }
+.call-action-btn{
+  width:64px; height:64px; border-radius:50%; border:none; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; color:#fff;
+}
+.call-action-btn svg{ width:26px; height:26px; }
+.call-action-btn.accept{ background:var(--jade); }
+.call-action-btn.decline, .call-action-btn.end{ background:var(--rose); }
+.call-action-btn.decline svg, .call-action-btn.end svg{ transform:rotate(135deg); }
+.call-action-btn:active{ transform:scale(.92); }
+.call-toggle-btn{
+  width:52px; height:52px; border-radius:50%; border:1px solid var(--line); background:var(--glass);
+  display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--ivory);
+}
+.call-toggle-btn svg{ width:20px; height:20px; }
+.call-toggle-btn.active{ background:var(--gold); color:var(--on-accent); border-color:var(--gold); }
+.call-toggle-btn:active{ transform:scale(.92); }
 
 .quran-legend-toggle{
   display:flex; align-items:center; justify-content:space-between; width:100%;
@@ -2456,6 +2490,9 @@ body{
         <div class="chat-thread-title">
           <span id="chatThreadName"></span>
         </div>
+        <button class="chat-call-btn" id="chatCallBtn" aria-label="Позвонить" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4.5 5c0-.6.4-1 1-1h2.6c.5 0 .9.3 1 .8l.8 3.3c.1.4 0 .8-.3 1.1l-1.6 1.6a13 13 0 006 6l1.6-1.6c.3-.3.7-.4 1.1-.3l3.3.8c.5.1.8.5.8 1V19c0 .6-.4 1-1 1h-1.5C9.6 20 4 14.4 4 7.5V5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        </button>
       </div>
       <div class="chat-thread-scroll" id="chatThreadScroll">
         <div id="chatThreadMessages"></div>
@@ -2529,6 +2566,33 @@ body{
       <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
     </button>
     <video id="chatClipViewerEl" controls playsinline></video>
+  </div>
+
+  <div id="callOverlay">
+    <div class="call-avatar-wrap">
+      <div class="friend-avatar" id="callAvatar" style="width:96px;height:96px;font-size:36px;"></div>
+    </div>
+    <div class="call-name" id="callName"></div>
+    <div class="call-status" id="callStatusText"></div>
+    <div class="call-actions" id="callIncomingActions" style="display:none;">
+      <button class="call-action-btn decline" id="callDeclineBtn" aria-label="Отклонить">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M4.5 5c0-.6.4-1 1-1h2.6c.5 0 .9.3 1 .8l.8 3.3c.1.4 0 .8-.3 1.1l-1.6 1.6a13 13 0 006 6l1.6-1.6c.3-.3.7-.4 1.1-.3l3.3.8c.5.1.8.5.8 1V19c0 .6-.4 1-1 1h-1.5C9.6 20 4 14.4 4 7.5V5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="call-action-btn accept" id="callAcceptBtn" aria-label="Принять">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M4.5 5c0-.6.4-1 1-1h2.6c.5 0 .9.3 1 .8l.8 3.3c.1.4 0 .8-.3 1.1l-1.6 1.6a13 13 0 006 6l1.6-1.6c.3-.3.7-.4 1.1-.3l3.3.8c.5.1.8.5.8 1V19c0 .6-.4 1-1 1h-1.5C9.6 20 4 14.4 4 7.5V5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+    <div class="call-actions" id="callActiveActions" style="display:none;">
+      <button class="call-toggle-btn" id="callMuteBtn" aria-label="Выключить микрофон">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 15a3 3 0 003-3V6a3 3 0 10-6 0v6a3 3 0 003 3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M19 11a7 7 0 01-14 0M12 18v3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+      <button class="call-action-btn end" id="callEndBtn" aria-label="Завершить звонок">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M4.5 5c0-.6.4-1 1-1h2.6c.5 0 .9.3 1 .8l.8 3.3c.1.4 0 .8-.3 1.1l-1.6 1.6a13 13 0 006 6l1.6-1.6c.3-.3.7-.4 1.1-.3l3.3.8c.5.1.8.5.8 1V19c0 .6-.4 1-1 1h-1.5C9.6 20 4 14.4 4 7.5V5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="call-toggle-btn" id="callSpeakerBtn" aria-label="Громкая связь">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M4 9v6h4l5 4V5L8 9H4z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M17.5 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+    </div>
   </div>
 
   <div class="sheet-backdrop" id="quranSurahBackdrop"></div>
@@ -6947,6 +7011,7 @@ async function listenFriendsRealtime(){
     updateFriendsBadge();
   });
   setupPresence();
+  if(typeof watchIncomingCalls === 'function') watchIncomingCalls();
 }
 
 /* ---------------- online presence (Firebase RTDB) ---------------- */
@@ -7323,6 +7388,286 @@ function updateFriendsBadge(){
   const has = state.incomingRequests.length>0 || state.duelInvites.length>0 || state.challengeInvites.length>0 || state.dhikrInvites.length>0 || hasUnreadChat;
   document.getElementById('friendsBadge').style.display = has ? 'block' : 'none';
 }
+
+/* =====================================================
+   AUDIO CALLS
+   One-to-one voice calls over WebRTC, but entirely through the native
+   CallManager bridge (see MainActivity.kt) — the WebView's own
+   getUserMedia({audio:true}) fails with NotReadableError on real devices
+   (same bug the voice-message recorder works around with its own native
+   MediaRecorder path), and WebRTC has no equivalent workaround since a live
+   MediaStreamTrack has to come from *some* getUserMedia-shaped call. Only
+   available inside the Android app, not the plain website, for that reason.
+
+   Signaling rides on the same Firebase RTDB already used for chat:
+     calls/{callId} — { caller, callee, status, offer:{sdp}, answer:{sdp} }
+     calls/{callId}/candidates/{caller|callee}/{pushId} — one ICE candidate
+     incomingCall/{calleeKey} — set while ringing, so the callee's client
+       (listening globally, not just while a specific chat is open) finds
+       out about a call the moment it's placed.
+
+   Free STUN only (Google's public servers), no TURN relay — a call between
+   two people both behind a restrictive/symmetric NAT may fail to connect;
+   that's the real cost of not paying for a relay service, not a bug here.
+===================================================== */
+function hasNativeCalling(){
+  return !!(window.AndroidApp && window.AndroidApp.startCall);
+}
+const CALL_RING_TIMEOUT_MS = 30000;
+function callPath(callId){ return 'calls/'+callId; }
+
+// null when idle; otherwise the one call currently being placed, ringing,
+// or in progress — only one at a time, in either direction.
+let callState = null;
+
+function callResetState(){
+  if(callState){
+    (callState.listeners||[]).forEach(off => { try{ off(); }catch(e){} });
+    if(callState.ringTimeoutHandle) clearTimeout(callState.ringTimeoutHandle);
+    if(callState.durationHandle) clearInterval(callState.durationHandle);
+  }
+  callState = null;
+  renderCallOverlay();
+}
+
+function renderCallOverlay(){
+  const overlay = document.getElementById('callOverlay');
+  if(!callState){ overlay.classList.remove('show'); return; }
+  document.getElementById('callName').textContent = callState.otherName || callState.otherUsername;
+  renderAvatarInto(document.getElementById('callAvatar'), callState.otherAvatar, callState.otherName || callState.otherUsername);
+  let statusText;
+  if(callState.uiMode === 'incoming') statusText = 'Входящий звонок…';
+  else if(callState.uiMode === 'outgoing') statusText = 'Вызов…';
+  else statusText = callState.connected ? formatVoiceDuration(callState.durationSec||0) : 'Соединение…';
+  document.getElementById('callStatusText').textContent = statusText;
+  document.getElementById('callIncomingActions').style.display = callState.uiMode === 'incoming' ? 'flex' : 'none';
+  document.getElementById('callActiveActions').style.display = callState.uiMode !== 'incoming' ? 'flex' : 'none';
+  document.getElementById('callMuteBtn').classList.toggle('active', !!callState.muted);
+  document.getElementById('callSpeakerBtn').classList.toggle('active', !!callState.speakerOn);
+  overlay.classList.add('show');
+}
+
+function callStartDurationTimer(){
+  if(!callState || callState.durationHandle) return;
+  callState.durationSec = 0;
+  callState.durationHandle = setInterval(()=>{
+    if(!callState) return;
+    callState.durationSec = (callState.durationSec||0) + 1;
+    renderCallOverlay();
+  }, 1000);
+}
+
+// Shared by both roles once a call is underway: relays the other side's ICE
+// candidates into the native peer connection, and reacts to the call-level
+// status the other side writes (answered, declined, hung up, ...).
+function callAttachCommonListeners(callId, remoteRole){
+  const candRef = fbDb.ref(callPath(callId)+'/candidates/'+remoteRole);
+  const candListener = snap => {
+    const c = snap.val();
+    if(c && window.AndroidApp && window.AndroidApp.addRemoteCallIceCandidate){
+      window.AndroidApp.addRemoteCallIceCandidate(c.sdpMid || '', c.sdpMLineIndex || 0, c.sdp || '');
+    }
+  };
+  candRef.on('child_added', candListener);
+  callState.listeners.push(()=> candRef.off('child_added', candListener));
+
+  const statusRef = fbDb.ref(callPath(callId)+'/status');
+  const statusListener = snap => {
+    const status = snap.val();
+    if(!callState || callState.callId !== callId) return;
+    if(status === 'active'){
+      if(callState.ringTimeoutHandle){ clearTimeout(callState.ringTimeoutHandle); callState.ringTimeoutHandle = null; }
+      if(callState.uiMode !== 'active'){
+        callState.uiMode = 'active';
+        renderCallOverlay();
+      }
+    } else if(status === 'declined' || status === 'ended' || status === 'cancelled' || status === 'missed'){
+      const msg = status === 'declined' ? 'Звонок отклонён' : (status === 'missed' ? 'Нет ответа' : 'Звонок завершён');
+      showToast(msg);
+      endCurrentCall(true);
+    }
+  };
+  statusRef.on('value', statusListener);
+  callState.listeners.push(()=> statusRef.off('value', statusListener));
+}
+
+function callWatchAnswer(callId){
+  const answerRef = fbDb.ref(callPath(callId)+'/answer/sdp');
+  const listener = snap => {
+    const sdp = snap.val();
+    if(sdp && callState && callState.callId === callId && window.AndroidApp && window.AndroidApp.setRemoteCallAnswer){
+      window.AndroidApp.setRemoteCallAnswer(sdp);
+    }
+  };
+  answerRef.on('value', listener);
+  callState.listeners.push(()=> answerRef.off('value', listener));
+}
+
+async function startOutgoingCall(otherUsername, otherName, otherAvatar){
+  if(!hasNativeCalling()){ showToast('Звонки пока доступны только в приложении'); return; }
+  if(callState){ showToast('Уже есть активный звонок'); return; }
+  await fbAuthReady;
+  if(!fbDb || !state.profile || !state.profile.authenticated){ showToast('Нет соединения с сервером'); return; }
+  const myKeyVal = fbKey(state.profile.username);
+  const otherKeyVal = fbKey(otherUsername);
+  const callRef = fbDb.ref('calls').push();
+  const callId = callRef.key;
+  callState = { callId, role:'caller', uiMode:'outgoing', otherUsername, otherName, otherAvatar, listeners:[] };
+  renderCallOverlay();
+  try{
+    await callRef.set({
+      caller: myKeyVal, callee: otherKeyVal,
+      callerUsername: state.profile.username, callerName: state.profile.username,
+      status: 'ringing', createdAt: firebase.database.ServerValue.TIMESTAMP
+    });
+  }catch(e){
+    console.warn('startOutgoingCall failed:', e);
+    showToast('Не удалось начать звонок');
+    callResetState();
+    return;
+  }
+  fbDb.ref('incomingCall/'+otherKeyVal).set({ callId, callerUsername: state.profile.username, callerName: state.profile.username, ts: firebase.database.ServerValue.TIMESTAMP });
+  notifyFriend(otherUsername, '📞 Входящий звонок', state.profile.username+' звонит', 'incoming-call', baseUrl());
+  callAttachCommonListeners(callId, 'callee');
+  callWatchAnswer(callId);
+  callState.ringTimeoutHandle = setTimeout(()=>{
+    if(callState && callState.callId === callId && callState.uiMode === 'outgoing'){
+      fbDb.ref(callPath(callId)+'/status').set('missed');
+      fbDb.ref('incomingCall/'+otherKeyVal).remove();
+      showToast('Друг не отвечает');
+      endCurrentCall(true);
+    }
+  }, CALL_RING_TIMEOUT_MS);
+  window.AndroidApp.startCall();
+}
+
+function watchIncomingCalls(){
+  if(!fbDb || !state.profile || !state.profile.username) return;
+  const myKeyVal = fbKey(state.profile.username);
+  fbDb.ref('incomingCall/'+myKeyVal).on('value', snap=>{
+    const val = snap.val();
+    if(!val){
+      if(callState && callState.role === 'callee' && callState.uiMode === 'incoming'){
+        callResetState();
+      }
+      return;
+    }
+    if(callState) return; // already placing/in a call — a second incoming ring is ignored (no call waiting in v1)
+    if(!hasNativeCalling()) return; // ringing with no way to answer would just be a dead end
+    const friend = (state.friendsList||[]).find(f=>fbKey(f.uid)===fbKey(val.callerUsername));
+    callState = {
+      callId: val.callId, role:'callee', uiMode:'incoming',
+      otherUsername: val.callerUsername, otherName: val.callerName || val.callerUsername,
+      otherAvatar: friend ? friend.avatar : null, listeners:[]
+    };
+    renderCallOverlay();
+    callAttachCommonListeners(val.callId, 'caller');
+  });
+}
+
+async function acceptIncomingCall(){
+  if(!callState || callState.role !== 'callee' || callState.uiMode !== 'incoming') return;
+  const callId = callState.callId;
+  const myKeyVal = fbKey(state.profile.username);
+  try{
+    const offerSnap = await fbDb.ref(callPath(callId)+'/offer/sdp').once('value');
+    const offerSdp = offerSnap.val();
+    if(!offerSdp || !callState || callState.callId !== callId){ throw new Error('no offer'); }
+    fbDb.ref('incomingCall/'+myKeyVal).remove();
+    await fbDb.ref(callPath(callId)+'/status').set('active');
+    callState.uiMode = 'active';
+    renderCallOverlay();
+    window.AndroidApp.answerCall(offerSdp);
+  }catch(e){
+    console.warn('acceptIncomingCall failed:', e);
+    showToast('Не удалось принять звонок');
+    endCurrentCall(false);
+  }
+}
+
+function declineIncomingCall(){
+  if(!callState || callState.role !== 'callee' || callState.uiMode !== 'incoming') return;
+  fbDb.ref(callPath(callState.callId)+'/status').set('declined');
+  fbDb.ref('incomingCall/'+fbKey(state.profile.username)).remove();
+  callResetState();
+}
+
+// alreadySignaled: true when called in reaction to the OTHER side's status
+// change (so writing our own status here would just be redundant/wrong).
+function endCurrentCall(alreadySignaled){
+  if(window.AndroidApp && window.AndroidApp.endCall) window.AndroidApp.endCall();
+  if(!callState){ return; }
+  const callId = callState.callId;
+  if(!alreadySignaled && fbDb){
+    const wasRinging = callState.uiMode === 'outgoing' || callState.uiMode === 'incoming';
+    fbDb.ref(callPath(callId)+'/status').set(callState.role === 'caller' && wasRinging ? 'cancelled' : 'ended');
+    if(callState.role === 'callee') fbDb.ref('incomingCall/'+fbKey(state.profile.username)).remove();
+    else fbDb.ref('incomingCall/'+fbKey(callState.otherUsername)).remove();
+  }
+  // Tidies up the finished call's own record a few seconds later — long
+  // enough for the other side's listener to have already reacted to the
+  // status flip above; RTDB has no automatic expiry of its own.
+  if(fbDb) setTimeout(()=>{ fbDb.ref(callPath(callId)).remove(); }, 5000);
+  callResetState();
+}
+
+document.getElementById('chatCallBtn').addEventListener('click', ()=>{
+  if(!state.activeChat) return;
+  startOutgoingCall(state.activeChat.uid, state.activeChat.name, state.activeChat.avatar);
+});
+document.getElementById('callAcceptBtn').addEventListener('click', acceptIncomingCall);
+document.getElementById('callDeclineBtn').addEventListener('click', declineIncomingCall);
+document.getElementById('callEndBtn').addEventListener('click', ()=> endCurrentCall(false));
+document.getElementById('callMuteBtn').addEventListener('click', ()=>{
+  if(!callState) return;
+  callState.muted = !callState.muted;
+  if(window.AndroidApp && window.AndroidApp.setCallMuted) window.AndroidApp.setCallMuted(callState.muted);
+  renderCallOverlay();
+});
+document.getElementById('callSpeakerBtn').addEventListener('click', ()=>{
+  if(!callState) return;
+  callState.speakerOn = !callState.speakerOn;
+  if(window.AndroidApp && window.AndroidApp.setCallSpeaker) window.AndroidApp.setCallSpeaker(callState.speakerOn);
+  renderCallOverlay();
+});
+
+// --- native bridge callbacks (see MainActivity.kt/CallManager.kt) ---
+window.onCallOfferReady = function(sdp){
+  if(!callState || callState.role !== 'caller' || !fbDb) return;
+  fbDb.ref(callPath(callState.callId)+'/offer').set({ sdp });
+};
+window.onCallAnswerReady = function(sdp){
+  if(!callState || callState.role !== 'callee' || !fbDb) return;
+  fbDb.ref(callPath(callState.callId)+'/answer').set({ sdp });
+};
+window.onCallLocalIceCandidate = function(sdpMid, sdpMLineIndex, sdp){
+  if(!callState || !fbDb) return;
+  fbDb.ref(callPath(callState.callId)+'/candidates/'+callState.role).push({ sdpMid, sdpMLineIndex, sdp });
+};
+window.onCallStateChange = function(connState){
+  if(!callState) return;
+  if(connState === 'connected'){
+    callState.connected = true;
+    callStartDurationTimer();
+    renderCallOverlay();
+  } else if(connState === 'failed' || connState === 'closed'){
+    if(callState.connected || callState.uiMode === 'active'){
+      showToast(connState === 'failed' ? 'Соединение прервано' : 'Звонок завершён');
+    }
+    endCurrentCall(true);
+  }
+};
+window.onCallError = function(reason){
+  console.warn('call error:', reason);
+  const messages = {
+    permission: 'Нет доступа к микрофону',
+    start_failed: 'Не удалось начать звонок',
+    answer_failed: 'Не удалось принять звонок',
+    remote_answer_failed: 'Ошибка соединения'
+  };
+  showToast(messages[reason] || 'Ошибка звонка');
+  endCurrentCall(false);
+};
 
 let friendPresenceUnsubs = [];
 function renderFriendsScreen(){
@@ -7822,6 +8167,7 @@ function openChatThread(username, name, avatar){
   state.activeChat = { uid: username, name, avatar };
   go('chat');
   document.getElementById('chatThreadName').textContent = name;
+  document.getElementById('chatCallBtn').style.display = (typeof hasNativeCalling === 'function' && hasNativeCalling()) ? 'flex' : 'none';
   renderAvatarInto(document.getElementById('chatThreadAvatar'), avatar, name);
   document.getElementById('chatThreadMessages').innerHTML = '';
   chatThreadOtherLastRead = 0;
