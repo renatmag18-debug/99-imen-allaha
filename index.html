@@ -1139,6 +1139,35 @@ body{
 #chatClipViewerOverlay.show{ opacity:1; pointer-events:auto; }
 #chatClipViewerEl{ max-width:100vw; max-height:100vh; width:auto; height:auto; }
 
+/* Lets a sticker's crop/zoom/pan be adjusted before saving, rather than
+   always auto-cropping dead-center — the square viewport below *is* the
+   final crop window (what's visible is exactly what gets saved), dragged
+   and zoomed via pointer events, matching the confirm handler's math in JS. */
+#stickerEditorOverlay{
+  position:fixed; inset:0; z-index:70; background:rgba(4,10,12,.96);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity .18s var(--ease);
+}
+#stickerEditorOverlay.show{ opacity:1; pointer-events:auto; }
+.sticker-editor-head{
+  position:absolute; top:0; left:0; right:0; display:flex; align-items:center; justify-content:space-between;
+  padding:calc(14px + var(--safe-top)) 16px 14px;
+}
+.sticker-editor-title{ color:var(--ivory); font-family:var(--font-display); font-size:15px; }
+.sticker-editor-btn{
+  width:38px; height:38px; border-radius:50%; border:none; background:rgba(255,255,255,.12); color:#fff;
+  display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;
+}
+.sticker-editor-btn svg{ width:18px; height:18px; }
+.sticker-editor-done{ background:var(--gold); color:var(--on-accent); }
+.sticker-editor-viewport{
+  position:relative; width:min(78vw,320px); height:min(78vw,320px); border-radius:20px; overflow:hidden;
+  background:#000; touch-action:none; cursor:grab;
+}
+#stickerEditorImg{ position:absolute; top:50%; left:50%; max-width:none; user-select:none; -webkit-user-drag:none; pointer-events:none; }
+.sticker-editor-controls{ display:flex; align-items:center; gap:10px; margin-top:22px; width:min(78vw,320px); color:var(--ivory-dim); }
+.sticker-editor-controls input[type="range"]{ flex:1; accent-color:var(--gold); }
+
 .chat-bubble.pending{ background:none; border:none; padding:0; }
 .chat-bubble-row.mine .chat-bubble.pending{ background:none; border:none; padding:0; }
 .chat-pending-voice{
@@ -2670,6 +2699,25 @@ body{
       <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
     </button>
     <video id="chatClipViewerEl" controls playsinline></video>
+  </div>
+
+  <div id="stickerEditorOverlay">
+    <div class="sticker-editor-head">
+      <button type="button" class="sticker-editor-btn" id="stickerEditorCancel" aria-label="Отмена">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+      <span class="sticker-editor-title">Новый стикер</span>
+      <button type="button" class="sticker-editor-btn sticker-editor-done" id="stickerEditorDone" aria-label="Готово">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+    <div class="sticker-editor-viewport" id="stickerEditorViewport">
+      <img id="stickerEditorImg" draggable="false" alt="">
+    </div>
+    <div class="sticker-editor-controls">
+      <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <input type="range" id="stickerEditorZoom" min="100" max="300" value="100">
+    </div>
   </div>
 
   <div id="callOverlay">
@@ -8684,29 +8732,6 @@ function renderChatStickerGrid(){
   ).join('');
   grid.innerHTML = createTile + tilesHtml;
 }
-// Crops to a centered square and downsizes — a sticker never needs to be
-// bigger than it's ever shown (see .chat-sticker-tile/.chat-bubble.sticker),
-// and keeping it small is what keeps a whole library of these cheap to hold
-// in localStorage at all (there's no Storage upload at creation time, only
-// once a sticker is actually sent — see sendStickerMessage).
-function createStickerFromFile(file){
-  return new Promise((resolve, reject)=>{
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      const side = Math.min(img.width, img.height);
-      const sx = (img.width - side) / 2, sy = (img.height - side) / 2;
-      const outSize = Math.min(512, side);
-      const canvas = document.createElement('canvas');
-      canvas.width = outSize; canvas.height = outSize;
-      canvas.getContext('2d').drawImage(img, sx, sy, side, side, 0, 0, outSize, outSize);
-      URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL('image/jpeg', 0.85));
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image load failed')); };
-    img.src = url;
-  });
-}
 document.getElementById('chatStickerGrid').addEventListener('click', e=>{
   if(e.target.closest('#chatStickerCreateTile')){
     document.getElementById('chatStickerCreateInput').click();
@@ -8719,20 +8744,115 @@ document.getElementById('chatStickerGrid').addEventListener('click', e=>{
   if(dataUrl && typeof sendStickerMessage === 'function') sendStickerMessage(dataUrl);
   closeChatEmojiPanel();
 });
-document.getElementById('chatStickerCreateInput').addEventListener('change', async e=>{
+document.getElementById('chatStickerCreateInput').addEventListener('change', e=>{
   const file = e.target.files && e.target.files[0];
   e.target.value = '';
-  if(!file) return;
-  try{
-    const dataUrl = await createStickerFromFile(file);
-    const stickers = loadMyStickers();
-    stickers.push(dataUrl);
-    saveMyStickers(stickers);
-    renderChatStickerGrid();
-  }catch(err){
-    console.warn('createStickerFromFile failed:', err);
-    showToast('Не удалось создать стикер');
-  }
+  if(file) openStickerEditor(file);
+});
+
+/* --- sticker editor: crop/zoom/pan a photo before saving it as a sticker ---
+   A dead-center auto-crop used to be the only option — fine for a portrait
+   already centered on the subject, but anything off-center just got cut
+   off with no way to fix it. The square viewport here *is* the crop
+   window: what's visible on screen when "Готово" is tapped is exactly
+   what gets saved, at a fixed 512px output regardless of on-screen size. */
+let stickerEditorState = null;
+function openStickerEditor(file){
+  const imgEl = document.getElementById('stickerEditorImg');
+  const viewport = document.getElementById('stickerEditorViewport');
+  const zoomSlider = document.getElementById('stickerEditorZoom');
+  const url = URL.createObjectURL(file);
+  imgEl.onload = () => {
+    const size = viewport.getBoundingClientRect().width;
+    // The scale at which the image exactly covers the square viewport with
+    // no gap on either axis — the floor of the zoom range, not a fixed 1x,
+    // since a very wide or very tall photo needs a different minimum than
+    // a square one to avoid showing empty space around the edges.
+    const minScale = Math.max(size / imgEl.naturalWidth, size / imgEl.naturalHeight);
+    stickerEditorState = {
+      url, size,
+      naturalW: imgEl.naturalWidth, naturalH: imgEl.naturalHeight,
+      minScale, scale: minScale,
+      translateX: 0, translateY: 0
+    };
+    zoomSlider.value = 100;
+    applyStickerEditorTransform();
+    document.getElementById('stickerEditorOverlay').classList.add('show');
+  };
+  imgEl.onerror = () => { URL.revokeObjectURL(url); showToast('Не удалось открыть фото'); };
+  imgEl.src = url;
+}
+function closeStickerEditor(){
+  document.getElementById('stickerEditorOverlay').classList.remove('show');
+  if(stickerEditorState) URL.revokeObjectURL(stickerEditorState.url);
+  stickerEditorState = null;
+}
+function applyStickerEditorTransform(){
+  const s = stickerEditorState;
+  if(!s) return;
+  const imgEl = document.getElementById('stickerEditorImg');
+  imgEl.style.width = (s.naturalW * s.scale) + 'px';
+  imgEl.style.height = (s.naturalH * s.scale) + 'px';
+  imgEl.style.transform = `translate(-50%,-50%) translate(${s.translateX}px, ${s.translateY}px)`;
+}
+// Keeps the pan within "the image still fully covers the viewport" — past
+// this the crop window would include empty space beyond the photo's edge.
+function clampStickerEditorTranslate(){
+  const s = stickerEditorState;
+  if(!s) return;
+  const w = s.naturalW * s.scale, h = s.naturalH * s.scale;
+  const maxX = Math.max(0, (w - s.size) / 2);
+  const maxY = Math.max(0, (h - s.size) / 2);
+  s.translateX = Math.min(maxX, Math.max(-maxX, s.translateX));
+  s.translateY = Math.min(maxY, Math.max(-maxY, s.translateY));
+}
+(function(){
+  const viewport = document.getElementById('stickerEditorViewport');
+  let dragStart = null;
+  viewport.addEventListener('pointerdown', e=>{
+    if(!stickerEditorState) return;
+    dragStart = { x: e.clientX, y: e.clientY, tx: stickerEditorState.translateX, ty: stickerEditorState.translateY };
+    viewport.setPointerCapture(e.pointerId);
+  });
+  viewport.addEventListener('pointermove', e=>{
+    if(!dragStart || !stickerEditorState) return;
+    stickerEditorState.translateX = dragStart.tx + (e.clientX - dragStart.x);
+    stickerEditorState.translateY = dragStart.ty + (e.clientY - dragStart.y);
+    clampStickerEditorTranslate();
+    applyStickerEditorTransform();
+  });
+  viewport.addEventListener('pointerup', ()=>{ dragStart = null; });
+  viewport.addEventListener('pointercancel', ()=>{ dragStart = null; });
+})();
+document.getElementById('stickerEditorZoom').addEventListener('input', e=>{
+  if(!stickerEditorState) return;
+  stickerEditorState.scale = stickerEditorState.minScale * (Number(e.target.value) / 100);
+  clampStickerEditorTranslate();
+  applyStickerEditorTransform();
+});
+document.getElementById('stickerEditorCancel').addEventListener('click', closeStickerEditor);
+document.getElementById('stickerEditorDone').addEventListener('click', ()=>{
+  const s = stickerEditorState;
+  if(!s) return;
+  const imgEl = document.getElementById('stickerEditorImg');
+  const outSize = 512;
+  // Solves applyStickerEditorTransform's placement backwards: given the
+  // current scale/translate, which square window of the *original* image
+  // is currently showing in the viewport? Same reasoning, same variables,
+  // just answering "what's on screen right now" instead of "where to draw".
+  const srcSize = s.size / s.scale;
+  const srcCenterX = s.naturalW/2 - s.translateX/s.scale;
+  const srcCenterY = s.naturalH/2 - s.translateY/s.scale;
+  const sx = srcCenterX - srcSize/2, sy = srcCenterY - srcSize/2;
+  const canvas = document.createElement('canvas');
+  canvas.width = outSize; canvas.height = outSize;
+  canvas.getContext('2d').drawImage(imgEl, sx, sy, srcSize, srcSize, 0, 0, outSize, outSize);
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+  const stickers = loadMyStickers();
+  stickers.push(dataUrl);
+  saveMyStickers(stickers);
+  renderChatStickerGrid();
+  closeStickerEditor();
 });
 async function sendCurrentChatMessage(){
   const text = chatInputEl.value.trim();
