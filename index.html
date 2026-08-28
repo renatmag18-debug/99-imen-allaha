@@ -2496,6 +2496,9 @@ body{
         <div class="chat-thread-title">
           <span id="chatThreadName"></span>
         </div>
+        <button class="chat-call-btn" id="chatVideoCallBtn" aria-label="Видеозвонок" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 7a2 2 0 012-2h7a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V7z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M20 9.5l-3 2v1l3 2v-5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        </button>
         <button class="chat-call-btn" id="chatCallBtn" aria-label="Позвонить" style="display:none;">
           <svg viewBox="0 0 24 24" fill="none"><path d="M4.5 5c0-.6.4-1 1-1h2.6c.5 0 .9.3 1 .8l.8 3.3c.1.4 0 .8-.3 1.1l-1.6 1.6a13 13 0 006 6l1.6-1.6c.3-.3.7-.4 1.1-.3l3.3.8c.5.1.8.5.8 1V19c0 .6-.4 1-1 1h-1.5C9.6 20 4 14.4 4 7.5V5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
         </button>
@@ -7487,8 +7490,8 @@ function renderCallOverlay(){
   document.getElementById('callName').textContent = callState.otherName || callState.otherUsername;
   renderAvatarInto(document.getElementById('callAvatar'), callState.otherAvatar, callState.otherName || callState.otherUsername);
   let statusText;
-  if(callState.uiMode === 'incoming') statusText = 'Входящий звонок…';
-  else if(callState.uiMode === 'outgoing') statusText = 'Вызов…';
+  if(callState.uiMode === 'incoming') statusText = callState.video ? 'Входящий видеозвонок…' : 'Входящий звонок…';
+  else if(callState.uiMode === 'outgoing') statusText = callState.video ? 'Видеовызов…' : 'Вызов…';
   else statusText = callState.connected ? formatVoiceDuration(callState.durationSec||0) : 'Соединение…';
   document.getElementById('callStatusText').textContent = statusText;
   document.getElementById('callIncomingActions').style.display = callState.uiMode === 'incoming' ? 'flex' : 'none';
@@ -7555,7 +7558,7 @@ function callWatchAnswer(callId){
   callState.listeners.push(()=> answerRef.off('value', listener));
 }
 
-async function startOutgoingCall(otherUsername, otherName, otherAvatar){
+async function startOutgoingCall(otherUsername, otherName, otherAvatar, withVideo){
   if(!hasNativeCalling()){ showToast('Звонки пока доступны только в приложении'); return; }
   if(callState){ showToast('Уже есть активный звонок'); return; }
   await fbAuthReady;
@@ -7564,13 +7567,13 @@ async function startOutgoingCall(otherUsername, otherName, otherAvatar){
   const otherKeyVal = fbKey(otherUsername);
   const callRef = fbDb.ref('calls').push();
   const callId = callRef.key;
-  callState = { callId, role:'caller', uiMode:'outgoing', otherUsername, otherName, otherAvatar, listeners:[] };
+  callState = { callId, role:'caller', uiMode:'outgoing', video: !!withVideo, otherUsername, otherName, otherAvatar, listeners:[] };
   renderCallOverlay();
   try{
     await callRef.set({
       caller: myKeyVal, callee: otherKeyVal,
       callerUsername: state.profile.username, callerName: state.profile.username,
-      status: 'ringing', createdAt: firebase.database.ServerValue.TIMESTAMP
+      video: !!withVideo, status: 'ringing', createdAt: firebase.database.ServerValue.TIMESTAMP
     });
   }catch(e){
     console.warn('startOutgoingCall failed:', e);
@@ -7585,8 +7588,8 @@ async function startOutgoingCall(otherUsername, otherName, otherAvatar){
     return;
   }
   startCallRingback();
-  fbDb.ref('incomingCall/'+otherKeyVal).set({ callId, callerUsername: state.profile.username, callerName: state.profile.username, ts: firebase.database.ServerValue.TIMESTAMP });
-  notifyFriend(otherUsername, '📞 Входящий звонок', state.profile.username+' звонит', 'incoming-call', baseUrl());
+  fbDb.ref('incomingCall/'+otherKeyVal).set({ callId, callerUsername: state.profile.username, callerName: state.profile.username, video: !!withVideo, ts: firebase.database.ServerValue.TIMESTAMP });
+  notifyFriend(otherUsername, withVideo ? '📹 Входящий видеозвонок' : '📞 Входящий звонок', state.profile.username+' звонит', 'incoming-call', baseUrl());
   callAttachCommonListeners(callId, 'callee');
   callWatchAnswer(callId);
   callState.ringTimeoutHandle = setTimeout(()=>{
@@ -7597,7 +7600,7 @@ async function startOutgoingCall(otherUsername, otherName, otherAvatar){
       endCurrentCall(true);
     }
   }, CALL_RING_TIMEOUT_MS);
-  window.AndroidApp.startCall();
+  window.AndroidApp.startCall(!!withVideo);
 }
 
 function watchIncomingCalls(){
@@ -7615,7 +7618,7 @@ function watchIncomingCalls(){
     if(!hasNativeCalling()) return; // ringing with no way to answer would just be a dead end
     const friend = (state.friendsList||[]).find(f=>fbKey(f.uid)===fbKey(val.callerUsername));
     callState = {
-      callId: val.callId, role:'callee', uiMode:'incoming',
+      callId: val.callId, role:'callee', uiMode:'incoming', video: !!val.video,
       otherUsername: val.callerUsername, otherName: val.callerName || val.callerUsername,
       otherAvatar: friend ? friend.avatar : null, listeners:[]
     };
@@ -7645,7 +7648,7 @@ async function acceptIncomingCall(){
     renderCallOverlay();
     fbDb.ref('incomingCall/'+myKeyVal).remove();
     await fbDb.ref(callPath(callId)+'/status').set('active');
-    window.AndroidApp.answerCall(offerSdp);
+    window.AndroidApp.answerCall(offerSdp, !!callState.video);
   }catch(e){
     console.warn('acceptIncomingCall failed:', e);
     showToast('Не удалось принять звонок' + (e && (e.code || e.message) ? ': ' + (e.code || e.message) : ''));
@@ -7681,7 +7684,11 @@ function endCurrentCall(alreadySignaled){
 
 document.getElementById('chatCallBtn').addEventListener('click', ()=>{
   if(!state.activeChat) return;
-  startOutgoingCall(state.activeChat.uid, state.activeChat.name, state.activeChat.avatar);
+  startOutgoingCall(state.activeChat.uid, state.activeChat.name, state.activeChat.avatar, false);
+});
+document.getElementById('chatVideoCallBtn').addEventListener('click', ()=>{
+  if(!state.activeChat) return;
+  startOutgoingCall(state.activeChat.uid, state.activeChat.name, state.activeChat.avatar, true);
 });
 document.getElementById('callAcceptBtn').addEventListener('click', acceptIncomingCall);
 document.getElementById('callDeclineBtn').addEventListener('click', declineIncomingCall);
@@ -8275,6 +8282,7 @@ function openChatThread(username, name, avatar){
   go('chat');
   document.getElementById('chatThreadName').textContent = name;
   document.getElementById('chatCallBtn').style.display = (typeof hasNativeCalling === 'function' && hasNativeCalling()) ? 'flex' : 'none';
+  document.getElementById('chatVideoCallBtn').style.display = (typeof hasNativeCalling === 'function' && hasNativeCalling()) ? 'flex' : 'none';
   renderAvatarInto(document.getElementById('chatThreadAvatar'), avatar, name);
   document.getElementById('chatThreadMessages').innerHTML = '';
   chatThreadOtherLastRead = 0;
