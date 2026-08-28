@@ -7642,15 +7642,18 @@ window.onCallStateChange = function(connState){
     endCurrentCall(true);
   }
 };
-window.onCallError = function(reason){
-  console.warn('call error:', reason);
+window.onCallError = function(reason, detail){
+  console.warn('call error:', reason, detail);
   const messages = {
     permission: 'Нет доступа к микрофону',
     start_failed: 'Не удалось начать звонок',
     answer_failed: 'Не удалось принять звонок',
     remote_answer_failed: 'Ошибка соединения'
   };
-  showToast(messages[reason] || 'Ошибка звонка');
+  // detail is the raw native error (see MainActivity's reportCallError) —
+  // shown alongside the friendly text so a failure is diagnosable from a
+  // screenshot alone, without needing adb/remote-debugging access.
+  showToast((messages[reason] || 'Ошибка звонка') + (detail ? ': ' + detail : ''));
   endCurrentCall(false);
 };
 
