@@ -9253,10 +9253,14 @@ document.getElementById('chatThreadMessages').addEventListener('click', e=>{
     }
     return;
   }
-  const clipPosterPlay = e.target.closest('.chat-clip-poster-play');
-  if(clipPosterPlay){
-    const wrap = clipPosterPlay.closest('.chat-clip-wrap');
-    const poster = wrap.querySelector('.chat-clip-poster');
+  // The play button itself is pointer-events:none (same as the video-circle
+  // button above it) so it doesn't intercept taps meant for the poster —
+  // meaning e.target is always the poster div underneath, never the button;
+  // matching against .chat-clip-poster-play here would just never fire.
+  const clipPoster = e.target.closest('.chat-clip-poster');
+  if(clipPoster){
+    const wrap = clipPoster.closest('.chat-clip-wrap');
+    const poster = clipPoster;
     const id = wrap.dataset.videoId;
     // Swaps the plain poster for a real, playing <video controls> — this is
     // the one moment a native buffering spinner is actually expected, since
