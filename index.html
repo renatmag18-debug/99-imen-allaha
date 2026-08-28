@@ -1042,6 +1042,29 @@ body{
 .chat-clip-video{
   display:block; max-width:240px; max-height:320px; width:100%; border-radius:14px; background:#000;
 }
+/* Shown instead of a live <video> until it's actually tapped — the native
+   <video controls> element starts fetching/buffering (and shows its own
+   loading spinner) the moment it exists at all, which with nothing cached
+   between app opens (see loadFreshWebContent's own comment on why the whole
+   page reloads fresh every launch) meant a spinner flashed around the play
+   button on every single chat open. A plain poster image + custom play
+   button, matching the video-circle player right above, defers all of that
+   to the moment of actual intent to watch — exactly what Telegram does. */
+.chat-clip-poster{
+  position:relative; width:100%; max-width:240px; max-height:320px; border-radius:14px;
+  background:#000 center top/cover no-repeat; cursor:pointer; overflow:hidden;
+  aspect-ratio:3/4; /* replaced inline once the real ratio is known — see chatVideoAspectById */
+}
+.chat-clip-poster-play{
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:48px; height:48px; border-radius:50%; border:none; background:rgba(0,0,0,.45); color:#fff;
+  display:flex; align-items:center; justify-content:center; pointer-events:none;
+}
+.chat-clip-poster-play svg{ width:22px; height:22px; }
+.chat-clip-poster-duration{
+  position:absolute; bottom:8px; left:8px; font-size:11px; color:#fff; font-family:var(--font-num);
+  background:rgba(0,0,0,.45); padding:1px 7px; border-radius:8px; pointer-events:none;
+}
 .chat-clip-fullscreen-btn{
   position:absolute; top:8px; right:8px; z-index:2; width:30px; height:30px; border-radius:50%;
   border:none; background:rgba(0,0,0,.55); color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer;
@@ -8092,6 +8115,14 @@ let chatInitialLoadStickUntil = 0;
 // around and avoids redoing the canvas grab on every re-render.
 let chatVideoPosterById = {};
 let chatVideoPosterPending = new Set();
+// A regular (non-circle) video attachment's real width/height, as
+// "w/h" — same lifetime/reasoning as chatVideoPosterById, just for
+// reserving the right box shape instead of the right thumbnail.
+let chatVideoAspectById = {};
+// Duration (seconds), read off the same hidden probe video used to grab the
+// poster frame — clip messages (unlike circles) never had this from the
+// sender's side, so this is the only source for it.
+let chatVideoDurationById = {};
 // Legacy voice/video messages (audioData/videoData, embedded base64) predate
 // the Storage migration — confirmed on a real device that Firebase's live
 // listener re-sending the WHOLE matched dataset (all 300 messages, embedded
@@ -8238,13 +8269,27 @@ function renderChatThreadMessages(messagesObj, isLiveSnapshot){
     } else if(m.type === 'clip'){
       if(m.clipUrl && !chatVideoPosterById[id]) generateVideoPoster(id, m.clipUrl);
       const clipPoster = chatVideoPosterById[id];
-      const posterAttr = clipPoster ? ` poster="${escapeHtml(clipPoster)}"` : '';
-      // The native <video controls> fullscreen icon is a no-op in this
-      // WebView (no onShowCustomView support to grant it), so this adds its
-      // own fullscreen button wired to a JS-driven overlay (openClipViewer)
-      // instead of relying on the browser's built-in fullscreen API at all.
-      bodyHtml = `<div class="chat-clip-wrap">
-           <video class="chat-clip-video" data-video-id="${escapeHtml(id)}" controls playsinline preload="metadata" src="${escapeHtml(m.clipUrl||'')}"${posterAttr}></video>
+      // Reserves the video's real box shape from the very first paint when
+      // it's already known (cached from an earlier load this session — see
+      // generateVideoPoster) — without this, the box starts at some generic
+      // default and only resizes once real dimensions are known, which for
+      // a vertical clip is a big, jarring reflow of everything below it.
+      const clipAspect = chatVideoAspectById[id];
+      const aspectStyle = clipAspect ? `aspect-ratio:${clipAspect};` : '';
+      const posterBg = clipPoster ? `background-image:url(${clipPoster});` : '';
+      const clipDuration = chatVideoDurationById[id];
+      const durationHtml = clipDuration ? `<span class="chat-clip-poster-duration">${formatVoiceDuration(clipDuration)}</span>` : '';
+      // Stays a plain poster + play button (no live <video> at all — see
+      // .chat-clip-poster's own comment) until actually tapped; the fullscreen
+      // button works straight off data-clip-src either way, so it doesn't
+      // need inline playback to have started first.
+      bodyHtml = `<div class="chat-clip-wrap" data-video-id="${escapeHtml(id)}" data-clip-src="${escapeHtml(m.clipUrl||'')}">
+           <div class="chat-clip-poster" style="${posterBg}${aspectStyle}">
+             <button type="button" class="chat-clip-poster-play" aria-label="Воспроизвести">
+               <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+             </button>
+             ${durationHtml}
+           </div>
            <button type="button" class="chat-clip-fullscreen-btn" aria-label="Развернуть на весь экран">
              <svg viewBox="0 0 24 24" fill="none"><path d="M9 3H5a2 2 0 00-2 2v4M15 3h4a2 2 0 012 2v4M9 21H5a2 2 0 01-2-2v-4M15 21h4a2 2 0 002-2v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
            </button>
@@ -9079,10 +9124,18 @@ function generateVideoPoster(id, src){
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
       chatVideoPosterById[id] = dataUrl;
+      if(video.videoWidth && video.videoHeight) chatVideoAspectById[id] = video.videoWidth + '/' + video.videoHeight;
+      if(isFinite(video.duration)) chatVideoDurationById[id] = video.duration;
       const circle = document.querySelector(`.chat-video-circle[data-video-id="${CSS.escape(id)}"]`);
       if(circle) circle.style.cssText += `background-image:url(${dataUrl});background-size:cover;background-position:center top;`;
-      const clipVideo = document.querySelector(`.chat-clip-video[data-video-id="${CSS.escape(id)}"]`);
-      if(clipVideo) clipVideo.poster = dataUrl;
+      const clipPoster = document.querySelector(`.chat-clip-wrap[data-video-id="${CSS.escape(id)}"] .chat-clip-poster`);
+      if(clipPoster){
+        clipPoster.style.backgroundImage = `url(${dataUrl})`;
+        if(chatVideoAspectById[id]) clipPoster.style.aspectRatio = chatVideoAspectById[id];
+        if(chatVideoDurationById[id] && !clipPoster.querySelector('.chat-clip-poster-duration')){
+          clipPoster.insertAdjacentHTML('beforeend', `<span class="chat-clip-poster-duration">${formatVoiceDuration(chatVideoDurationById[id])}</span>`);
+        }
+      }
     } catch(e) {
       console.warn('video poster generation failed:', e);
     }
@@ -9178,10 +9231,40 @@ document.getElementById('chatThreadMessages').addEventListener('click', e=>{
   }
   const clipFsBtn = e.target.closest('.chat-clip-fullscreen-btn');
   if(clipFsBtn){
-    const clipVideo = clipFsBtn.closest('.chat-clip-wrap').querySelector('.chat-clip-video');
+    const wrap = clipFsBtn.closest('.chat-clip-wrap');
+    // Inline playback may not have started yet (still showing the poster —
+    // see chatClipPosterPlay below), so this can't assume a live <video>
+    // exists; data-clip-src on the wrap is the one thing always there.
+    const clipVideo = wrap.querySelector('.chat-clip-video');
     const wasPlaying = clipVideo && !clipVideo.paused;
-    if(clipVideo) clipVideo.pause();
-    openClipViewer(clipVideo.currentSrc || clipVideo.src, clipVideo.currentTime, wasPlaying);
+    if(clipVideo){
+      clipVideo.pause();
+      openClipViewer(clipVideo.currentSrc || clipVideo.src, clipVideo.currentTime, wasPlaying);
+    } else {
+      openClipViewer(wrap.dataset.clipSrc, 0, true);
+    }
+    return;
+  }
+  const clipPosterPlay = e.target.closest('.chat-clip-poster-play');
+  if(clipPosterPlay){
+    const wrap = clipPosterPlay.closest('.chat-clip-wrap');
+    const poster = wrap.querySelector('.chat-clip-poster');
+    const id = wrap.dataset.videoId;
+    // Swaps the plain poster for a real, playing <video controls> — this is
+    // the one moment a native buffering spinner is actually expected, since
+    // it's now the direct result of the tap rather than something that
+    // showed up unprompted on chat open.
+    const video = document.createElement('video');
+    video.className = 'chat-clip-video';
+    video.dataset.videoId = id;
+    video.controls = true; video.playsInline = true; video.preload = 'auto'; video.autoplay = true;
+    video.src = wrap.dataset.clipSrc;
+    const aspect = chatVideoAspectById[id];
+    if(aspect) video.style.aspectRatio = aspect;
+    const posterUrl = chatVideoPosterById[id];
+    if(posterUrl) video.poster = posterUrl;
+    poster.replaceWith(video);
+    video.play().catch(()=>{});
     return;
   }
   const videoCircle = e.target.closest('.chat-video-circle');
