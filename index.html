@@ -931,10 +931,24 @@ body{
 .chat-bubble-check.read .chat-bubble-check-2{ opacity:1; }
 .chat-day-sep{ text-align:center; font-size:11.5px; color:var(--ivory-dim); margin:10px 0; }
 .chat-input-bar{
-  flex-shrink:0; display:flex; align-items:flex-end; gap:10px;
+  position:relative; flex-shrink:0; display:flex; align-items:flex-end; gap:10px;
   padding:10px 14px calc(12px + var(--safe-bottom));
   border-top:1px solid var(--line); background:var(--glass); backdrop-filter:blur(14px);
 }
+.chat-emoji-panel{
+  position:absolute; left:0; right:0; bottom:100%; z-index:1;
+  max-height:220px; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  background:var(--panel); border-top:1px solid var(--line);
+  display:grid; grid-template-columns:repeat(8,1fr);
+  padding:8px; opacity:0; pointer-events:none; transform:translateY(6px);
+  transition:opacity .16s var(--ease), transform .16s var(--ease);
+}
+.chat-emoji-panel.show{ opacity:1; pointer-events:auto; transform:translateY(0); }
+.chat-emoji-panel button{
+  background:none; border:none; font-size:22px; line-height:1.6; padding:4px 0;
+  border-radius:8px; cursor:pointer;
+}
+.chat-emoji-panel button:active{ background:var(--fill-1); }
 #chatInput{
   flex:1; resize:none; max-height:110px; padding:11px 14px; border-radius:18px;
   border:1px solid var(--line); background:var(--fill-1); color:var(--ivory);
@@ -2543,10 +2557,14 @@ body{
         <div class="chat-empty-hint" id="chatThreadEmptyHint">Здесь пока нет сообщений — напишите первым.</div>
       </div>
       <div class="chat-input-bar" id="chatInputBar">
+        <div class="chat-emoji-panel" id="chatEmojiPanel"></div>
         <button class="chat-send-btn" id="chatAttachBtn" aria-label="Прикрепить фото или видео">
           <svg viewBox="0 0 24 24" fill="none"><path d="M21.44 11.05l-9.19 9.19a5.5 5.5 0 01-7.78-7.78l9.19-9.19a3.5 3.5 0 014.95 4.95l-9.19 9.19a1.5 1.5 0 01-2.12-2.12l8.49-8.49" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
         <input type="file" id="chatAttachInput" accept="image/*,video/*" style="display:none;">
+        <button class="chat-send-btn" id="chatEmojiBtn" aria-label="Эмодзи">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M8.5 10.5h.01M15.5 10.5h.01" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M8 15c1 1.2 2.4 2 4 2s3-.8 4-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
         <textarea id="chatInput" rows="1" placeholder="Сообщение…" maxlength="2000"></textarea>
         <button class="chat-send-btn" id="chatVideoCircleBtn" aria-label="Видео-кружок">
           <svg viewBox="0 0 24 24" fill="none"><path d="M15 10l5-3v10l-5-3" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><rect x="3" y="6" width="12" height="12" rx="2.5" stroke="currentColor" stroke-width="1.6"/></svg>
@@ -8194,6 +8212,7 @@ function closeChatThread(){
   if(chatThreadTypingUnsub){ chatThreadTypingUnsub(); chatThreadTypingUnsub = null; }
   if(chatThreadOtherLastReadUnsub){ chatThreadOtherLastReadUnsub(); chatThreadOtherLastReadUnsub = null; }
   if(typeof chatClearTyping === 'function') chatClearTyping();
+  if(typeof closeChatEmojiPanel === 'function') closeChatEmojiPanel();
   chatThreadKey = null;
   clearActiveChatViewer();
   chatVoiceAudioEl.pause();
@@ -8504,6 +8523,44 @@ chatInputEl.addEventListener('input', ()=>{
   autoResizeChatInput();
   updateChatComposerButtons();
   if(chatInputEl.value.trim()) chatNotifyTyping(); else chatClearTyping();
+});
+
+/* --- emoji picker --- */
+const CHAT_EMOJIS = [
+  '😀','😁','😂','🤣','😊','🙂','😉','😍','🥰','😘','😎','🤩','🤔','😅','😇',
+  '🙄','😬','😴','😢','😭','😡','😱','🥳','😷','🤗','👍','👎','🙏','👏','💪',
+  '🤝','✌️','👋','❤️','🧡','💛','💚','💙','💜','🤍','💔','🔥','✨','🎉','⭐',
+  '🌙','☀️','🌸','🌿','🕌','📿','🤲','😌','☕','🍰','⚽','🎮','📚','💯','✅','❌'
+];
+let chatEmojiPanelRendered = false;
+function renderChatEmojiPanel(){
+  if(chatEmojiPanelRendered) return;
+  chatEmojiPanelRendered = true;
+  document.getElementById('chatEmojiPanel').innerHTML =
+    CHAT_EMOJIS.map(em => `<button type="button">${em}</button>`).join('');
+}
+function closeChatEmojiPanel(){
+  document.getElementById('chatEmojiPanel').classList.remove('show');
+}
+document.getElementById('chatEmojiBtn').addEventListener('click', ()=>{
+  renderChatEmojiPanel();
+  document.getElementById('chatEmojiPanel').classList.toggle('show');
+});
+// Opening the keyboard (tapping the text field) puts the emoji panel in the
+// way of it on a small screen — same "one or the other, not both" behavior
+// as Telegram's own picker.
+chatInputEl.addEventListener('focus', closeChatEmojiPanel);
+document.getElementById('chatEmojiPanel').addEventListener('click', e=>{
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  const start = chatInputEl.selectionStart ?? chatInputEl.value.length;
+  const end = chatInputEl.selectionEnd ?? chatInputEl.value.length;
+  chatInputEl.value = chatInputEl.value.slice(0, start) + btn.textContent + chatInputEl.value.slice(end);
+  const caret = start + btn.textContent.length;
+  chatInputEl.setSelectionRange(caret, caret);
+  autoResizeChatInput();
+  updateChatComposerButtons();
+  chatNotifyTyping();
 });
 async function sendCurrentChatMessage(){
   const text = chatInputEl.value.trim();
