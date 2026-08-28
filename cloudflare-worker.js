@@ -558,6 +558,23 @@ async function handleRegisterPushToken(body, env) {
   // username-keyed path can never satisfy from the client (there's no
   // Firebase Auth identity tied to a username/password account) — so this
   // goes through the worker's admin-authenticated rtdbFetch instead.
+  //
+  // This used to just PUT the new token alongside whatever was already
+  // there — every app reinstall/update (and FCM's own occasional token
+  // rotation) adds a token here, but nothing ever removed the OLD one
+  // except a push actually failing against it with UNREGISTERED/404. FCM
+  // keeps accepting sends to a stale, superseded token (HTTP 200) for a
+  // while before it starts erroring, so a user who'd reinstalled/updated
+  // several times ended up with a pile of tokens, most no longer actually
+  // delivering — pushes only reached them whenever the send happened to
+  // hit the one live token in the list. Replacing instead of accumulating
+  // means there's only ever one (the current, real) token per account.
+  const existingRes = await rtdbFetch(`/users/${encodeURIComponent(key)}/fcmTokens.json`, env);
+  const existing = await existingRes.json();
+  const staleTokens = existing ? Object.keys(existing).filter(t => t !== token) : [];
+  await Promise.all(staleTokens.map(t =>
+    rtdbFetch(`/users/${encodeURIComponent(key)}/fcmTokens/${encodeURIComponent(t)}.json`, env, { method: 'DELETE' })
+  ));
   await rtdbFetch(`/users/${encodeURIComponent(key)}/fcmTokens/${encodeURIComponent(token)}.json`, env, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
