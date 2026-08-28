@@ -749,6 +749,9 @@ body{
 }
 .chat-call-btn:active{ transform:scale(.9); }
 .chat-call-btn svg{ width:18px; height:18px; }
+.chats-connection-status{ font-size:11px; color:var(--ivory-dim); margin-top:1px; }
+.chats-connection-status.offline{ color:var(--rose); }
+.chats-connection-status.online{ color:var(--jade); }
 
 /* ================= QURAN READER =================
    Страницы приходят с api.quran.com (/verses/by_page/N) — та же
@@ -2471,7 +2474,10 @@ body{
     <section class="screen" data-screen="chats">
       <div class="quran-head">
         <button class="nav-arrow" data-nav="friends" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-        <div class="section-title" style="flex:1;text-align:center;padding:0;">Сообщения</div>
+        <div style="flex:1;text-align:center;padding:0;">
+          <div class="section-title" style="padding:0;">Сообщения</div>
+          <div class="chats-connection-status" id="chatsConnectionStatus">Подключение…</div>
+        </div>
         <div style="width:44px;flex-shrink:0;"></div>
       </div>
       <div class="scroll">
@@ -7514,7 +7520,13 @@ async function startOutgoingCall(otherUsername, otherName, otherAvatar){
     });
   }catch(e){
     console.warn('startOutgoingCall failed:', e);
-    showToast('Не удалось начать звонок');
+    // This write is the very first thing a call attempt does, before the
+    // native side is ever touched — a Realtime Database rules rejection
+    // (most likely: no rule yet permits calls/incomingCall, both brand new
+    // top-level paths) fails right here and looks identical to a native
+    // WebRTC failure otherwise. e.code (e.g. 'PERMISSION_DENIED') is what
+    // tells the two apart.
+    showToast('Не удалось начать звонок' + (e && (e.code || e.message) ? ': ' + (e.code || e.message) : ''));
     callResetState();
     return;
   }
@@ -7572,7 +7584,7 @@ async function acceptIncomingCall(){
     window.AndroidApp.answerCall(offerSdp);
   }catch(e){
     console.warn('acceptIncomingCall failed:', e);
-    showToast('Не удалось принять звонок');
+    showToast('Не удалось принять звонок' + (e && (e.code || e.message) ? ': ' + (e.code || e.message) : ''));
     endCurrentCall(false);
   }
 }
@@ -7838,6 +7850,26 @@ function formatChatListTime(ts){
   if(d.toDateString() === now.toDateString()) return formatChatClock(ts);
   return d.toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit'});
 }
+
+// Small live indicator next to the "Сообщения" title — RTDB's own
+// .info/connected path (true only while the socket to the realtime server
+// is actually up, separate from just having finished anonymous sign-in)
+// is the one honest source for "is chat actually connected right now",
+// including flipping back to "Подключение…" if the connection later drops.
+function watchChatsConnectionStatus(){
+  const el = document.getElementById('chatsConnectionStatus');
+  if(!el) return;
+  fbAuthReady.then(()=>{
+    if(!fbDb){ el.textContent = 'Нет соединения'; el.classList.add('offline'); return; }
+    fbDb.ref('.info/connected').on('value', snap=>{
+      const connected = snap.val() === true;
+      el.textContent = connected ? 'Подключено' : 'Подключение…';
+      el.classList.toggle('online', connected);
+      el.classList.toggle('offline', !connected);
+    });
+  });
+}
+watchChatsConnectionStatus();
 
 /* --- conversation list (Friends -> «Сообщения») --- */
 // Raw per-friend RTDB values behind state.chatPreviews' derived {meta, unread} —
