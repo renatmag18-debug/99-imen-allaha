@@ -3004,29 +3004,18 @@ function loadScriptTag(src){
     document.head.appendChild(s);
   });
 }
-// Appends every url up front instead of awaiting each one before starting
-// the next — cuts what used to be N sequential network round trips down to
-// roughly the slowest single one, while script.async=false above still
-// guarantees they execute in this array's order relative to each other.
-// Only safe for scripts whose relative order doesn't matter against
-// anything ELSE also using loadScriptTag() concurrently — see the
-// fbAppScriptReady comment below for why app-compat.js is loaded on its
-// own rather than folded into one of these calls.
-function loadScriptTagsInOrder(urls){
-  return Promise.all(urls.map(loadScriptTag));
-}
-
-// script.async=false (see loadScriptTag) only guarantees execution in
-// *insertion* order among ALL such scripts on the page — not just within
-// one loadScriptTagsInOrder() call. firebase-app-compat.js has to be the
-// very first one inserted, since database/auth/messaging all extend the
-// `firebase` global it creates; loading messaging as an independent
-// top-level statement here briefly had its tag inserted before app's
-// (this ran before fbAuthReady's IIFE below even started), which broke
-// every one of them, not just messaging. Loading app by itself first, then
-// branching database/auth/messaging off of that same shared promise, keeps
-// app's tag unambiguously first while still fetching everything else in
-// parallel.
+// script.async=false (see loadScriptTag) guarantees these all *execute* in
+// insertion order no matter which one's network fetch happens to finish
+// first — firebase-app-compat.js has to execute first since database/auth/
+// messaging/storage all extend the `firebase` global it creates. That only
+// requires app-compat's <script> tag to be inserted first, though, not
+// finished loading first: every tag below is appended in this same
+// synchronous block, so the browser fetches all five concurrently instead
+// of waiting for app-compat.js to fully download+parse before even starting
+// the next fetch. That serial "load app, then start fetching the rest" used
+// to cost a full extra network round trip on every chat/friends open (the
+// fbAuthReady critical path below) — worse the higher the latency to
+// 99ism.ru, e.g. over a VPN.
 // Self-hosted copies of the Firebase compat SDK (same versioned, unmodified
 // files — no API keys or app-specific config baked into them, that all
 // comes from FIREBASE_CONFIG at initializeApp() time) rather than gstatic.com.
@@ -3036,21 +3025,19 @@ function loadScriptTagsInOrder(urls){
 // and sends taking ~10s, not anything about payload size or script order.
 const FIREBASE_SDK_BASE = 'https://99ism.ru/vendor';
 let fbAppScriptReady = loadScriptTag(`${FIREBASE_SDK_BASE}/firebase-app-compat.js`);
-
+let fbDatabaseScriptReady = loadScriptTag(`${FIREBASE_SDK_BASE}/firebase-database-compat.js`);
+let fbAuthScriptReady = loadScriptTag(`${FIREBASE_SDK_BASE}/firebase-auth-compat.js`);
 // firebase-messaging-compat.js is only ever touched by registerPushToken(),
 // never by chat/friends/quiz/anything on the fbAuthReady critical path —
-// loading it as part of that path just made every chat open wait on a
-// script the chat itself never uses.
-let fbMessagingReady = fbAppScriptReady
-  .then(()=> loadScriptTag(`${FIREBASE_SDK_BASE}/firebase-messaging-compat.js`))
+// but it's still inserted immediately (not chained after the others) so its
+// fetch doesn't queue behind them; fbAuthReady below simply never awaits it.
+let fbMessagingReady = loadScriptTag(`${FIREBASE_SDK_BASE}/firebase-messaging-compat.js`)
   .catch(e => console.warn('Failed to load firebase-messaging-compat.js:', e));
-
 // Voice/video chat messages upload to Storage (see sendVoiceMessage/
 // sendVideoMessage) rather than embedding base64 in the RTDB message
 // itself — same reasoning as messaging above: only the send path touches
 // this, so it shouldn't block fbAuthReady/chat opening either.
-let fbStorageReady = fbAppScriptReady
-  .then(()=> loadScriptTag(`${FIREBASE_SDK_BASE}/firebase-storage-compat.js`))
+let fbStorageReady = loadScriptTag(`${FIREBASE_SDK_BASE}/firebase-storage-compat.js`)
   .catch(e => console.warn('Failed to load firebase-storage-compat.js:', e));
 // firebase.storage() needs firebase.initializeApp() to have run (that
 // happens inside fbAuthReady) as well as the storage script itself —
@@ -3069,10 +3056,8 @@ async function ensureStorage(){
 let fbAuthReady = (async () => {
   try{
     await fbAppScriptReady;
-    await loadScriptTagsInOrder([
-      `${FIREBASE_SDK_BASE}/firebase-database-compat.js`,
-      `${FIREBASE_SDK_BASE}/firebase-auth-compat.js`
-    ]);
+    await fbDatabaseScriptReady;
+    await fbAuthScriptReady;
 
     firebase.initializeApp(FIREBASE_CONFIG);
     fbDb = firebase.database();
