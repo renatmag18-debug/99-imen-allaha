@@ -5560,32 +5560,46 @@ function isInDrawerReservedZone(x){
 // Swipe left-to-right starting in that zone opens the drawer; swipe
 // right-to-left (anywhere — the drawer's already covering the screen at
 // that point, so there's no "wrong place to start" the way there is for
-// opening it) closes it. Discrete threshold-based (touchstart→touchend),
-// same as the sheet-body prev/next swipe elsewhere in this file, rather
-// than a live drag-follows-finger reveal — much simpler, and everywhere
-// else in the app already treats a swipe this way, not as a drag.
+// opening it) closes it. Tracks axis on touchmove and claims the gesture
+// with preventDefault() the moment horizontal intent is clear, exactly
+// like initStageSwipe below — without that, a real swipe (which always has
+// *some* vertical wobble) over any scrollable content lets the browser's
+// own scroll handling take the gesture instead, firing touchcancel rather
+// than touchend and silently dropping it before it's ever evaluated. A
+// touchstart/touchend-only version (no touchmove) is what shipped first,
+// which is why it "did nothing" on an actual scrollable screen rather than
+// just being finicky.
 (function(){
   const SWIPE_THRESHOLD_PX = 60;
-  let sx = 0, sy = 0, tracking = false;
+  let sx = 0, sy = 0, axis = null, tracking = false;
   document.addEventListener('touchstart', e=>{
-    if(!e.touches || !e.touches.length){ tracking = false; return; }
+    tracking = false; axis = null;
+    if(!e.touches || e.touches.length !== 1) return;
     const drawerOpen = document.getElementById('sideDrawer').classList.contains('show');
     const t = e.touches[0];
-    if(!drawerOpen && !isInDrawerOpenZone(t.clientX)){ tracking = false; return; }
+    if(!drawerOpen && !isInDrawerOpenZone(t.clientX)) return;
     sx = t.clientX; sy = t.clientY;
     tracking = true;
   }, {passive:true});
+  document.addEventListener('touchmove', e=>{
+    if(!tracking || e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - sx, dy = e.touches[0].clientY - sy;
+    if(axis === null && (Math.abs(dx) > 10 || Math.abs(dy) > 10)){
+      axis = Math.abs(dx) > Math.abs(dy) * 1.4 ? 'x' : 'y';
+    }
+    if(axis === 'x') e.preventDefault();
+  }, {passive:false});
   document.addEventListener('touchend', e=>{
-    if(!tracking) return;
+    if(!tracking || axis !== 'x'){ tracking = false; axis = null; return; }
     tracking = false;
     if(!e.changedTouches || !e.changedTouches.length) return;
-    const t = e.changedTouches[0];
-    const dx = t.clientX - sx, dy = t.clientY - sy;
-    if(Math.abs(dx) < SWIPE_THRESHOLD_PX || Math.abs(dx) < Math.abs(dy)) return;
+    const dx = e.changedTouches[0].clientX - sx;
+    if(Math.abs(dx) < SWIPE_THRESHOLD_PX) return;
     const drawerOpen = document.getElementById('sideDrawer').classList.contains('show');
     if(dx > 0 && !drawerOpen) openSideDrawer();
     else if(dx < 0 && drawerOpen) closeSideDrawer();
   }, {passive:true});
+  document.addEventListener('touchcancel', ()=>{ tracking = false; axis = null; }, {passive:true});
 })();
 
 // Same imperative toggle-style pattern as #weeklyNotifToggle elsewhere in
@@ -11909,6 +11923,11 @@ async function quranHandleSearchInput(query){
     if(isInDrawerReservedZone(sx)) return; // left half reserved for the side-drawer's open-swipe / the edge-swipe-back gesture — see isInDrawerReservedZone
     if(e.target.closest('.sheet, input, textarea, .tabbar')) return;
     if(document.querySelector('.sheet.show')) return;
+    // #sideDrawer isn't a .sheet (it slides in from the side, not the
+    // bottom), so the check above doesn't already cover it — without this,
+    // swiping on the dimmed backdrop to close the drawer could also change
+    // tabs underneath it at the same time.
+    if(document.getElementById('sideDrawer').classList.contains('show')) return;
     tracking = true;
   }, {passive:true});
 
