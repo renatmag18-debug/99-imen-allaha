@@ -1038,9 +1038,17 @@ body{
   display:block; max-width:220px; max-height:280px; width:auto; height:auto;
   border-radius:14px; cursor:pointer; object-fit:cover;
 }
-.chat-clip-wrap{ position:relative; display:inline-block; max-width:240px; }
+/* A fixed (not max-) width is load-bearing here, not cosmetic: a <video>
+   is a "replaced element" with its own special CSS sizing rules, so
+   width:100% inside a shrink-to-fit inline-block parent happened to work
+   fine for it — but .chat-clip-poster below is a plain <div>, and the same
+   width:100%-inside-a-parent-that-sizes-to-its-content is a circular
+   reference browsers resolve by collapsing the child to near-zero. That
+   shrank the whole poster (and, since the fullscreen button is positioned
+   relative to this wrap, misplaced it too) down to a tiny box. */
+.chat-clip-wrap{ position:relative; display:block; width:min(220px,70vw); }
 .chat-clip-video{
-  display:block; max-width:240px; max-height:320px; width:100%; border-radius:14px; background:#000;
+  display:block; width:100%; max-height:320px; border-radius:14px; background:#000;
 }
 /* Shown instead of a live <video> until it's actually tapped — the native
    <video controls> element starts fetching/buffering (and shows its own
@@ -1051,7 +1059,7 @@ body{
    button, matching the video-circle player right above, defers all of that
    to the moment of actual intent to watch — exactly what Telegram does. */
 .chat-clip-poster{
-  position:relative; width:100%; max-width:240px; max-height:320px; border-radius:14px;
+  position:relative; width:100%; max-height:320px; border-radius:14px;
   background:#000 center top/cover no-repeat; cursor:pointer; overflow:hidden;
   aspect-ratio:3/4; /* replaced inline once the real ratio is known — see chatVideoAspectById */
 }
