@@ -2555,14 +2555,25 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
           <div style="text-align:center;margin-bottom:14px;color:var(--ivory-dim);font-size:12px;">
             Мы отправили код подтверждения на <span id="verifyEmailAddress" style="color:var(--gold-soft);"></span>
           </div>
-          <div class="profile-name-field">
-            <label>Код из письма</label>
-            <input type="text" id="verifyEmailCodeInput" placeholder="000000" maxlength="6" inputmode="numeric">
+          <div id="verifyEmailCodeStep">
+            <div class="profile-name-field">
+              <label>Код из письма</label>
+              <input type="text" id="verifyEmailCodeInput" placeholder="000000" maxlength="6" inputmode="numeric">
+            </div>
+            <button class="btn btn-primary" id="verifyEmailBtn" style="width:100%;">Подтвердить</button>
+            <div style="display:flex;gap:10px;margin-top:10px;">
+              <button class="btn btn-ghost" id="resendVerificationBtnReg" style="flex:1;">Отправить снова</button>
+              <button class="btn btn-ghost" id="changeVerifyEmailBtn" style="flex:1;">Изменить почту</button>
+            </div>
+            <button class="btn btn-ghost" id="skipVerifyEmailBtn" style="width:100%;margin-top:10px;">Позже</button>
           </div>
-          <button class="btn btn-primary" id="verifyEmailBtn" style="width:100%;">Подтвердить</button>
-          <div style="display:flex;gap:10px;margin-top:10px;">
-            <button class="btn btn-ghost" id="resendVerificationBtnReg" style="flex:1;">Отправить снова</button>
-            <button class="btn btn-ghost" id="skipVerifyEmailBtn" style="flex:1;">Позже</button>
+          <div id="verifyEmailChangeStep" style="display:none;">
+            <div class="profile-name-field">
+              <label>Новый email</label>
+              <input type="email" id="verifyEmailChangeInput" placeholder="you@example.com" maxlength="80">
+            </div>
+            <button class="btn btn-primary" id="verifyEmailChangeSaveBtn" style="width:100%;">Отправить код на этот адрес</button>
+            <button class="btn btn-ghost" id="verifyEmailChangeCancelBtn" style="width:100%;margin-top:10px;">Отмена</button>
           </div>
           <p id="verifyEmailStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;"></p>
         </div>
@@ -2610,7 +2621,10 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
               <input type="text" id="linkEmailCodeInput" placeholder="000000" maxlength="6" inputmode="numeric">
             </div>
             <button class="btn btn-primary" id="linkEmailVerifyBtn" style="width:100%;">Подтвердить</button>
-            <button class="btn btn-ghost" id="linkEmailResendBtn" style="width:100%;margin-top:10px;">Отправить код снова</button>
+            <div style="display:flex;gap:10px;margin-top:10px;">
+              <button class="btn btn-ghost" id="linkEmailResendBtn" style="flex:1;">Отправить код снова</button>
+              <button class="btn btn-ghost" id="linkEmailChangeBtn" style="flex:1;">Изменить почту</button>
+            </div>
           </div>
           <p id="linkEmailStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;"></p>
         </div>
@@ -7370,6 +7384,36 @@ document.getElementById('skipVerifyEmailBtn').addEventListener('click', ()=>{
   document.getElementById('profileCard').style.display = 'block';
 });
 
+// Lets a typo in the email typed at registration be fixed without starting
+// over — re-links the (already-created) account to the corrected address,
+// which also invalidates the old pending code.
+document.getElementById('changeVerifyEmailBtn').addEventListener('click', ()=>{
+  document.getElementById('verifyEmailCodeStep').style.display = 'none';
+  document.getElementById('verifyEmailChangeStep').style.display = 'block';
+  document.getElementById('verifyEmailChangeInput').value = document.getElementById('verifyEmailAddress').textContent;
+  document.getElementById('verifyEmailStatus').textContent = '';
+});
+
+document.getElementById('verifyEmailChangeCancelBtn').addEventListener('click', ()=>{
+  document.getElementById('verifyEmailChangeStep').style.display = 'none';
+  document.getElementById('verifyEmailCodeStep').style.display = 'block';
+  document.getElementById('verifyEmailStatus').textContent = '';
+});
+
+document.getElementById('verifyEmailChangeSaveBtn').addEventListener('click', async ()=>{
+  const email = document.getElementById('verifyEmailChangeInput').value.trim();
+  const status = document.getElementById('verifyEmailStatus');
+  if(!email){ status.textContent = 'Введите email'; return; }
+  status.textContent = 'Отправка...';
+  const result = await apiLinkEmail(email);
+  if(result.error){ status.textContent = EMAIL_ERRORS[result.error] || result.error; return; }
+  document.getElementById('verifyEmailAddress').textContent = email;
+  document.getElementById('verifyEmailCodeInput').value = '';
+  document.getElementById('verifyEmailChangeStep').style.display = 'none';
+  document.getElementById('verifyEmailCodeStep').style.display = 'block';
+  status.textContent = result.emailSent ? '' : 'Не удалось отправить письмо — попробуйте отправить код ещё раз позже.';
+});
+
 // Shared Russian translations for the email-recovery endpoints' error codes
 // (link/verify/resend/reset-method/reset-with-code/reset-with-security-answer).
 const EMAIL_ERRORS = {
@@ -7416,6 +7460,9 @@ async function updateLinkEmailBanner(){
     intro.textContent = `Подтвердите почту ${info.email}, чтобы восстановление пароля по ней заработало.`;
     form.style.display = 'none';
     verifyForm.style.display = 'block';
+    // Prefilled so "Изменить почту" doesn't force retyping the whole
+    // address just to fix one wrong character.
+    document.getElementById('linkEmailInput').value = info.email;
   } else {
     card.style.display = 'none';
   }
@@ -7444,6 +7491,16 @@ document.getElementById('linkEmailVerifyBtn').addEventListener('click', async ()
   showToast('Почта подтверждена');
   document.getElementById('linkEmailCodeInput').value = '';
   updateLinkEmailBanner();
+});
+
+// Goes back to the email-entry step (pre-filled by updateLinkEmailBanner)
+// so a typo in the pending address can be fixed without waiting out a
+// code that was only ever going to arrive at the wrong inbox.
+document.getElementById('linkEmailChangeBtn').addEventListener('click', ()=>{
+  document.getElementById('linkEmailVerifyForm').style.display = 'none';
+  document.getElementById('linkEmailForm').style.display = 'block';
+  document.getElementById('linkEmailIntro').textContent = 'Привяжите почту, чтобы не потерять доступ к аккаунту, если забудете пароль.';
+  document.getElementById('linkEmailStatus').textContent = '';
 });
 
 document.getElementById('linkEmailResendBtn').addEventListener('click', async ()=>{
