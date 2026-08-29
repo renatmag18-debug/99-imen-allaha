@@ -5394,9 +5394,18 @@ function setMiscHeaderCollapsed(collapsed){
       header.style.transition = 'none';
       header.style.maxHeight = header.scrollHeight + 'px';
       header.offsetHeight; // force layout so the browser commits the start height before animating
+      // A single requestAnimationFrame isn't reliably enough here — the
+      // browser can still coalesce the "none" transition and the real one
+      // into the same frame and skip straight to the end value, which is
+      // exactly what read as an abrupt jump instead of a smooth shrink.
+      // Two nested frames is the standard fix: the first guarantees the
+      // starting max-height above has actually been painted before the
+      // second one applies the transition and the target value.
       requestAnimationFrame(()=>{
-        header.style.transition = 'max-height ' + (MISC_COLLAPSE_FADE_MS / 1000) + 's var(--ease)';
-        header.style.maxHeight = '0px';
+        requestAnimationFrame(()=>{
+          header.style.transition = 'max-height ' + (MISC_COLLAPSE_FADE_MS / 1000) + 's var(--ease)';
+          header.style.maxHeight = '0px';
+        });
       });
     }, lastStagger));
     miscHeaderTimers.push(setTimeout(()=>{
