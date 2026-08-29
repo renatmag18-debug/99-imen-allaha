@@ -66,6 +66,10 @@
  *                                         account (record + emailIndex entry
  *                                         + every friend/pending-request
  *                                         cross-reference on other accounts)
+ *   POST /api/admin/delete-account     — Same, by nickname, for a record too
+ *                                         broken/forgotten to delete via its
+ *                                         own password (single hardcoded
+ *                                         admin account only)
  *
  * Required secrets (Cloudflare dashboard -> Worker -> Settings -> Variables
  * and Secrets, all as "Encrypt"):
@@ -309,6 +313,11 @@ async function handleAPI(request, env, url) {
   // POST /api/delete-account
   if (request.method === 'POST' && path === 'delete-account') {
     return handleDeleteAccount(body, env);
+  }
+
+  // POST /api/admin/delete-account
+  if (request.method === 'POST' && path === 'admin/delete-account') {
+    return handleAdminDeleteAccount(body, env);
   }
 
   return corsResponse(jsonResponse({ error: 'not found' }, 404));
@@ -928,17 +937,13 @@ async function handleChangeUsername(body, env) {
  * own record (same reasoning as handleChangeUsername), so they'd otherwise
  * be left dangling, pointing at a key that no longer exists.
  */
-async function handleDeleteAccount(body, env) {
-  const { username, password } = body || {};
-  if (!username || !password) return corsResponse(jsonResponse({ error: 'missing data' }, 400));
-
-  const key = userKey(username);
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
-  const user = await userRes.json();
-  if (!user || user.password !== b64EncodeUtf8(password)) {
-    return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
-  }
-
+// Shared by handleDeleteAccount (self-service) and handleAdminDeleteAccount
+// (the admin-only fallback for a record too broken/forgotten to delete via
+// its own password) — removes the account record, its emailIndex entry,
+// and every friend/pending-request cross-reference on OTHER accounts that
+// point back at it (those live on the other party's own record, so they
+// don't disappear on their own).
+async function deleteAccountRecord(key, user, env) {
   const cleanup = [];
   if (user.email) {
     cleanup.push(rtdbFetch(`/emailIndex/${emailKey(user.email)}.json`, env, { method: 'DELETE' }));
@@ -955,6 +960,49 @@ async function handleDeleteAccount(body, env) {
   await Promise.all(cleanup);
 
   await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env, { method: 'DELETE' });
+}
+
+async function handleDeleteAccount(body, env) {
+  const { username, password } = body || {};
+  if (!username || !password) return corsResponse(jsonResponse({ error: 'missing data' }, 400));
+
+  const key = userKey(username);
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
+  const user = await userRes.json();
+  if (!user || user.password !== b64EncodeUtf8(password)) {
+    return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
+  }
+
+  await deleteAccountRecord(key, user, env);
+
+  return corsResponse(jsonResponse({ ok: true }));
+}
+
+/**
+ * POST /api/admin/delete-account
+ * Body: { username, password, targetUsername }
+ * Gated to the single hardcoded admin account (same gate as
+ * handleAdminUserCount) — a fallback for a record too broken or forgotten
+ * to delete via its own password (e.g. one left over from an old, buggy
+ * client-side fallback path that never had a normal password set on it).
+ */
+async function handleAdminDeleteAccount(body, env) {
+  const { username, password, targetUsername } = body || {};
+  if (!username || !password || !targetUsername) return corsResponse(jsonResponse({ error: 'missing data' }, 400));
+  if (userKey(username) !== userKey(ADMIN_USERNAME)) return corsResponse(jsonResponse({ error: 'forbidden' }, 403));
+
+  const adminRes = await rtdbFetch(`/users/${encodeURIComponent(userKey(username))}.json`, env);
+  const admin = await adminRes.json();
+  if (!admin || admin.password !== b64EncodeUtf8(password)) {
+    return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
+  }
+
+  const targetKey = userKey(targetUsername);
+  const targetRes = await rtdbFetch(`/users/${encodeURIComponent(targetKey)}.json`, env);
+  const target = await targetRes.json();
+  if (!target) return corsResponse(jsonResponse({ error: 'account not found' }, 404));
+
+  await deleteAccountRecord(targetKey, target, env);
 
   return corsResponse(jsonResponse({ ok: true }));
 }
