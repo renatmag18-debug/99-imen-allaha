@@ -959,7 +959,21 @@ async function deleteAccountRecord(key, user, env) {
   }
   await Promise.all(cleanup);
 
-  await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env, { method: 'DELETE' });
+  const delRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env, { method: 'DELETE' });
+  if (!delRes.ok) {
+    const body = await delRes.text().catch(() => '');
+    throw new Error(`rtdb delete failed (${delRes.status}): ${body.slice(0, 300)}`);
+  }
+  // Firebase RTDB's REST DELETE returns 200 with body `null` even when the
+  // path never actually changes (e.g. a key containing characters the
+  // Realtime Database rejects, like "." from an email typed into the
+  // nickname field) — verify the record is actually gone rather than
+  // trusting the DELETE response status alone.
+  const verifyRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
+  const stillThere = await verifyRes.json().catch(() => null);
+  if (stillThere) {
+    throw new Error(`rtdb delete did not persist: record still present at key "${key}"`);
+  }
 }
 
 async function handleDeleteAccount(body, env) {
@@ -973,7 +987,11 @@ async function handleDeleteAccount(body, env) {
     return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
   }
 
-  await deleteAccountRecord(key, user, env);
+  try {
+    await deleteAccountRecord(key, user, env);
+  } catch (e) {
+    return corsResponse(jsonResponse({ error: e.message || 'delete failed' }, 502));
+  }
 
   return corsResponse(jsonResponse({ ok: true }));
 }
@@ -1002,7 +1020,11 @@ async function handleAdminDeleteAccount(body, env) {
   const target = await targetRes.json();
   if (!target) return corsResponse(jsonResponse({ error: 'account not found' }, 404));
 
-  await deleteAccountRecord(targetKey, target, env);
+  try {
+    await deleteAccountRecord(targetKey, target, env);
+  } catch (e) {
+    return corsResponse(jsonResponse({ error: e.message || 'delete failed' }, 502));
+  }
 
   return corsResponse(jsonResponse({ ok: true }));
 }
