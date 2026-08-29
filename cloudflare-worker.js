@@ -109,6 +109,19 @@ function userKey(username) {
   return (username || '').trim().toLowerCase();
 }
 
+// RTDB forbids ". # $ [ ]" in a key. Reads happily traverse a key
+// containing them (however it got created), but Firebase rejects any
+// WRITE — including a delete — targeting that exact path with
+// "Invalid path: Invalid token in path", permanently. So a nickname
+// containing these (most commonly someone typing their email into the
+// nickname field, since "." is right there in every address) creates an
+// account that can never be renamed or deleted through the API again.
+// Blocking it at registration/rename time is the only real fix.
+const FORBIDDEN_KEY_CHARS = /[.#$\[\]]/;
+function hasForbiddenKeyChars(username) {
+  return FORBIDDEN_KEY_CHARS.test(username || '');
+}
+
 // Plain btoa() only handles Latin1 and throws ("Invalid character") on
 // anything outside that range — so any password containing Cyrillic (or
 // other non-Latin1) characters made register/login throw here, which the
@@ -355,6 +368,10 @@ async function handleRegister(body, env) {
 
   if (username.length < 3 || password.length < 3) {
     return corsResponse(jsonResponse({ error: 'username and password must be at least 3 chars' }, 400));
+  }
+
+  if (hasForbiddenKeyChars(username)) {
+    return corsResponse(jsonResponse({ error: 'username contains invalid characters' }, 400));
   }
 
   const normalizedEmail = email.trim().toLowerCase();
@@ -878,6 +895,7 @@ async function handleChangeUsername(body, env) {
 
   const trimmedNew = newUsername.trim();
   if (trimmedNew.length < 3) return corsResponse(jsonResponse({ error: 'username must be at least 3 chars' }, 400));
+  if (hasForbiddenKeyChars(trimmedNew)) return corsResponse(jsonResponse({ error: 'username contains invalid characters' }, 400));
 
   const oldKey = userKey(username);
   const newKey = userKey(trimmedNew);
