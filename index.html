@@ -7922,6 +7922,7 @@ document.getElementById('copyUsernameBtn').addEventListener('click', async ()=>{
 
 document.getElementById('logoutBtn').addEventListener('click', ()=>{
   clearUsername();
+  clearAuthCredentials();
   state.profile = { username: '', authenticated: false };
   updateProfileUI();
   showToast('Вы вышли');
