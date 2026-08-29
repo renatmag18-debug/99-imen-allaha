@@ -2820,6 +2820,33 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
             </div>
             <p id="accountDeleteStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;"></p>
           </div>
+
+          <!-- Admin-only fallback (server-gated to the single hardcoded
+               admin account regardless of this client-side check) for a
+               record too broken/forgotten to delete via its own password —
+               e.g. a leftover from an old buggy fallback path that never
+               had a normal password set on it. -->
+          <div id="accountAdminDeleteSection" style="display:none;">
+            <div id="accountAdminDeleteView" style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-top:1px solid var(--line);margin-bottom:24px;">
+              <div style="font-size:14px;color:var(--ivory);">Удалить чужой аккаунт (админ)</div>
+              <button class="btn btn-ghost" id="accountAdminDeleteBtn" style="padding:10px 16px;flex:none;color:var(--rose);border-color:var(--rose);">Удалить</button>
+            </div>
+            <div id="accountAdminDeleteForm" style="display:none;padding:14px 0;border-top:1px solid var(--line);margin-bottom:24px;">
+              <div class="profile-name-field">
+                <label>Никнейм аккаунта для удаления</label>
+                <input type="text" id="accountAdminDeleteTargetInput" placeholder="Никнейм" maxlength="80">
+              </div>
+              <div class="profile-name-field">
+                <label>Ваш пароль (для подтверждения)</label>
+                <input type="password" id="accountAdminDeletePasswordInput" placeholder="Ваш пароль" maxlength="20">
+              </div>
+              <div style="display:flex;gap:10px;">
+                <button class="btn btn-primary" id="accountAdminDeleteConfirmBtn" style="flex:1;background:var(--rose);">Да, удалить навсегда</button>
+                <button class="btn btn-ghost" id="accountAdminDeleteCancelBtn" style="flex:1;">Отмена</button>
+              </div>
+              <p id="accountAdminDeleteStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;"></p>
+            </div>
+          </div>
         </div>
 
         <div id="volKeySection" style="display:none;">
@@ -7491,6 +7518,7 @@ const API_ERRORS = {
   'wrong answer': 'Неверный ответ',
   'no security question set': 'Для этого аккаунта не задан контрольный вопрос',
   'account not found': 'Аккаунт не найден',
+  'forbidden': 'Доступ запрещён',
   'password must be at least 3 chars': 'Пароль минимум 3 символа',
   'missing data': 'Заполните все поля',
   'username must be at least 3 chars': 'Никнейм минимум 3 символа',
@@ -7569,6 +7597,14 @@ function updateAccountSettingsUI(info){
   } else {
     locked.style.display = 'block';
     controls.style.display = 'none';
+  }
+
+  // Client-side check only, purely to avoid showing a useless admin box to
+  // everyone else — the endpoint itself re-checks this against the single
+  // hardcoded admin account regardless of what the client sends.
+  const adminSection = document.getElementById('accountAdminDeleteSection');
+  if(adminSection){
+    adminSection.style.display = (state.profile.username || '').trim().toLowerCase() === 'abu yusuf' ? 'block' : 'none';
   }
 }
 
@@ -7671,6 +7707,38 @@ document.getElementById('accountDeleteConfirmBtn').addEventListener('click', asy
   document.getElementById('accountDeleteForm').style.display = 'none';
   document.getElementById('accountDeleteView').style.display = 'flex';
   showToast('Аккаунт удалён');
+});
+
+document.getElementById('accountAdminDeleteBtn').addEventListener('click', ()=>{
+  document.getElementById('accountAdminDeleteView').style.display = 'none';
+  document.getElementById('accountAdminDeleteForm').style.display = 'block';
+});
+
+document.getElementById('accountAdminDeleteCancelBtn').addEventListener('click', ()=>{
+  document.getElementById('accountAdminDeleteForm').style.display = 'none';
+  document.getElementById('accountAdminDeleteView').style.display = 'flex';
+  document.getElementById('accountAdminDeleteStatus').textContent = '';
+  document.getElementById('accountAdminDeleteTargetInput').value = '';
+  document.getElementById('accountAdminDeletePasswordInput').value = '';
+});
+
+document.getElementById('accountAdminDeleteConfirmBtn').addEventListener('click', async ()=>{
+  const target = document.getElementById('accountAdminDeleteTargetInput').value.trim();
+  const password = document.getElementById('accountAdminDeletePasswordInput').value.trim();
+  const status = document.getElementById('accountAdminDeleteStatus');
+  if(!target){ status.textContent = 'Введите никнейм аккаунта для удаления'; return; }
+  if(!password){ status.textContent = 'Введите ваш пароль'; return; }
+  status.textContent = 'Удаление...';
+  const result = await apiAdminDeleteAccount(password, target);
+  if(result.error){
+    status.textContent = result.error === 'invalid auth' ? 'Неверный пароль' : (API_ERRORS[result.error] || result.error);
+    return;
+  }
+  document.getElementById('accountAdminDeleteTargetInput').value = '';
+  document.getElementById('accountAdminDeletePasswordInput').value = '';
+  document.getElementById('accountAdminDeleteForm').style.display = 'none';
+  document.getElementById('accountAdminDeleteView').style.display = 'flex';
+  showToast(`Аккаунт «${target}» удалён`);
 });
 
 document.getElementById('linkEmailBtn').addEventListener('click', async ()=>{

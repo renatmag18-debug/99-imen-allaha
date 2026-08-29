@@ -599,3 +599,24 @@ async function apiDeleteAccount(password) {
     return { error: 'Network error' };
   }
 }
+
+// Admin-only (server-gated to the single hardcoded admin account) — force-
+// deletes an account by nickname, for a record too broken/forgotten to
+// delete via its own password.
+async function apiAdminDeleteAccount(password, targetUsername) {
+  const auth = getAuthCredentials();
+  if (!auth) return { error: 'Not authenticated' };
+
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/delete-account`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: auth.username, password, targetUsername })
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Failed to delete account' };
+    return { ok: true };
+  } catch (e) {
+    return { error: 'Network error' };
+  }
+}
