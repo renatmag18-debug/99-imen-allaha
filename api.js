@@ -581,3 +581,21 @@ async function apiChangeUsername(newUsername, password) {
     return { error: 'Network error' };
   }
 }
+
+async function apiDeleteAccount(password) {
+  const auth = getAuthCredentials();
+  if (!auth) return { error: 'Not authenticated' };
+
+  try {
+    const res = await fetch(`${API_BASE}/api/delete-account`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: auth.username, password })
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Failed to delete account' };
+    return { ok: true };
+  } catch (e) {
+    return { error: 'Network error' };
+  }
+}

@@ -2494,7 +2494,7 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
             </div>
 
             <div class="profile-name-field">
-              <label>Email (необязательно)</label>
+              <label>Email</label>
               <input type="email" id="regEmailInput" placeholder="you@example.com" maxlength="80">
             </div>
 
@@ -2790,6 +2790,27 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
               </div>
               <p id="accountPasswordStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;"></p>
             </div>
+          </div>
+
+          <!-- Deletion doesn't carry the same lockout risk that renaming/
+               changing the password does (quite the opposite — it's the
+               way OUT for an account with no working recovery), so this
+               stays available regardless of email-verified state. -->
+          <div id="accountDeleteView" style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-top:1px solid var(--line);margin-bottom:24px;">
+            <div style="font-size:14px;color:var(--ivory);">Удалить аккаунт</div>
+            <button class="btn btn-ghost" id="accountDeleteBtn" style="padding:10px 16px;flex:none;color:var(--rose);border-color:var(--rose);">Удалить</button>
+          </div>
+          <div id="accountDeleteForm" style="display:none;padding:14px 0;border-top:1px solid var(--line);margin-bottom:24px;">
+            <p class="section-desc" style="margin-top:0;color:var(--rose);">Аккаунт, друзья, прогресс и статистика будут удалены безвозвратно.</p>
+            <div class="profile-name-field">
+              <label>Пароль (для подтверждения)</label>
+              <input type="password" id="accountDeletePasswordInput" placeholder="Текущий пароль" maxlength="20">
+            </div>
+            <div style="display:flex;gap:10px;">
+              <button class="btn btn-primary" id="accountDeleteConfirmBtn" style="flex:1;background:var(--rose);">Да, удалить навсегда</button>
+              <button class="btn btn-ghost" id="accountDeleteCancelBtn" style="flex:1;">Отмена</button>
+            </div>
+            <p id="accountDeleteStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;"></p>
           </div>
         </div>
 
@@ -7292,10 +7313,10 @@ document.getElementById('registerBtn').addEventListener('click', async ()=>{
   const securityAnswer = document.getElementById('securityAnswerInput').value.trim().toLowerCase();
   const registerStatus = document.getElementById('registerStatus');
 
-  if(!username || !password){ registerStatus.textContent = 'Введите никнейм и пароль'; return; }
+  if(!username || !password || !email){ registerStatus.textContent = 'Введите никнейм, email и пароль'; return; }
   if(username.length < 3){ registerStatus.textContent = 'Никнейм минимум 3 символа'; return; }
   if(password.length < 3){ registerStatus.textContent = 'Пароль минимум 3 символа'; return; }
-  if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ registerStatus.textContent = 'Некорректный email'; return; }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ registerStatus.textContent = 'Некорректный email'; return; }
   if(!securityQuestionType){ registerStatus.textContent = 'Выберите контрольный вопрос'; return; }
   if(!securityAnswer){ registerStatus.textContent = 'Введите ответ на контрольный вопрос'; return; }
 
@@ -7319,17 +7340,32 @@ document.getElementById('registerBtn').addEventListener('click', async ()=>{
   const result = await apiRegister(username, password, securityQuestion, securityAnswer, email);
   let localOnly = false;
 
+  // apiRegister prefixes the message with "Network error" only when the
+  // fetch itself failed (unreachable/offline) — anything else means the
+  // server was reached and gave a definitive answer (username/email
+  // already taken, invalid email, etc.), which must be shown as-is rather
+  // than treated as "offline". Falling back to a local-only account here
+  // used to happen for BOTH cases identically: for a real rejection like
+  // "email already in use", that meant silently creating a second,
+  // never-syncable phantom account under a different nickname instead of
+  // telling the person they already have one — the self-heal retry on next
+  // login would just hit the exact same rejection forever.
+  if(result.error && !result.error.startsWith('Network error')){
+    registerStatus.textContent = API_ERRORS[result.error] || result.error;
+    return;
+  }
+
   if(result.error){
-    // Fallback to localStorage if API fails — this used to silently claim
-    // full success here, so accounts created while the server was
-    // unreachable (bad connection, blocked request, etc.) looked identical
-    // to real ones: profile showed up locally but never existed on the
-    // backend, so they never appeared on anyone else's leaderboard. The
-    // account still self-heals — apiRegister is retried on next login (see
-    // the login handler below) — but the user needs to actually be told
-    // it's local-only now, not after they've already gone looking for
-    // themselves in the leaderboard and come up empty.
-    console.warn('apiRegister failed, falling back to localStorage:', result.error);
+    // Fallback to localStorage if the API is actually unreachable — this
+    // used to silently claim full success here, so accounts created while
+    // the server was unreachable (bad connection, blocked request, etc.)
+    // looked identical to real ones: profile showed up locally but never
+    // existed on the backend, so they never appeared on anyone else's
+    // leaderboard. The account still self-heals — apiRegister is retried
+    // on next login (see the login handler below) — but the user needs to
+    // actually be told it's local-only now, not after they've already gone
+    // looking for themselves in the leaderboard and come up empty.
+    console.warn('apiRegister unreachable, falling back to localStorage:', result.error);
     const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
     if(Object.keys(allUsers).some(k => k.toLowerCase() === username.toLowerCase())){
       registerStatus.textContent = 'Этот никнейм уже занят'; return;
@@ -7433,6 +7469,8 @@ document.getElementById('verifyEmailChangeSaveBtn').addEventListener('click', as
 // Shared Russian translations for the email-recovery endpoints' error codes
 // (link/verify/resend/reset-method/reset-with-code/reset-with-security-answer).
 const API_ERRORS = {
+  'missing username, password or email': 'Введите никнейм, email и пароль',
+  'username and password must be at least 3 chars': 'Никнейм и пароль минимум 3 символа',
   'invalid email': 'Некорректный email',
   'email already in use': 'Этот email уже привязан к другому аккаунту',
   'invalid auth': 'Сессия истекла, войдите заново',
@@ -7579,6 +7617,38 @@ document.getElementById('accountSavePasswordBtn').addEventListener('click', asyn
   showToast('Пароль изменён');
 });
 
+document.getElementById('accountDeleteBtn').addEventListener('click', ()=>{
+  document.getElementById('accountDeleteView').style.display = 'none';
+  document.getElementById('accountDeleteForm').style.display = 'block';
+});
+
+document.getElementById('accountDeleteCancelBtn').addEventListener('click', ()=>{
+  document.getElementById('accountDeleteForm').style.display = 'none';
+  document.getElementById('accountDeleteView').style.display = 'flex';
+  document.getElementById('accountDeleteStatus').textContent = '';
+  document.getElementById('accountDeletePasswordInput').value = '';
+});
+
+document.getElementById('accountDeleteConfirmBtn').addEventListener('click', async ()=>{
+  const password = document.getElementById('accountDeletePasswordInput').value.trim();
+  const status = document.getElementById('accountDeleteStatus');
+  if(!password){ status.textContent = 'Введите пароль'; return; }
+  status.textContent = 'Удаление...';
+  const result = await apiDeleteAccount(password);
+  if(result.error){
+    status.textContent = result.error === 'invalid auth' ? 'Неверный пароль' : (API_ERRORS[result.error] || result.error);
+    return;
+  }
+  clearUsername();
+  clearAuthCredentials();
+  state.profile = { username: '', authenticated: false };
+  updateProfileUI();
+  document.getElementById('accountDeletePasswordInput').value = '';
+  document.getElementById('accountDeleteForm').style.display = 'none';
+  document.getElementById('accountDeleteView').style.display = 'flex';
+  showToast('Аккаунт удалён');
+});
+
 document.getElementById('linkEmailBtn').addEventListener('click', async ()=>{
   const email = document.getElementById('linkEmailInput').value.trim();
   const status = document.getElementById('linkEmailStatus');
@@ -7653,6 +7723,10 @@ document.getElementById('loginBtn').addEventListener('click', async ()=>{
     setAuthCredentials(canonicalUsername, password);
     // Account predates the backend (or the server was briefly unreachable) —
     // create it server-side now so sync/leaderboard/friends start working.
+    // No email to pass here (this local-only record predates that being
+    // collected at all) — now that the server requires one, this migrate
+    // call fails for that narrow case, same net effect as before this
+    // feature existed (stays local-only) rather than a new regression.
     const migrated = await apiRegister(canonicalUsername, password, localUser.securityQuestion, localUser.securityAnswer);
     if(migrated && !migrated.error){
       setTimeout(()=>showToast('Аккаунт синхронизирован с сервером'), 400);
