@@ -1041,7 +1041,26 @@ async function handleAdminDeleteAccount(body, env) {
   try {
     await deleteAccountRecord(targetKey, target, env);
   } catch (e) {
-    return corsResponse(jsonResponse({ error: e.message || 'delete failed' }, 502));
+    // The target resolves fine via a direct keyed GET (we're here because
+    // it does), yet a shallow listing of /users doesn't show a matching
+    // key at all when browsed manually — suggesting the real stored key
+    // differs from targetKey by something invisible (whitespace, a
+    // lookalike Unicode character, casing). Surface the exact expected
+    // key's char codes and scan for anything similar so the real key is
+    // visible without more manual Firebase-console spelunking.
+    let detail = e.message || 'delete failed';
+    try {
+      const allRes = await rtdbFetch(`/users.json?shallow=true`, env);
+      const all = await allRes.json();
+      const keys = Object.keys(all || {});
+      const fragment = (targetKey.match(/[a-z0-9]+/i) || [targetKey])[0];
+      const matches = keys.filter(k => k.toLowerCase().includes(fragment.toLowerCase()));
+      const codes = Array.from(targetKey).map(c => c.charCodeAt(0)).join(',');
+      detail += ` | expected key "${targetKey}" (len ${targetKey.length}, codes [${codes}]) | ${keys.length} total user keys | keys containing "${fragment}": ${JSON.stringify(matches)}`;
+    } catch (e2) {
+      detail += ` | diagnostic scan also failed: ${e2.message}`;
+    }
+    return corsResponse(jsonResponse({ error: detail }, 502));
   }
 
   return corsResponse(jsonResponse({ ok: true }));
