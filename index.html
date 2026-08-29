@@ -554,16 +554,6 @@ body{
 .hadith-narrator{ font-size:12px; color:var(--jade); letter-spacing:.03em; }
 .hadith-ref{ font-size:11px; color:var(--ivory-dim); letter-spacing:.05em; text-transform:uppercase; }
 
-.name-of-day{
-  border:1px solid var(--line); border-radius:var(--r-card); padding:18px 20px; text-align:center;
-  background:linear-gradient(160deg, var(--fill-1), rgba(255,255,255,0));
-  margin-bottom:16px; cursor:pointer;
-}
-.name-of-day .lbl{ font-size:10px; letter-spacing:.3em; text-transform:uppercase; color:var(--gold); font-weight:500; margin-bottom:10px;}
-.name-of-day .ar{ font-family:var(--font-ar); font-size:38px; color:var(--ivory); direction:rtl; margin-bottom:4px; text-shadow:var(--ink-halo);}
-.name-of-day .tr{ font-family:var(--font-display); font-size:18px; margin-bottom:4px;}
-.name-of-day .mm{ font-size:13px; color:var(--ivory-dim); }
-
 .about-note{ font-size:11.5px; color:var(--ivory-dim); text-align:center; line-height:1.6; padding:6px 6px 20px; opacity:.7;}
 
 /* ================= STUDY ================= */
@@ -1987,13 +1977,6 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
         </div>
 
         <div class="divider"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2l2 7h7l-5.5 4.5L17.5 21 12 16.5 6.5 21l2-7.5L3 9h7z" stroke="currentColor"/></svg></div>
-
-        <div class="name-of-day" id="nameOfDayBtn">
-          <div class="lbl">Имя дня</div>
-          <div class="ar" id="nodAr">الرحمن</div>
-          <div class="tr" id="nodTr">Ар-Рахман</div>
-          <div class="mm" id="nodM">Милостивый ко всем мирам</div>
-        </div>
 
         <div class="section-title" style="margin-top:6px;">Также в приложении</div>
 
@@ -4065,17 +4048,6 @@ document.getElementById('leaderboardList').addEventListener('click', e=>{
   const row = e.target.closest('[data-view-profile]');
   if(row) openProfileView(row.dataset.viewProfile);
 });
-
-// name of day: deterministic by date
-(function initNameOfDay(){
-  const d = new Date();
-  const dayIdx = Math.floor(d.getTime()/86400000) % NAMES.length;
-  const n = NAMES[dayIdx];
-  document.getElementById('nodAr').textContent = n.ar;
-  document.getElementById('nodTr').textContent = n.tr;
-  document.getElementById('nodM').textContent = n.m;
-  document.getElementById('nameOfDayBtn').addEventListener('click', ()=>openSheet(dayIdx));
-})();
 
 /* =====================================================
    STUDY: GRID + SEARCH
