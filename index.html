@@ -630,19 +630,25 @@ body{
    first, then the Коран card, then the tabs, rather than all three
    folding away at once. */
 .misc-collapse-item{
-  --stagger: 0s;
-  overflow:hidden; transform-origin:top center; max-height:none;
-  transition: transform .26s cubic-bezier(.4,0,.2,1) var(--stagger),
-              opacity .2s ease var(--stagger),
+  --stagger: 0s; --dur: .34s;
+  overflow:hidden; max-height:none;
+  transition: transform var(--dur) var(--ease) var(--stagger),
+              opacity var(--dur) var(--ease) var(--stagger),
               max-height 0s linear 0s;
 }
-.misc-collapse-2{ --stagger: .07s; }
-.misc-collapse-3{ --stagger: .14s; }
+.misc-collapse-2{ --stagger: .09s; }
+.misc-collapse-3{ --stagger: .18s; }
+/* translateY, not scaleY — scaling a box toward zero height visibly
+   squishes its own content (text/icons flatten as they shrink), which
+   reads as an abrupt, rubbery jump rather than something leaving smoothly.
+   A small upward drift while fading keeps the content's own proportions
+   intact the whole time, and reuses --ease (the app's own standard motion
+   curve) instead of a bespoke one, matching how everything else moves. */
 .misc-collapsible-header.collapsed .misc-collapse-item{
-  transform:scaleY(0); opacity:0; pointer-events:none; max-height:0;
-  transition: transform .26s cubic-bezier(.4,0,.2,1) var(--stagger),
-              opacity .16s ease var(--stagger),
-              max-height 0s linear calc(.26s + var(--stagger));
+  transform:translateY(-10px); opacity:0; pointer-events:none; max-height:0;
+  transition: transform var(--dur) var(--ease) var(--stagger),
+              opacity var(--dur) var(--ease) var(--stagger),
+              max-height 0s linear calc(var(--dur) + var(--stagger));
 }
 .segmented-wrap{ flex-shrink:0; padding:0 20px 14px; }
 .segmented{ display:flex; gap:4px; border:1px solid var(--line); border-radius:var(--r-pill); padding:4px; background:var(--glass); backdrop-filter:blur(12px); overflow:hidden; }
