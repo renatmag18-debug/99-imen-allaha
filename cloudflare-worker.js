@@ -421,28 +421,34 @@ async function handleLogin(body, env) {
   }
 
   // The login form accepts either a nickname or a linked email in the same
-  // field — resolve the email case to its underlying account key first.
-  let key;
+  // field. Try an exact-nickname match FIRST, password and all — even a
+  // string that looks like an email might genuinely be someone's literal
+  // nickname (e.g. typed into that field by mistake at registration).
+  // Only if that doesn't check out do we try it as a linked email instead.
+  // Checking straight-to-email whenever the string contains "@" (the
+  // previous behavior) meant a nickname/email collision made the
+  // nickname-holding account permanently unreachable via login — its own
+  // correct password would never even be tried once *any* account had
+  // linked that same string as a recovery email.
+  const nickKey = userKey(username);
+  const nickRes = await rtdbFetch(`/users/${encodeURIComponent(nickKey)}.json`, env);
+  const nickUser = await nickRes.json();
+  if (nickUser && nickUser.password === b64EncodeUtf8(password)) {
+    return corsResponse(jsonResponse({ ok: true, username: nickUser.username || username, stats: nickUser.stats || {} }));
+  }
+
   if (username.includes('@')) {
     const owner = await lookupEmailOwner(username.trim().toLowerCase(), env);
-    if (!owner) return corsResponse(jsonResponse({ error: 'invalid username or password' }, 401));
-    key = owner;
-  } else {
-    key = userKey(username);
+    if (owner) {
+      const ownerRes = await rtdbFetch(`/users/${encodeURIComponent(owner)}.json`, env);
+      const ownerUser = await ownerRes.json();
+      if (ownerUser && ownerUser.password === b64EncodeUtf8(password)) {
+        return corsResponse(jsonResponse({ ok: true, username: ownerUser.username || owner, stats: ownerUser.stats || {} }));
+      }
+    }
   }
 
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
-  const user = await userRes.json();
-
-  if (!user || !user.password || user.password !== b64EncodeUtf8(password)) {
-    return corsResponse(jsonResponse({ error: 'invalid username or password' }, 401));
-  }
-
-  return corsResponse(jsonResponse({
-    ok: true,
-    username: user.username || username,
-    stats: user.stats || {}
-  }));
+  return corsResponse(jsonResponse({ error: 'invalid username or password' }, 401));
 }
 
 /* =====================================================
