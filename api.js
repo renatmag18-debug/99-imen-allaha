@@ -98,7 +98,7 @@ async function apiLogin(username, password) {
 }
 
 // Sync progress to backend
-async function apiSyncProgress(quizProgress, stats, incrementQuizzesCompleted) {
+async function apiSyncProgress(quizProgress, stats, incrementQuizzesCompleted, learnedNames) {
   const auth = getAuthCredentials();
   if (!auth) return { error: 'Not authenticated' };
 
@@ -111,7 +111,8 @@ async function apiSyncProgress(quizProgress, stats, incrementQuizzesCompleted) {
         password: auth.password,
         quizProgress,
         stats,
-        incrementQuizzesCompleted
+        incrementQuizzesCompleted,
+        learnedNames
       })
     });
 
@@ -532,6 +533,49 @@ async function apiResetWithSecurityAnswer(identifier, answer, newPassword) {
     });
     const data = await res.json();
     if (!res.ok) return { error: data.error || 'Failed to reset password' };
+    return { ok: true, username: data.username };
+  } catch (e) {
+    return { error: 'Network error' };
+  }
+}
+
+/* =====================================================
+   ACCOUNT SETTINGS (change nickname / password)
+===================================================== */
+
+// password is the CURRENT password, re-typed by the user rather than read
+// from the cache — this is a sensitive action, so it's worth confirming
+// even though the cached credentials would technically also work.
+async function apiChangePassword(password, newPassword) {
+  const auth = getAuthCredentials();
+  if (!auth) return { error: 'Not authenticated' };
+
+  try {
+    const res = await fetch(`${API_BASE}/api/change-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: auth.username, password, newPassword })
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Failed to change password' };
+    return { ok: true };
+  } catch (e) {
+    return { error: 'Network error' };
+  }
+}
+
+async function apiChangeUsername(newUsername, password) {
+  const auth = getAuthCredentials();
+  if (!auth) return { error: 'Not authenticated' };
+
+  try {
+    const res = await fetch(`${API_BASE}/api/change-username`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: auth.username, password, newUsername })
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Failed to change username' };
     return { ok: true, username: data.username };
   } catch (e) {
     return { error: 'Network error' };

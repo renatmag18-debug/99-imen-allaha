@@ -2743,10 +2743,54 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
         <p class="section-desc" style="margin-top:0;">Что показывать в меню слева (значок ☰ вверху) и в каком порядке — стрелками меняете порядок, переключателем скрываете пункт.</p>
         <div id="sideDrawerCustomizeList" style="margin-bottom:24px;"></div>
 
-        <div class="section-label">Данные приложения</div>
-        <div style="display:flex;gap:8px;margin-bottom:20px;">
-          <button id="exportBackupBtn" class="btn btn-primary" style="flex:1;">Сохранить (Бэкап)</button>
-          <button id="importBackupBtn" class="btn btn-ghost" style="flex:1;">Восстановить</button>
+        <div id="accountSettingsSection" style="display:none;">
+          <div class="section-label">Аккаунт</div>
+          <p class="section-desc" id="accountLockedNotice" style="display:none;margin-top:0;margin-bottom:24px;">Смена никнейма и пароля станет доступна, как только вы привяжете и подтвердите почту (раздел «Друзья» → профиль) — так вы не рискуете потерять доступ к аккаунту.</p>
+
+          <div id="accountControls" style="display:none;margin-bottom:24px;">
+            <div id="accountUsernameView" style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-top:1px solid var(--line);">
+              <div>
+                <div style="font-size:14px;color:var(--ivory);">Никнейм</div>
+                <div style="font-size:12.5px;color:var(--ivory-dim);margin-top:2px;" id="accountUsernameCurrent"></div>
+              </div>
+              <button class="btn btn-ghost" id="accountChangeUsernameBtn" style="padding:10px 16px;flex:none;">Изменить</button>
+            </div>
+            <div id="accountUsernameForm" style="display:none;padding:14px 0;border-top:1px solid var(--line);">
+              <div class="profile-name-field">
+                <label>Новый никнейм</label>
+                <input type="text" id="accountNewUsernameInput" placeholder="Новый никнейм" maxlength="20">
+              </div>
+              <div class="profile-name-field">
+                <label>Пароль (для подтверждения)</label>
+                <input type="password" id="accountUsernamePasswordInput" placeholder="Текущий пароль" maxlength="20">
+              </div>
+              <div style="display:flex;gap:10px;">
+                <button class="btn btn-primary" id="accountSaveUsernameBtn" style="flex:1;">Сохранить</button>
+                <button class="btn btn-ghost" id="accountCancelUsernameBtn" style="flex:1;">Отмена</button>
+              </div>
+              <p id="accountUsernameStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;"></p>
+            </div>
+
+            <div id="accountPasswordView" style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
+              <div style="font-size:14px;color:var(--ivory);">Пароль</div>
+              <button class="btn btn-ghost" id="accountChangePasswordBtn" style="padding:10px 16px;flex:none;">Изменить</button>
+            </div>
+            <div id="accountPasswordForm" style="display:none;padding:14px 0;border-bottom:1px solid var(--line);">
+              <div class="profile-name-field">
+                <label>Текущий пароль</label>
+                <input type="password" id="accountCurrentPasswordInput" placeholder="Текущий пароль" maxlength="20">
+              </div>
+              <div class="profile-name-field">
+                <label>Новый пароль</label>
+                <input type="password" id="accountNewPasswordInput" placeholder="Новый пароль" maxlength="20">
+              </div>
+              <div style="display:flex;gap:10px;">
+                <button class="btn btn-primary" id="accountSavePasswordBtn" style="flex:1;">Сохранить</button>
+                <button class="btn btn-ghost" id="accountCancelPasswordBtn" style="flex:1;">Отмена</button>
+              </div>
+              <p id="accountPasswordStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;"></p>
+            </div>
+          </div>
         </div>
 
         <div id="volKeySection" style="display:none;">
@@ -3314,62 +3358,6 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 </div>
 
 <script>
-/* =====================================================
-   BACKUP / RESTORE
-===================================================== */
-document.getElementById('exportBackupBtn').addEventListener('click', ()=>{
-  if(window.AndroidApp && window.AndroidApp.exportBackup){
-    window.AndroidApp.exportBackup(JSON.stringify(state));
-  } else {
-    // Fallback for non-Android wrapper
-    const blob = new Blob([JSON.stringify(state)], {type: 'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = '99ism_backup_' + Date.now() + '.json';
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast('Резервная копия сохранена');
-  }
-});
-
-document.getElementById('importBackupBtn').addEventListener('click', ()=>{
-  if(window.AndroidApp && window.AndroidApp.importBackup){
-    window.AndroidApp.importBackup();
-  } else {
-    // Fallback for non-Android wrapper
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'application/json';
-    input.onchange = e => {
-      const file = e.target.files[0];
-      if(!file) return;
-      const reader = new FileReader();
-      reader.onload = () => window.onBackupRestored(reader.result);
-      reader.readAsText(file);
-    };
-    input.click();
-  }
-});
-
-window.onBackupRestored = function(jsonString) {
-  try {
-    const newState = JSON.parse(jsonString);
-    if(newState && newState.learned) {
-      state = Object.assign(state, newState);
-      saveState();
-      renderCards();
-      renderStats();
-      showToast('Прогресс успешно восстановлен!');
-      go('friends');
-    } else {
-      showToast('Неверный формат резервной копии');
-    }
-  } catch(e) {
-    showToast('Ошибка чтения файла');
-  }
-};
-
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDk_VEd7etsz22k3M41kSObWYhv9SfeGkw",
   authDomain: "ism-friends.firebaseapp.com",
@@ -3732,7 +3720,33 @@ function syncStats(extra){
   const auth = getAuthCredentials && getAuthCredentials();
   if(!auth) return;
   const stats = Object.assign({ totalStudied: state.learned.size }, extra || {});
-  apiSyncProgress && apiSyncProgress(null, stats);
+  // Sends the actual set of learned-name indices too, not just the count —
+  // this is what lets logging into the same account on a different device
+  // (or after a reinstall) restore the "✓ Изучено" checkmarks themselves,
+  // replacing the old local-file export/import backup feature.
+  apiSyncProgress && apiSyncProgress(null, stats, false, Array.from(state.learned));
+}
+
+// Merges the server's copy of learned-name indices into the local one
+// (union, never a one-way overwrite) and pushes the merged set back to the
+// server if either side had something the other didn't — a no-op once both
+// sides already agree. Runs on every profile load, so a device that's
+// never synced this before (existing local progress, nothing server-side
+// yet) still ends up correct instead of the server's empty list winning.
+function reconcileLearnedNames(serverLearnedNames){
+  if(!Array.isArray(serverLearnedNames)) return;
+  let localHadExtra = false;
+  state.learned.forEach(i => { if(!serverLearnedNames.includes(i)) localHadExtra = true; });
+  let serverHadExtra = false;
+  serverLearnedNames.forEach(i => {
+    if(!state.learned.has(i)){ state.learned.add(i); serverHadExtra = true; }
+  });
+  if(serverHadExtra){
+    saveLearned();
+    if(typeof renderGrid === 'function') renderGrid();
+    if(typeof updateHomeStats === 'function') updateHomeStats();
+  }
+  if(localHadExtra || serverHadExtra) syncStats();
 }
 
 const state = {
@@ -7199,6 +7213,7 @@ function updateProfileUI(){
     profileCard.style.display = 'none';
     addFriendForm.style.display = 'none';
     document.getElementById('linkEmailCard').style.display = 'none';
+    updateAccountSettingsUI(null);
   }
 }
 
@@ -7231,6 +7246,7 @@ async function loadOwnProfile(){
   state.profile.avatar = result.avatar;
   state.profile.joinedAt = result.joinedAt;
   renderAvatarInto(document.getElementById('ownAvatarCircle'), state.profile.avatar, state.profile.username);
+  reconcileLearnedNames(result.learnedNames);
 }
 
 document.getElementById('togglePassword').addEventListener('click', (e)=>{
@@ -7366,7 +7382,7 @@ document.getElementById('verifyEmailBtn').addEventListener('click', async ()=>{
   if(!code){ status.textContent = 'Введите код'; return; }
   status.textContent = 'Проверка...';
   const result = await apiVerifyEmail(code);
-  if(result.error){ status.textContent = EMAIL_ERRORS[result.error] || result.error; return; }
+  if(result.error){ status.textContent = API_ERRORS[result.error] || result.error; return; }
   showToast('Почта подтверждена');
   document.getElementById('verifyEmailCard').style.display = 'none';
   document.getElementById('profileCard').style.display = 'block';
@@ -7376,7 +7392,7 @@ document.getElementById('resendVerificationBtnReg').addEventListener('click', as
   const status = document.getElementById('verifyEmailStatus');
   status.textContent = 'Отправка...';
   const result = await apiResendVerification();
-  status.textContent = result.error ? (EMAIL_ERRORS[result.error] || result.error) : 'Код отправлен повторно';
+  status.textContent = result.error ? (API_ERRORS[result.error] || result.error) : 'Код отправлен повторно';
 });
 
 document.getElementById('skipVerifyEmailBtn').addEventListener('click', ()=>{
@@ -7406,7 +7422,7 @@ document.getElementById('verifyEmailChangeSaveBtn').addEventListener('click', as
   if(!email){ status.textContent = 'Введите email'; return; }
   status.textContent = 'Отправка...';
   const result = await apiLinkEmail(email);
-  if(result.error){ status.textContent = EMAIL_ERRORS[result.error] || result.error; return; }
+  if(result.error){ status.textContent = API_ERRORS[result.error] || result.error; return; }
   document.getElementById('verifyEmailAddress').textContent = email;
   document.getElementById('verifyEmailCodeInput').value = '';
   document.getElementById('verifyEmailChangeStep').style.display = 'none';
@@ -7416,7 +7432,7 @@ document.getElementById('verifyEmailChangeSaveBtn').addEventListener('click', as
 
 // Shared Russian translations for the email-recovery endpoints' error codes
 // (link/verify/resend/reset-method/reset-with-code/reset-with-security-answer).
-const EMAIL_ERRORS = {
+const API_ERRORS = {
   'invalid email': 'Некорректный email',
   'email already in use': 'Этот email уже привязан к другому аккаунту',
   'invalid auth': 'Сессия истекла, войдите заново',
@@ -7430,7 +7446,9 @@ const EMAIL_ERRORS = {
   'no security question set': 'Для этого аккаунта не задан контрольный вопрос',
   'account not found': 'Аккаунт не найден',
   'password must be at least 3 chars': 'Пароль минимум 3 символа',
-  'missing data': 'Заполните все поля'
+  'missing data': 'Заполните все поля',
+  'username must be at least 3 chars': 'Никнейм минимум 3 символа',
+  'username already taken': 'Этот никнейм уже занят'
 };
 
 // Shows the "link your email" (or "verify your email") banner on the
@@ -7440,10 +7458,10 @@ const EMAIL_ERRORS = {
 async function updateLinkEmailBanner(){
   const card = document.getElementById('linkEmailCard');
   if(!card) return;
-  if(!state.profile || !state.profile.authenticated){ card.style.display = 'none'; return; }
+  if(!state.profile || !state.profile.authenticated){ card.style.display = 'none'; updateAccountSettingsUI(null); return; }
 
   const info = await apiGetAccountInfo();
-  if(info.error){ card.style.display = 'none'; return; }
+  if(info.error){ card.style.display = 'none'; updateAccountSettingsUI(null); return; }
 
   const form = document.getElementById('linkEmailForm');
   const verifyForm = document.getElementById('linkEmailVerifyForm');
@@ -7466,7 +7484,100 @@ async function updateLinkEmailBanner(){
   } else {
     card.style.display = 'none';
   }
+  updateAccountSettingsUI(info);
 }
+
+// The Settings screen's "Аккаунт" section (change nickname/password) —
+// gated on a verified email, since without one, a mistyped new nickname
+// or password is one typo away from permanent lockout with no way back.
+function updateAccountSettingsUI(info){
+  const section = document.getElementById('accountSettingsSection');
+  if(!section) return;
+  if(!state.profile || !state.profile.authenticated || !info){
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = 'block';
+  const locked = document.getElementById('accountLockedNotice');
+  const controls = document.getElementById('accountControls');
+  if(info.emailVerified){
+    locked.style.display = 'none';
+    controls.style.display = 'block';
+    document.getElementById('accountUsernameCurrent').textContent = state.profile.username;
+  } else {
+    locked.style.display = 'block';
+    controls.style.display = 'none';
+  }
+}
+
+document.getElementById('accountChangeUsernameBtn').addEventListener('click', ()=>{
+  document.getElementById('accountUsernameView').style.display = 'none';
+  document.getElementById('accountUsernameForm').style.display = 'block';
+  document.getElementById('accountNewUsernameInput').value = state.profile.username;
+});
+
+document.getElementById('accountCancelUsernameBtn').addEventListener('click', ()=>{
+  document.getElementById('accountUsernameForm').style.display = 'none';
+  document.getElementById('accountUsernameView').style.display = 'block';
+  document.getElementById('accountUsernameStatus').textContent = '';
+  document.getElementById('accountUsernamePasswordInput').value = '';
+});
+
+document.getElementById('accountSaveUsernameBtn').addEventListener('click', async ()=>{
+  const newUsername = document.getElementById('accountNewUsernameInput').value.trim();
+  const password = document.getElementById('accountUsernamePasswordInput').value.trim();
+  const status = document.getElementById('accountUsernameStatus');
+  if(!newUsername || newUsername.length < 3){ status.textContent = 'Никнейм минимум 3 символа'; return; }
+  if(!password){ status.textContent = 'Введите пароль для подтверждения'; return; }
+  status.textContent = 'Сохранение...';
+  const result = await apiChangeUsername(newUsername, password);
+  if(result.error){
+    status.textContent = result.error === 'invalid auth' ? 'Неверный пароль' : (API_ERRORS[result.error] || result.error);
+    return;
+  }
+  saveUsername(result.username);
+  state.profile.username = result.username;
+  setAuthCredentials(result.username, password);
+  document.getElementById('usernameDisplay').textContent = result.username;
+  document.getElementById('accountUsernameCurrent').textContent = result.username;
+  document.getElementById('accountUsernameForm').style.display = 'none';
+  document.getElementById('accountUsernameView').style.display = 'block';
+  document.getElementById('accountUsernamePasswordInput').value = '';
+  showToast('Никнейм изменён');
+});
+
+document.getElementById('accountChangePasswordBtn').addEventListener('click', ()=>{
+  document.getElementById('accountPasswordView').style.display = 'none';
+  document.getElementById('accountPasswordForm').style.display = 'block';
+});
+
+document.getElementById('accountCancelPasswordBtn').addEventListener('click', ()=>{
+  document.getElementById('accountPasswordForm').style.display = 'none';
+  document.getElementById('accountPasswordView').style.display = 'block';
+  document.getElementById('accountPasswordStatus').textContent = '';
+  document.getElementById('accountCurrentPasswordInput').value = '';
+  document.getElementById('accountNewPasswordInput').value = '';
+});
+
+document.getElementById('accountSavePasswordBtn').addEventListener('click', async ()=>{
+  const currentPassword = document.getElementById('accountCurrentPasswordInput').value.trim();
+  const newPassword = document.getElementById('accountNewPasswordInput').value.trim();
+  const status = document.getElementById('accountPasswordStatus');
+  if(!currentPassword || !newPassword){ status.textContent = 'Заполните оба поля'; return; }
+  if(newPassword.length < 3){ status.textContent = 'Новый пароль минимум 3 символа'; return; }
+  status.textContent = 'Сохранение...';
+  const result = await apiChangePassword(currentPassword, newPassword);
+  if(result.error){
+    status.textContent = result.error === 'invalid auth' ? 'Неверный текущий пароль' : (API_ERRORS[result.error] || result.error);
+    return;
+  }
+  setAuthCredentials(state.profile.username, newPassword);
+  document.getElementById('accountPasswordForm').style.display = 'none';
+  document.getElementById('accountPasswordView').style.display = 'block';
+  document.getElementById('accountCurrentPasswordInput').value = '';
+  document.getElementById('accountNewPasswordInput').value = '';
+  showToast('Пароль изменён');
+});
 
 document.getElementById('linkEmailBtn').addEventListener('click', async ()=>{
   const email = document.getElementById('linkEmailInput').value.trim();
@@ -7474,7 +7585,7 @@ document.getElementById('linkEmailBtn').addEventListener('click', async ()=>{
   if(!email){ status.textContent = 'Введите email'; return; }
   status.textContent = 'Отправка...';
   const result = await apiLinkEmail(email);
-  if(result.error){ status.textContent = EMAIL_ERRORS[result.error] || result.error; return; }
+  if(result.error){ status.textContent = API_ERRORS[result.error] || result.error; return; }
   document.getElementById('linkEmailForm').style.display = 'none';
   document.getElementById('linkEmailVerifyForm').style.display = 'block';
   document.getElementById('linkEmailIntro').textContent = `Мы отправили код на ${email}`;
@@ -7487,7 +7598,7 @@ document.getElementById('linkEmailVerifyBtn').addEventListener('click', async ()
   if(!code){ status.textContent = 'Введите код'; return; }
   status.textContent = 'Проверка...';
   const result = await apiVerifyEmail(code);
-  if(result.error){ status.textContent = EMAIL_ERRORS[result.error] || result.error; return; }
+  if(result.error){ status.textContent = API_ERRORS[result.error] || result.error; return; }
   showToast('Почта подтверждена');
   document.getElementById('linkEmailCodeInput').value = '';
   updateLinkEmailBanner();
@@ -7507,7 +7618,7 @@ document.getElementById('linkEmailResendBtn').addEventListener('click', async ()
   const status = document.getElementById('linkEmailStatus');
   status.textContent = 'Отправка...';
   const result = await apiResendVerification();
-  status.textContent = result.error ? (EMAIL_ERRORS[result.error] || result.error) : 'Код отправлен повторно';
+  status.textContent = result.error ? (API_ERRORS[result.error] || result.error) : 'Код отправлен повторно';
 });
 
 document.getElementById('loginBtn').addEventListener('click', async ()=>{
@@ -7693,7 +7804,7 @@ document.getElementById('resetPasswordBtn').addEventListener('click', async ()=>
     if(!identifier){ resetStatus.textContent = 'Введите никнейм или email'; return; }
     resetStatus.textContent = 'Проверка...';
     const info = await apiResetMethod(identifier);
-    if(info.error){ resetStatus.textContent = EMAIL_ERRORS[info.error] || info.error; return; }
+    if(info.error){ resetStatus.textContent = API_ERRORS[info.error] || info.error; return; }
     resetIdentifier = identifier;
 
     if(info.method === 'email'){
@@ -7731,7 +7842,7 @@ document.getElementById('resetPasswordBtn').addEventListener('click', async ()=>
     if(newPassword.length < 3){ resetStatus.textContent = 'Пароль минимум 3 символа'; return; }
     resetStatus.textContent = 'Сброс пароля...';
     const result = await apiResetWithSecurityAnswer(resetIdentifier, answer, newPassword);
-    if(result.error){ resetStatus.textContent = EMAIL_ERRORS[result.error] || result.error; return; }
+    if(result.error){ resetStatus.textContent = API_ERRORS[result.error] || result.error; return; }
     finishPasswordReset(result.username || resetIdentifier);
   }
   else if(resetStep === 'email_reset'){
@@ -7742,7 +7853,7 @@ document.getElementById('resetPasswordBtn').addEventListener('click', async ()=>
     if(newPassword.length < 3){ resetStatus.textContent = 'Пароль минимум 3 символа'; return; }
     resetStatus.textContent = 'Сброс пароля...';
     const result = await apiResetPasswordWithCode(resetIdentifier, code, newPassword);
-    if(result.error){ resetStatus.textContent = EMAIL_ERRORS[result.error] || result.error; return; }
+    if(result.error){ resetStatus.textContent = API_ERRORS[result.error] || result.error; return; }
     finishPasswordReset(result.username || resetIdentifier);
   }
 });
