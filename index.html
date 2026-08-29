@@ -2745,6 +2745,14 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 
         <div id="accountSettingsSection" style="display:none;">
           <div class="section-label">Аккаунт</div>
+          <!-- Shown regardless of verified state (unlike the locked notice
+               below it) — this is just informational, so someone can check
+               which address is on file without having to go find the
+               "Друзья" profile card. -->
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-top:1px solid var(--line);">
+            <div style="font-size:14px;color:var(--ivory);">Email</div>
+            <div style="font-size:12.5px;color:var(--ivory-dim);margin-top:2px;text-align:right;" id="accountEmailValue">—</div>
+          </div>
           <p class="section-desc" id="accountLockedNotice" style="display:none;margin-top:0;margin-bottom:24px;">Смена никнейма и пароля станет доступна, как только вы привяжете и подтвердите почту (раздел «Друзья» → профиль) — так вы не рискуете потерять доступ к аккаунту.</p>
 
           <div id="accountControls" style="display:none;margin-bottom:24px;">
@@ -7542,6 +7550,16 @@ function updateAccountSettingsUI(info){
     return;
   }
   section.style.display = 'block';
+
+  const emailValueEl = document.getElementById('accountEmailValue');
+  if(info && !info.error && info.email){
+    emailValueEl.textContent = info.email + (info.emailVerified ? ' ✓' : ' (не подтверждена)');
+  } else if(info && !info.error){
+    emailValueEl.textContent = 'Не привязан';
+  } else {
+    emailValueEl.textContent = '—';
+  }
+
   const locked = document.getElementById('accountLockedNotice');
   const controls = document.getElementById('accountControls');
   if(info && !info.error && info.emailVerified){
