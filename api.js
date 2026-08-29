@@ -51,8 +51,10 @@ function loadAuthCredentials() {
   return null;
 }
 
-// Register new user
-async function apiRegister(username, password, securityQuestion, securityAnswer) {
+// Register new user. email is optional — when given, the server sends a
+// verification code to it (see apiVerifyEmail) but the account works
+// immediately either way.
+async function apiRegister(username, password, securityQuestion, securityAnswer, email) {
   try {
     const res = await fetch(`${API_BASE}/api/register`, {
       method: 'POST',
@@ -61,7 +63,8 @@ async function apiRegister(username, password, securityQuestion, securityAnswer)
         username,
         password,
         securityQuestion,
-        securityAnswer
+        securityAnswer,
+        email: email || undefined
       })
     });
 
@@ -69,7 +72,7 @@ async function apiRegister(username, password, securityQuestion, securityAnswer)
     if (!res.ok) return { error: data.error || 'Registration failed' };
 
     setAuthCredentials(username, password);
-    return { ok: true, username };
+    return { ok: true, username, emailSent: data.emailSent };
   } catch (e) {
     return { error: 'Network error: ' + e.message };
   }
@@ -383,6 +386,153 @@ async function apiGetLeaderboard(username, metric) {
     const data = await res.json();
     if (!res.ok) return { error: data.error || 'Failed to get leaderboard' };
     return data;
+  } catch (e) {
+    return { error: 'Network error' };
+  }
+}
+
+/* =====================================================
+   EMAIL ACCOUNT RECOVERY
+===================================================== */
+
+// Attach/replace the recovery email on the logged-in account. Sends a
+// verification code to it (see apiVerifyEmail).
+async function apiLinkEmail(email) {
+  const auth = getAuthCredentials();
+  if (!auth) return { error: 'Not authenticated' };
+
+  try {
+    const res = await fetch(`${API_BASE}/api/link-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: auth.username, password: auth.password, email })
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Failed to link email' };
+    return { ok: true, emailSent: data.emailSent };
+  } catch (e) {
+    return { error: 'Network error' };
+  }
+}
+
+// Confirm the 6-digit code sent to the linked email.
+async function apiVerifyEmail(code) {
+  const auth = getAuthCredentials();
+  if (!auth) return { error: 'Not authenticated' };
+
+  try {
+    const res = await fetch(`${API_BASE}/api/verify-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: auth.username, code })
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Invalid code' };
+    return { ok: true };
+  } catch (e) {
+    return { error: 'Network error' };
+  }
+}
+
+// Re-send the verification code (server rate-limits to once/minute).
+async function apiResendVerification() {
+  const auth = getAuthCredentials();
+  if (!auth) return { error: 'Not authenticated' };
+
+  try {
+    const res = await fetch(`${API_BASE}/api/resend-verification`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: auth.username, password: auth.password })
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Failed to resend code' };
+    return { ok: true, emailSent: data.emailSent };
+  } catch (e) {
+    return { error: 'Network error' };
+  }
+}
+
+// The logged-in account's own email + verified state (not exposed on the
+// public profile endpoint).
+async function apiGetAccountInfo() {
+  const auth = getAuthCredentials();
+  if (!auth) return { error: 'Not authenticated' };
+
+  try {
+    const res = await fetch(`${API_BASE}/api/account-info`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: auth.username, password: auth.password })
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Failed to get account info' };
+    return data;
+  } catch (e) {
+    return { error: 'Network error' };
+  }
+}
+
+// Which "forgot password" path applies to this username/email — no auth
+// needed, that's the whole point of a recovery flow.
+async function apiResetMethod(identifier) {
+  try {
+    const res = await fetch(`${API_BASE}/api/reset-method`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier })
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Failed to check recovery method' };
+    return data;
+  } catch (e) {
+    return { error: 'Network error' };
+  }
+}
+
+// Sends a reset code to the account's verified email, if it has one. Always
+// resolves to { ok: true } so the UI can't be used to probe which
+// usernames/emails exist.
+async function apiRequestPasswordReset(identifier) {
+  try {
+    const res = await fetch(`${API_BASE}/api/request-password-reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier })
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Failed to request reset' };
+    return { ok: true };
+  } catch (e) {
+    return { error: 'Network error' };
+  }
+}
+
+async function apiResetPasswordWithCode(identifier, code, newPassword) {
+  try {
+    const res = await fetch(`${API_BASE}/api/reset-password-with-code`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier, code, newPassword })
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Failed to reset password' };
+    return { ok: true, username: data.username };
+  } catch (e) {
+    return { error: 'Network error' };
+  }
+}
+
+async function apiResetWithSecurityAnswer(identifier, answer, newPassword) {
+  try {
+    const res = await fetch(`${API_BASE}/api/reset-with-security-answer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier, answer, newPassword })
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Failed to reset password' };
+    return { ok: true, username: data.username };
   } catch (e) {
     return { error: 'Network error' };
   }
