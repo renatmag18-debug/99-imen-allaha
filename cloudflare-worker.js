@@ -2,8 +2,8 @@
  * 99ism API + push relay — Cloudflare Worker
  *
  * Endpoints:
- *   POST /api/register       — Register user
- *   POST /api/login          — Login user
+ *   POST /api/register       — Register user (email is optional)
+ *   POST /api/login          — Login user (username OR a linked email)
  *   POST /api/sync-progress  — Sync quiz progress
  *   GET /api/profile/:username — Get user profile
  *   GET /api/friends/:username — Get friends list
@@ -25,6 +25,36 @@
  *                               friend requests; accepts an optional `link`
  *                               field, defaults to https://99ism.ru/)
  *
+ *   -- Email account-recovery (added alongside the security-question flow,
+ *      which stays as a fallback for accounts that never link an email) --
+ *   POST /api/link-email               — Attach/replace the recovery email on
+ *                                         an already-registered account
+ *   POST /api/verify-email             — Confirm a 6-digit code sent to that
+ *                                         email, marks it verified
+ *   POST /api/resend-verification      — Re-send the verification code
+ *                                         (rate-limited to once/minute)
+ *   POST /api/account-info             — Get the caller's own email +
+ *                                         verified state (never exposed on
+ *                                         the public /api/profile endpoint)
+ *   POST /api/reset-method             — Given a username or email, tells the
+ *                                         client which recovery path applies
+ *                                         (verified email, security question,
+ *                                         or none) without leaking anything
+ *                                         else about the account
+ *   POST /api/request-password-reset   — Emails a reset code if the account
+ *                                         has a verified email (always
+ *                                         responds success either way, so a
+ *                                         probe can't tell which emails exist)
+ *   POST /api/reset-password-with-code — Apply a new password using that code
+ *   POST /api/reset-with-security-answer — Apply a new password by answering
+ *                                         the account's security question
+ *                                         (verified server-side — this used
+ *                                         to only be checked against
+ *                                         localStorage client-side, which
+ *                                         meant it silently never worked for
+ *                                         any account actually registered on
+ *                                         the server)
+ *
  * Required secrets (Cloudflare dashboard -> Worker -> Settings -> Variables
  * and Secrets, all as "Encrypt"):
  *   FCM_CLIENT_EMAIL  service account email — REQUIRED for all endpoints,
@@ -33,6 +63,14 @@
  *   FCM_PRIVATE_KEY   full PEM private key for the same service account
  *   FCM_PROJECT_ID    e.g. "ism-friends" — only needed for push notify
  *   SHARED_SECRET     random string for push auth
+ *   RESEND_API_KEY    API key from resend.com — sends verification/reset
+ *                     codes by email. The sending domain (RESEND_FROM below,
+ *                     or 99ism.ru by default) must be a verified domain in
+ *                     the Resend dashboard, or real sends will fail; until
+ *                     it's set, these endpoints degrade gracefully
+ *                     (emailSent: false) instead of breaking registration.
+ *   RESEND_FROM       optional — "From" header for those emails, e.g.
+ *                     "99 имён Аллаха <no-reply@99ism.ru>" (defaults below)
  *
  * Cron Triggers (wrangler.toml):
  *   0 * * * *  — runs every hour; sends daily reminders to all users whose
@@ -205,6 +243,47 @@ async function handleAPI(request, env, url) {
     return handleAdminUserCount(body, env);
   }
 
+  // POST /api/link-email — attach/replace the recovery email on an
+  // already-registered account
+  if (request.method === 'POST' && path === 'link-email') {
+    return handleLinkEmail(body, env);
+  }
+
+  // POST /api/verify-email — confirm the 6-digit code sent to that email
+  if (request.method === 'POST' && path === 'verify-email') {
+    return handleVerifyEmail(body, env);
+  }
+
+  // POST /api/resend-verification
+  if (request.method === 'POST' && path === 'resend-verification') {
+    return handleResendVerification(body, env);
+  }
+
+  // POST /api/account-info — caller's own email + verified state
+  if (request.method === 'POST' && path === 'account-info') {
+    return handleAccountInfo(body, env);
+  }
+
+  // POST /api/reset-method — which recovery path applies to this account
+  if (request.method === 'POST' && path === 'reset-method') {
+    return handleResetMethod(body, env);
+  }
+
+  // POST /api/request-password-reset
+  if (request.method === 'POST' && path === 'request-password-reset') {
+    return handleRequestPasswordReset(body, env);
+  }
+
+  // POST /api/reset-password-with-code
+  if (request.method === 'POST' && path === 'reset-password-with-code') {
+    return handleResetPasswordWithCode(body, env);
+  }
+
+  // POST /api/reset-with-security-answer
+  if (request.method === 'POST' && path === 'reset-with-security-answer') {
+    return handleResetWithSecurityAnswer(body, env);
+  }
+
   return corsResponse(jsonResponse({ error: 'not found' }, 404));
 }
 
@@ -232,7 +311,7 @@ async function handleAdminUserCount(body, env) {
 }
 
 async function handleRegister(body, env) {
-  const { username, password, securityQuestion, securityAnswer } = body || {};
+  const { username, password, securityQuestion, securityAnswer, email } = body || {};
 
   if (!username || !password) {
     return corsResponse(jsonResponse({ error: 'missing username or password' }, 400));
@@ -240,6 +319,11 @@ async function handleRegister(body, env) {
 
   if (username.length < 3 || password.length < 3) {
     return corsResponse(jsonResponse({ error: 'username and password must be at least 3 chars' }, 400));
+  }
+
+  const normalizedEmail = email ? email.trim().toLowerCase() : null;
+  if (normalizedEmail && !isValidEmail(normalizedEmail)) {
+    return corsResponse(jsonResponse({ error: 'invalid email' }, 400));
   }
 
   const key = userKey(username);
@@ -250,6 +334,10 @@ async function handleRegister(body, env) {
 
   if (existing && existing.password) {
     return corsResponse(jsonResponse({ error: 'username already taken' }, 409));
+  }
+
+  if (normalizedEmail && (await lookupEmailOwner(normalizedEmail, env))) {
+    return corsResponse(jsonResponse({ error: 'email already in use' }, 409));
   }
 
   // Create user
@@ -271,6 +359,10 @@ async function handleRegister(body, env) {
       lastActive: new Date().toISOString()
     }
   };
+  if (normalizedEmail) {
+    userData.email = normalizedEmail;
+    userData.emailVerified = false;
+  }
 
   const createRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env, {
     method: 'PUT',
@@ -282,7 +374,15 @@ async function handleRegister(body, env) {
     return corsResponse(jsonResponse({ error: 'failed to create user' }, 500));
   }
 
-  return corsResponse(jsonResponse({ ok: true, username: displayUsername }));
+  let emailSent = false;
+  if (normalizedEmail) {
+    await rtdbFetch(`/emailIndex/${emailKey(normalizedEmail)}.json`, env, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(key)
+    });
+    emailSent = await sendVerificationCode(key, displayUsername, normalizedEmail, env);
+  }
+
+  return corsResponse(jsonResponse({ ok: true, username: displayUsername, emailSent }));
 }
 
 async function handleLogin(body, env) {
@@ -292,7 +392,18 @@ async function handleLogin(body, env) {
     return corsResponse(jsonResponse({ error: 'missing username or password' }, 400));
   }
 
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(userKey(username))}.json`, env);
+  // The login form accepts either a nickname or a linked email in the same
+  // field — resolve the email case to its underlying account key first.
+  let key;
+  if (username.includes('@')) {
+    const owner = await lookupEmailOwner(username.trim().toLowerCase(), env);
+    if (!owner) return corsResponse(jsonResponse({ error: 'invalid username or password' }, 401));
+    key = owner;
+  } else {
+    key = userKey(username);
+  }
+
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
   const user = await userRes.json();
 
   if (!user || !user.password || user.password !== b64EncodeUtf8(password)) {
@@ -304,6 +415,351 @@ async function handleLogin(body, env) {
     username: user.username || username,
     stats: user.stats || {}
   }));
+}
+
+/* =====================================================
+   EMAIL ACCOUNT RECOVERY
+   Emails are indexed separately at /emailIndex/<emailKey> -> username key,
+   since RTDB can't use a raw email as part of a lookup path (it contains
+   "." which RTDB keys forbid) and a full users-table scan per lookup would
+   be wasteful. emailKey() reuses the same base64url encoding already used
+   for JWT parts elsewhere in this file, which happens to produce a key with
+   none of RTDB's forbidden characters (. # $ [ ]).
+===================================================== */
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function emailKey(email) {
+  return b64url(email);
+}
+
+async function lookupEmailOwner(email, env) {
+  const res = await rtdbFetch(`/emailIndex/${emailKey(email)}.json`, env);
+  return await res.json(); // the owning account's username key, or null
+}
+
+function generateCode() {
+  const arr = new Uint32Array(1);
+  crypto.getRandomValues(arr);
+  return String(arr[0] % 1000000).padStart(6, '0');
+}
+
+// "an***@gmail.com" — enough for a user to recognize their own address
+// without a page showing someone else's full email if they mistype a
+// username that happens to collide with another account's recovery state.
+function maskEmail(email) {
+  const [local, domain] = email.split('@');
+  if (!domain) return '***';
+  const visible = local.slice(0, Math.min(2, local.length));
+  return `${visible}${'*'.repeat(Math.max(3, local.length - visible.length))}@${domain}`;
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Soft-fails (returns false) rather than throwing — RESEND_API_KEY may not
+// be configured yet, or the sending domain may not be verified with Resend,
+// and none of that should ever break registration/login themselves, only
+// the "we also emailed you a code" side effect.
+async function sendEmail(env, to, subject, html) {
+  if (!env.RESEND_API_KEY) {
+    console.error('sendEmail skipped: RESEND_API_KEY not configured');
+    return false;
+  }
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: env.RESEND_FROM || '99 имён Аллаха <no-reply@99ism.ru>',
+        to: [to],
+        subject,
+        html
+      })
+    });
+    if (!res.ok) {
+      console.error('Resend send failed:', await res.text());
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('Resend send threw:', e);
+    return false;
+  }
+}
+
+async function sendVerificationCode(key, displayUsername, email, env) {
+  const code = generateCode();
+  await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      emailVerificationCode: code,
+      emailVerificationExpires: Date.now() + 15 * 60 * 1000,
+      // Stamped here (not just in handleResendVerification) so the very
+      // first send — from registration or from linking an email — also
+      // starts the cooldown, instead of leaving a window where the first
+      // "resend" right after that initial send bypasses it entirely.
+      lastVerificationSentAt: Date.now()
+    })
+  });
+  return sendEmail(env, email, 'Код подтверждения — 99 имён Аллаха',
+    `<p>Здравствуйте, ${escapeHtml(displayUsername)}!</p>` +
+    `<p>Код подтверждения почты для приложения «99 имён Аллаха»:</p>` +
+    `<p style="font-size:28px;font-weight:700;letter-spacing:4px;">${code}</p>` +
+    `<p>Код действителен 15 минут. Если вы не запрашивали это, просто проигнорируйте письмо.</p>`);
+}
+
+/**
+ * POST /api/link-email
+ * Body: { username, password, email }
+ * Attaches a recovery email to an existing account (or replaces an
+ * unverified one) and sends a verification code to it. This is the "link
+ * your account to an email so you don't lose it" prompt shown to already-
+ * registered users.
+ */
+async function handleLinkEmail(body, env) {
+  const { username, password, email } = body || {};
+  if (!username || !password || !email) return corsResponse(jsonResponse({ error: 'missing data' }, 400));
+
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!isValidEmail(normalizedEmail)) return corsResponse(jsonResponse({ error: 'invalid email' }, 400));
+
+  const key = userKey(username);
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
+  const user = await userRes.json();
+  if (!user || user.password !== b64EncodeUtf8(password)) {
+    return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
+  }
+
+  const existingOwner = await lookupEmailOwner(normalizedEmail, env);
+  if (existingOwner && existingOwner !== key) {
+    return corsResponse(jsonResponse({ error: 'email already in use' }, 409));
+  }
+
+  await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: normalizedEmail, emailVerified: false })
+  });
+  await rtdbFetch(`/emailIndex/${emailKey(normalizedEmail)}.json`, env, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(key)
+  });
+
+  const emailSent = await sendVerificationCode(key, user.username || username, normalizedEmail, env);
+  return corsResponse(jsonResponse({ ok: true, emailSent }));
+}
+
+/**
+ * POST /api/verify-email
+ * Body: { username, code }
+ * Knowing the code is itself the proof of ownership here — no password
+ * needed, same as clicking a verification link would be passwordless.
+ */
+async function handleVerifyEmail(body, env) {
+  const { username, code } = body || {};
+  if (!username || !code) return corsResponse(jsonResponse({ error: 'missing data' }, 400));
+
+  const key = userKey(username);
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
+  const user = await userRes.json();
+  if (!user || !user.emailVerificationCode) {
+    return corsResponse(jsonResponse({ error: 'no pending verification' }, 400));
+  }
+  if (Date.now() > (user.emailVerificationExpires || 0)) {
+    return corsResponse(jsonResponse({ error: 'code expired' }, 410));
+  }
+  if (user.emailVerificationCode !== code.trim()) {
+    return corsResponse(jsonResponse({ error: 'invalid code' }, 401));
+  }
+
+  await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ emailVerified: true, emailVerificationCode: null, emailVerificationExpires: null })
+  });
+  return corsResponse(jsonResponse({ ok: true }));
+}
+
+/**
+ * POST /api/resend-verification
+ * Body: { username, password }
+ * Rate-limited to once/minute per account so a stray retry loop can't spam
+ * Resend (and the user's inbox).
+ */
+async function handleResendVerification(body, env) {
+  const { username, password } = body || {};
+  if (!username || !password) return corsResponse(jsonResponse({ error: 'missing auth' }, 401));
+
+  const key = userKey(username);
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
+  const user = await userRes.json();
+  if (!user || user.password !== b64EncodeUtf8(password)) {
+    return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
+  }
+  if (!user.email) return corsResponse(jsonResponse({ error: 'no email linked' }, 400));
+  if (user.emailVerified) return corsResponse(jsonResponse({ error: 'already verified' }, 400));
+
+  const lastSent = user.lastVerificationSentAt || 0;
+  if (Date.now() - lastSent < 60 * 1000) {
+    return corsResponse(jsonResponse({ error: 'please wait before resending' }, 429));
+  }
+
+  // sendVerificationCode() itself stamps lastVerificationSentAt, so the
+  // cooldown above also covers the initial send from registration/linking,
+  // not just repeat calls to this endpoint.
+  const emailSent = await sendVerificationCode(key, user.username || username, user.email, env);
+  return corsResponse(jsonResponse({ ok: true, emailSent }));
+}
+
+/**
+ * POST /api/account-info
+ * Body: { username, password }
+ * The caller's own email + verified state — deliberately NOT exposed on the
+ * public GET /api/profile/:username endpoint (that's fetched to view any
+ * user's profile, including friends', and would otherwise leak emails to
+ * anyone who knows a username).
+ */
+async function handleAccountInfo(body, env) {
+  const { username, password } = body || {};
+  if (!username || !password) return corsResponse(jsonResponse({ error: 'missing auth' }, 401));
+
+  const key = userKey(username);
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
+  const user = await userRes.json();
+  if (!user || user.password !== b64EncodeUtf8(password)) {
+    return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
+  }
+
+  return corsResponse(jsonResponse({ ok: true, email: user.email || null, emailVerified: !!user.emailVerified }));
+}
+
+/**
+ * POST /api/reset-method
+ * Body: { identifier }  — a username or a linked email
+ * Tells the client which recovery path this account supports, without
+ * requiring auth (the whole point is recovering a forgotten password) and
+ * without leaking anything beyond what's needed to route the UI: a masked
+ * email if one's verified, the security question text otherwise, or "none"
+ * for both a nonexistent account and one with no recovery method at all
+ * (kept indistinguishable on purpose, so this can't be used to probe which
+ * usernames exist).
+ */
+async function handleResetMethod(body, env) {
+  const { identifier } = body || {};
+  if (!identifier) return corsResponse(jsonResponse({ error: 'missing identifier' }, 400));
+
+  const key = await resolveIdentifierToKey(identifier, env);
+  const user = key ? await (await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env)).json() : null;
+
+  if (user && user.email && user.emailVerified) {
+    return corsResponse(jsonResponse({ method: 'email', maskedEmail: maskEmail(user.email) }));
+  }
+  if (user && user.securityQuestion && user.securityQuestion !== 'default') {
+    return corsResponse(jsonResponse({ method: 'security_question', question: user.securityQuestion }));
+  }
+  return corsResponse(jsonResponse({ method: 'none' }));
+}
+
+async function resolveIdentifierToKey(identifier, env) {
+  if (identifier.includes('@')) {
+    return lookupEmailOwner(identifier.trim().toLowerCase(), env);
+  }
+  const key = userKey(identifier);
+  const user = await (await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env)).json();
+  return (user && user.password) ? key : null;
+}
+
+/**
+ * POST /api/request-password-reset
+ * Body: { identifier }  — a username or a linked email
+ * Always responds { ok: true } regardless of whether the account exists or
+ * has a verified email, so this can't be used to enumerate accounts —  the
+ * actual email only goes out when there's somewhere to send it.
+ */
+async function handleRequestPasswordReset(body, env) {
+  const { identifier } = body || {};
+  if (!identifier) return corsResponse(jsonResponse({ error: 'missing identifier' }, 400));
+
+  const key = await resolveIdentifierToKey(identifier, env);
+  if (key) {
+    const user = await (await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env)).json();
+    if (user && user.email && user.emailVerified) {
+      const code = generateCode();
+      await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ passwordResetCode: code, passwordResetExpires: Date.now() + 15 * 60 * 1000 })
+      });
+      await sendEmail(env, user.email, 'Восстановление пароля — 99 имён Аллаха',
+        `<p>Код для сброса пароля в приложении «99 имён Аллаха»:</p>` +
+        `<p style="font-size:28px;font-weight:700;letter-spacing:4px;">${code}</p>` +
+        `<p>Код действителен 15 минут. Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо.</p>`);
+    }
+  }
+  return corsResponse(jsonResponse({ ok: true }));
+}
+
+/**
+ * POST /api/reset-password-with-code
+ * Body: { identifier, code, newPassword }
+ */
+async function handleResetPasswordWithCode(body, env) {
+  const { identifier, code, newPassword } = body || {};
+  if (!identifier || !code || !newPassword) return corsResponse(jsonResponse({ error: 'missing data' }, 400));
+  if (newPassword.length < 3) return corsResponse(jsonResponse({ error: 'password must be at least 3 chars' }, 400));
+
+  const key = await resolveIdentifierToKey(identifier, env);
+  if (!key) return corsResponse(jsonResponse({ error: 'invalid code' }, 401));
+
+  const user = await (await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env)).json();
+  if (!user || !user.passwordResetCode) return corsResponse(jsonResponse({ error: 'invalid code' }, 401));
+  if (Date.now() > (user.passwordResetExpires || 0)) return corsResponse(jsonResponse({ error: 'code expired' }, 410));
+  if (user.passwordResetCode !== code.trim()) return corsResponse(jsonResponse({ error: 'invalid code' }, 401));
+
+  await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: b64EncodeUtf8(newPassword), passwordResetCode: null, passwordResetExpires: null })
+  });
+  return corsResponse(jsonResponse({ ok: true, username: user.username || key }));
+}
+
+/**
+ * POST /api/reset-with-security-answer
+ * Body: { identifier, answer, newPassword }
+ * Verifies the security-question answer server-side. Fixes an existing bug:
+ * the old client-side reset flow only ever checked a locally-cached copy in
+ * localStorage, which meant it silently never worked for any account that
+ * had actually registered on the server (the common case) — only for
+ * accounts created while briefly offline.
+ */
+async function handleResetWithSecurityAnswer(body, env) {
+  const { identifier, answer, newPassword } = body || {};
+  if (!identifier || !answer || !newPassword) return corsResponse(jsonResponse({ error: 'missing data' }, 400));
+  if (newPassword.length < 3) return corsResponse(jsonResponse({ error: 'password must be at least 3 chars' }, 400));
+
+  const key = await resolveIdentifierToKey(identifier, env);
+  if (!key) return corsResponse(jsonResponse({ error: 'account not found' }, 404));
+
+  const user = await (await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env)).json();
+  if (!user || !user.securityAnswer) return corsResponse(jsonResponse({ error: 'no security question set' }, 400));
+  if (user.securityAnswer !== answer.trim().toLowerCase()) {
+    return corsResponse(jsonResponse({ error: 'wrong answer' }, 401));
+  }
+
+  await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: b64EncodeUtf8(newPassword) })
+  });
+  return corsResponse(jsonResponse({ ok: true, username: user.username || key }));
 }
 
 async function handleSyncProgress(body, env) {

@@ -42,7 +42,18 @@ wrangler secret put FCM_PROJECT_ID
 wrangler secret put FCM_CLIENT_EMAIL
 wrangler secret put FCM_PRIVATE_KEY
 wrangler secret put SHARED_SECRET
+wrangler secret put RESEND_API_KEY
 ```
+
+**Note:** this repo actually deploys via `.github/workflows/deploy-worker.yml` on
+every push to `main` that touches `cloudflare-worker.js`, not by running
+`wrangler` locally — so in practice, secrets are set once as **GitHub Actions
+secrets** (repo Settings → Secrets and variables → Actions) with the same
+names, and the workflow's `secrets:`/`env:` block forwards them to
+`wrangler secret put` on deploy. `RESEND_API_KEY` needs a Resend account
+(resend.com) with a **verified sending domain** (e.g. 99ism.ru, via the DNS
+records Resend provides) — without a verified domain, Resend can only
+deliver to the account owner's own address, not to real end users.
 
 **Where to get these:**
 - Firebase: Settings → Service Account → Generate new private key
@@ -145,6 +156,14 @@ Add friend
 
 ### GET /api/leaderboard
 Get top 100 users by totalStudied
+
+### Email account recovery
+`POST /api/register` also accepts an optional `email` field. See the doc
+comment at the top of `cloudflare-worker.js` for the full set of
+email-linking/verification/password-reset endpoints
+(`/api/link-email`, `/api/verify-email`, `/api/resend-verification`,
+`/api/account-info`, `/api/reset-method`, `/api/request-password-reset`,
+`/api/reset-password-with-code`, `/api/reset-with-security-answer`).
 
 ## Local Development
 
