@@ -109,14 +109,18 @@ function userKey(username) {
   return (username || '').trim().toLowerCase();
 }
 
-// RTDB forbids ". # $ [ ]" in a key. Reads happily traverse a key
-// containing them (however it got created), but Firebase rejects any
-// WRITE — including a delete — targeting that exact path with
-// "Invalid path: Invalid token in path", permanently. So a nickname
-// containing these (most commonly someone typing their email into the
-// nickname field, since "." is right there in every address) creates an
-// account that can never be renamed or deleted through the API again.
-// Blocking it at registration/rename time is the only real fix.
+// RTDB forbids ". # $ [ ]" in a key — Firebase rejects ANY request,
+// reads included, targeting a path containing one with 400 "Invalid
+// path: Invalid token in path". So a nickname containing these (most
+// commonly someone typing their email into the nickname field, since
+// "." is right there in every address) can never be registered as a
+// real record at all: every read of it silently comes back as this
+// error response instead, which every rtdbGetJson() call below turns
+// into `null` — the caller sees "account doesn't exist", not a crash
+// and not (as raw rtdbFetch(...).json() used to do throughout this
+// file) the error object itself mistaken for real, if oddly empty,
+// user data. Blocking these characters at registration/rename time
+// stops anyone from typing such a nickname in the first place.
 const FORBIDDEN_KEY_CHARS = /[.#$\[\]]/;
 function hasForbiddenKeyChars(username) {
   return FORBIDDEN_KEY_CHARS.test(username || '');
@@ -138,6 +142,16 @@ async function rtdbFetch(path, env, options) {
   const token = await getAccessToken(env, RTDB_SCOPE);
   const opts = { ...options, headers: { ...(options && options.headers), 'Authorization': `Bearer ${token}` } };
   return fetch(`${RTDB_BASE}${path}`, opts);
+}
+
+// GET + parse, but treat a failed request (e.g. an invalid-key path) as
+// "not found" instead of returning the error body — Firebase's REST API
+// error responses are JSON objects like {"error": "..."}, which are just
+// as truthy as real user data to a plain `!user` check.
+async function rtdbGetJson(path, env) {
+  const res = await rtdbFetch(path, env);
+  if (!res.ok) return null;
+  return await res.json();
 }
 
 export default {
@@ -345,15 +359,13 @@ async function handleAdminUserCount(body, env) {
   if (!username || !password) return corsResponse(jsonResponse({ error: 'missing auth' }, 401));
   if (userKey(username) !== userKey(ADMIN_USERNAME)) return corsResponse(jsonResponse({ error: 'forbidden' }, 403));
 
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(userKey(username))}.json`, env);
-  const user = await userRes.json();
+  const user = await rtdbGetJson(`/users/${encodeURIComponent(userKey(username))}.json`, env);
   if (!user || user.password !== b64EncodeUtf8(password)) return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
 
   // /users also holds legacy anonymous-Firebase-Auth entries from the duel
   // feature (keyed by Firebase uid, no password/stats) — only count real
   // username/password registrations, same marker handleLeaderboard uses.
-  const allRes = await rtdbFetch(`/users.json`, env);
-  const all = await allRes.json();
+  const all = await rtdbGetJson(`/users.json`, env);
   const count = all ? Object.values(all).filter(u => u && u.password).length : 0;
 
   return corsResponse(jsonResponse({ count }));
@@ -382,8 +394,7 @@ async function handleRegister(body, env) {
   const key = userKey(username);
 
   // Check if user exists
-  const existingRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
-  const existing = await existingRes.json();
+  const existing = await rtdbGetJson(`/users/${encodeURIComponent(key)}.json`, env);
 
   if (existing && existing.password) {
     return corsResponse(jsonResponse({ error: 'username already taken' }, 409));
@@ -457,8 +468,7 @@ async function handleLogin(body, env) {
   // correct password would never even be tried once *any* account had
   // linked that same string as a recovery email.
   const nickKey = userKey(username);
-  const nickRes = await rtdbFetch(`/users/${encodeURIComponent(nickKey)}.json`, env);
-  const nickUser = await nickRes.json();
+  const nickUser = await rtdbGetJson(`/users/${encodeURIComponent(nickKey)}.json`, env);
   if (nickUser && nickUser.password === b64EncodeUtf8(password)) {
     return corsResponse(jsonResponse({ ok: true, username: nickUser.username || username, stats: nickUser.stats || {} }));
   }
@@ -466,8 +476,7 @@ async function handleLogin(body, env) {
   if (username.includes('@')) {
     const owner = await lookupEmailOwner(username.trim().toLowerCase(), env);
     if (owner) {
-      const ownerRes = await rtdbFetch(`/users/${encodeURIComponent(owner)}.json`, env);
-      const ownerUser = await ownerRes.json();
+      const ownerUser = await rtdbGetJson(`/users/${encodeURIComponent(owner)}.json`, env);
       if (ownerUser && ownerUser.password === b64EncodeUtf8(password)) {
         return corsResponse(jsonResponse({ ok: true, username: ownerUser.username || owner, stats: ownerUser.stats || {} }));
       }
@@ -496,8 +505,7 @@ function emailKey(email) {
 }
 
 async function lookupEmailOwner(email, env) {
-  const res = await rtdbFetch(`/emailIndex/${emailKey(email)}.json`, env);
-  return await res.json(); // the owning account's username key, or null
+  return await rtdbGetJson(`/emailIndex/${emailKey(email)}.json`, env); // the owning account's username key, or null
 }
 
 function generateCode() {
@@ -592,8 +600,7 @@ async function handleLinkEmail(body, env) {
   if (!isValidEmail(normalizedEmail)) return corsResponse(jsonResponse({ error: 'invalid email' }, 400));
 
   const key = userKey(username);
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
-  const user = await userRes.json();
+  const user = await rtdbGetJson(`/users/${encodeURIComponent(key)}.json`, env);
   if (!user || user.password !== b64EncodeUtf8(password)) {
     return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
   }
@@ -636,8 +643,7 @@ async function handleVerifyEmail(body, env) {
   if (!username || !code) return corsResponse(jsonResponse({ error: 'missing data' }, 400));
 
   const key = userKey(username);
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
-  const user = await userRes.json();
+  const user = await rtdbGetJson(`/users/${encodeURIComponent(key)}.json`, env);
   if (!user || !user.emailVerificationCode) {
     return corsResponse(jsonResponse({ error: 'no pending verification' }, 400));
   }
@@ -667,8 +673,7 @@ async function handleResendVerification(body, env) {
   if (!username || !password) return corsResponse(jsonResponse({ error: 'missing auth' }, 401));
 
   const key = userKey(username);
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
-  const user = await userRes.json();
+  const user = await rtdbGetJson(`/users/${encodeURIComponent(key)}.json`, env);
   if (!user || user.password !== b64EncodeUtf8(password)) {
     return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
   }
@@ -700,8 +705,7 @@ async function handleAccountInfo(body, env) {
   if (!username || !password) return corsResponse(jsonResponse({ error: 'missing auth' }, 401));
 
   const key = userKey(username);
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
-  const user = await userRes.json();
+  const user = await rtdbGetJson(`/users/${encodeURIComponent(key)}.json`, env);
   if (!user || user.password !== b64EncodeUtf8(password)) {
     return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
   }
@@ -725,7 +729,7 @@ async function handleResetMethod(body, env) {
   if (!identifier) return corsResponse(jsonResponse({ error: 'missing identifier' }, 400));
 
   const key = await resolveIdentifierToKey(identifier, env);
-  const user = key ? await (await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env)).json() : null;
+  const user = key ? await rtdbGetJson(`/users/${encodeURIComponent(key)}.json`, env) : null;
 
   if (user && user.email && user.emailVerified) {
     return corsResponse(jsonResponse({ method: 'email', maskedEmail: maskEmail(user.email) }));
@@ -741,7 +745,7 @@ async function resolveIdentifierToKey(identifier, env) {
     return lookupEmailOwner(identifier.trim().toLowerCase(), env);
   }
   const key = userKey(identifier);
-  const user = await (await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env)).json();
+  const user = await rtdbGetJson(`/users/${encodeURIComponent(key)}.json`, env);
   return (user && user.password) ? key : null;
 }
 
@@ -758,7 +762,7 @@ async function handleRequestPasswordReset(body, env) {
 
   const key = await resolveIdentifierToKey(identifier, env);
   if (key) {
-    const user = await (await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env)).json();
+    const user = await rtdbGetJson(`/users/${encodeURIComponent(key)}.json`, env);
     if (user && user.email && user.emailVerified) {
       const code = generateCode();
       await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env, {
@@ -787,7 +791,7 @@ async function handleResetPasswordWithCode(body, env) {
   const key = await resolveIdentifierToKey(identifier, env);
   if (!key) return corsResponse(jsonResponse({ error: 'invalid code' }, 401));
 
-  const user = await (await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env)).json();
+  const user = await rtdbGetJson(`/users/${encodeURIComponent(key)}.json`, env);
   if (!user || !user.passwordResetCode) return corsResponse(jsonResponse({ error: 'invalid code' }, 401));
   if (Date.now() > (user.passwordResetExpires || 0)) return corsResponse(jsonResponse({ error: 'code expired' }, 410));
   if (user.passwordResetCode !== code.trim()) return corsResponse(jsonResponse({ error: 'invalid code' }, 401));
@@ -817,7 +821,7 @@ async function handleResetWithSecurityAnswer(body, env) {
   const key = await resolveIdentifierToKey(identifier, env);
   if (!key) return corsResponse(jsonResponse({ error: 'account not found' }, 404));
 
-  const user = await (await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env)).json();
+  const user = await rtdbGetJson(`/users/${encodeURIComponent(key)}.json`, env);
   if (!user || !user.securityAnswer) return corsResponse(jsonResponse({ error: 'no security question set' }, 400));
   if (user.securityAnswer !== answer.trim().toLowerCase()) {
     return corsResponse(jsonResponse({ error: 'wrong answer' }, 401));
@@ -850,8 +854,7 @@ async function handleChangePassword(body, env) {
   if (newPassword.length < 3) return corsResponse(jsonResponse({ error: 'password must be at least 3 chars' }, 400));
 
   const key = userKey(username);
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
-  const user = await userRes.json();
+  const user = await rtdbGetJson(`/users/${encodeURIComponent(key)}.json`, env);
   if (!user || user.password !== b64EncodeUtf8(password)) {
     return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
   }
@@ -900,8 +903,7 @@ async function handleChangeUsername(body, env) {
   const oldKey = userKey(username);
   const newKey = userKey(trimmedNew);
 
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(oldKey)}.json`, env);
-  const user = await userRes.json();
+  const user = await rtdbGetJson(`/users/${encodeURIComponent(oldKey)}.json`, env);
   if (!user || user.password !== b64EncodeUtf8(password)) {
     return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
   }
@@ -913,8 +915,7 @@ async function handleChangeUsername(body, env) {
     return corsResponse(jsonResponse({ ok: true, username: trimmedNew }));
   }
 
-  const existingRes = await rtdbFetch(`/users/${encodeURIComponent(newKey)}.json`, env);
-  const existing = await existingRes.json();
+  const existing = await rtdbGetJson(`/users/${encodeURIComponent(newKey)}.json`, env);
   if (existing && existing.password) {
     return corsResponse(jsonResponse({ error: 'username already taken' }, 409));
   }
@@ -987,8 +988,7 @@ async function deleteAccountRecord(key, user, env) {
   // Realtime Database rejects, like "." from an email typed into the
   // nickname field) — verify the record is actually gone rather than
   // trusting the DELETE response status alone.
-  const verifyRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
-  const stillThere = await verifyRes.json().catch(() => null);
+  const stillThere = await rtdbGetJson(`/users/${encodeURIComponent(key)}.json`, env).catch(() => null);
   if (stillThere) {
     throw new Error(`rtdb delete did not persist: record still present at key "${key}"`);
   }
@@ -999,8 +999,7 @@ async function handleDeleteAccount(body, env) {
   if (!username || !password) return corsResponse(jsonResponse({ error: 'missing data' }, 400));
 
   const key = userKey(username);
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
-  const user = await userRes.json();
+  const user = await rtdbGetJson(`/users/${encodeURIComponent(key)}.json`, env);
   if (!user || user.password !== b64EncodeUtf8(password)) {
     return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
   }
@@ -1027,15 +1026,13 @@ async function handleAdminDeleteAccount(body, env) {
   if (!username || !password || !targetUsername) return corsResponse(jsonResponse({ error: 'missing data' }, 400));
   if (userKey(username) !== userKey(ADMIN_USERNAME)) return corsResponse(jsonResponse({ error: 'forbidden' }, 403));
 
-  const adminRes = await rtdbFetch(`/users/${encodeURIComponent(userKey(username))}.json`, env);
-  const admin = await adminRes.json();
+  const admin = await rtdbGetJson(`/users/${encodeURIComponent(userKey(username))}.json`, env);
   if (!admin || admin.password !== b64EncodeUtf8(password)) {
     return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
   }
 
   const targetKey = userKey(targetUsername);
-  const targetRes = await rtdbFetch(`/users/${encodeURIComponent(targetKey)}.json`, env);
-  const target = await targetRes.json();
+  const target = await rtdbGetJson(`/users/${encodeURIComponent(targetKey)}.json`, env);
   if (!target) return corsResponse(jsonResponse({ error: 'account not found' }, 404));
 
   try {
@@ -1050,8 +1047,7 @@ async function handleAdminDeleteAccount(body, env) {
     // visible without more manual Firebase-console spelunking.
     let detail = e.message || 'delete failed';
     try {
-      const allRes = await rtdbFetch(`/users.json?shallow=true`, env);
-      const all = await allRes.json();
+      const all = await rtdbGetJson(`/users.json?shallow=true`, env);
       const keys = Object.keys(all || {});
       const fragment = (targetKey.match(/[a-z0-9]+/i) || [targetKey])[0];
       const matches = keys.filter(k => k.toLowerCase().includes(fragment.toLowerCase()));
@@ -1074,8 +1070,7 @@ async function handleSyncProgress(body, env) {
   }
 
   // Verify auth
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(userKey(username))}.json`, env);
-  const user = await userRes.json();
+  const user = await rtdbGetJson(`/users/${encodeURIComponent(userKey(username))}.json`, env);
 
   if (!user || user.password !== b64EncodeUtf8(password)) {
     return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
@@ -1113,8 +1108,7 @@ async function handleSyncProgress(body, env) {
 }
 
 async function handleGetProfile(username, env) {
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(userKey(username))}.json`, env);
-  const user = await userRes.json();
+  const user = await rtdbGetJson(`/users/${encodeURIComponent(userKey(username))}.json`, env);
 
   if (!user) {
     return corsResponse(jsonResponse({ error: 'user not found' }, 404));
@@ -1131,8 +1125,7 @@ async function handleGetProfile(username, env) {
 }
 
 async function handleGetFriends(username, env) {
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(userKey(username))}.json`, env);
-  const user = await userRes.json();
+  const user = await rtdbGetJson(`/users/${encodeURIComponent(userKey(username))}.json`, env);
 
   if (!user) {
     return corsResponse(jsonResponse({ error: 'user not found' }, 404));
@@ -1142,8 +1135,7 @@ async function handleGetFriends(username, env) {
   // list can show avatars/online status without a separate request per friend.
   const friendKeys = Object.keys(user.friends || {});
   const friends = await Promise.all(friendKeys.map(async (fk) => {
-    const fRes = await rtdbFetch(`/users/${encodeURIComponent(fk)}.json`, env);
-    const fUser = await fRes.json();
+    const fUser = await rtdbGetJson(`/users/${encodeURIComponent(fk)}.json`, env);
     return {
       username: (fUser && fUser.username) || user.friends[fk],
       avatar: (fUser && fUser.avatar) || null
@@ -1153,8 +1145,7 @@ async function handleGetFriends(username, env) {
 }
 
 async function handleGetFriendRequests(username, env) {
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(userKey(username))}.json`, env);
-  const user = await userRes.json();
+  const user = await rtdbGetJson(`/users/${encodeURIComponent(userKey(username))}.json`, env);
 
   if (!user) {
     return corsResponse(jsonResponse({ error: 'user not found' }, 404));
@@ -1179,16 +1170,14 @@ async function handleAddFriend(body, env) {
   }
 
   // Verify auth
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
-  const user = await userRes.json();
+  const user = await rtdbGetJson(`/users/${encodeURIComponent(key)}.json`, env);
 
   if (!user || user.password !== b64EncodeUtf8(password)) {
     return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
   }
 
   // Check if friend exists
-  const friendRes = await rtdbFetch(`/users/${encodeURIComponent(friendKey)}.json`, env);
-  const friend = await friendRes.json();
+  const friend = await rtdbGetJson(`/users/${encodeURIComponent(friendKey)}.json`, env);
 
   if (!friend || !friend.password) {
     return corsResponse(jsonResponse({ error: 'friend not found' }, 404));
@@ -1227,8 +1216,7 @@ async function handleAcceptFriendRequest(body, env) {
   const key = userKey(username);
   const fromKey = userKey(fromUsername);
 
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
-  const user = await userRes.json();
+  const user = await rtdbGetJson(`/users/${encodeURIComponent(key)}.json`, env);
 
   if (!user || user.password !== b64EncodeUtf8(password)) {
     return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
@@ -1237,8 +1225,7 @@ async function handleAcceptFriendRequest(body, env) {
     return corsResponse(jsonResponse({ error: 'no such request' }, 404));
   }
 
-  const fromRes = await rtdbFetch(`/users/${encodeURIComponent(fromKey)}.json`, env);
-  const fromUser = await fromRes.json();
+  const fromUser = await rtdbGetJson(`/users/${encodeURIComponent(fromKey)}.json`, env);
 
   await Promise.all([
     rtdbFetch(`/users/${encodeURIComponent(key)}/friends/${encodeURIComponent(fromKey)}.json`, env, {
@@ -1264,8 +1251,7 @@ async function handleDeclineFriendRequest(body, env) {
   const key = userKey(username);
   const fromKey = userKey(fromUsername);
 
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
-  const user = await userRes.json();
+  const user = await rtdbGetJson(`/users/${encodeURIComponent(key)}.json`, env);
 
   if (!user || user.password !== b64EncodeUtf8(password)) {
     return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
@@ -1289,8 +1275,7 @@ async function handleRemoveFriend(body, env) {
   const key = userKey(username);
   const friendKey = userKey(friendUsername);
 
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
-  const user = await userRes.json();
+  const user = await rtdbGetJson(`/users/${encodeURIComponent(key)}.json`, env);
 
   if (!user || user.password !== b64EncodeUtf8(password)) {
     return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
@@ -1314,8 +1299,7 @@ async function handleRegisterPushToken(body, env) {
   const key = userKey(username);
 
   // Verify auth
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
-  const user = await userRes.json();
+  const user = await rtdbGetJson(`/users/${encodeURIComponent(key)}.json`, env);
 
   if (!user || user.password !== b64EncodeUtf8(password)) {
     return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
@@ -1336,8 +1320,7 @@ async function handleRegisterPushToken(body, env) {
   // delivering — pushes only reached them whenever the send happened to
   // hit the one live token in the list. Replacing instead of accumulating
   // means there's only ever one (the current, real) token per account.
-  const existingRes = await rtdbFetch(`/users/${encodeURIComponent(key)}/fcmTokens.json`, env);
-  const existing = await existingRes.json();
+  const existing = await rtdbGetJson(`/users/${encodeURIComponent(key)}/fcmTokens.json`, env);
   const staleTokens = existing ? Object.keys(existing).filter(t => t !== token) : [];
   await Promise.all(staleTokens.map(t =>
     rtdbFetch(`/users/${encodeURIComponent(key)}/fcmTokens/${encodeURIComponent(t)}.json`, env, { method: 'DELETE' })
@@ -1362,8 +1345,7 @@ async function handleUpdateAvatar(body, env) {
   }
 
   const key = userKey(username);
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
-  const user = await userRes.json();
+  const user = await rtdbGetJson(`/users/${encodeURIComponent(key)}.json`, env);
 
   if (!user || user.password !== b64EncodeUtf8(password)) {
     return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
@@ -1389,8 +1371,7 @@ async function handleTrackTime(body, env) {
   const delta = Math.min(seconds, 600);
 
   const key = userKey(username);
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
-  const user = await userRes.json();
+  const user = await rtdbGetJson(`/users/${encodeURIComponent(key)}.json`, env);
 
   if (!user || user.password !== b64EncodeUtf8(password)) {
     return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
@@ -1425,8 +1406,7 @@ async function handleTrackZikr(body, env) {
   const delta = Math.min(Math.round(count), 20000);
 
   const key = userKey(username);
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
-  const user = await userRes.json();
+  const user = await rtdbGetJson(`/users/${encodeURIComponent(key)}.json`, env);
 
   if (!user || user.password !== b64EncodeUtf8(password)) {
     return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
@@ -1452,8 +1432,7 @@ async function handleTrackZikr(body, env) {
 async function handleLeaderboard(env, scopeUsername, metric) {
   // Fetch everyone rather than orderBy+limitToLast: a friends-scoped view needs
   // to find friends regardless of where they rank globally, not just the top slice.
-  const leaderRes = await rtdbFetch(`/users.json`, env);
-  const users = await leaderRes.json();
+  const users = await rtdbGetJson(`/users.json`, env);
 
   if (!users) {
     return corsResponse(jsonResponse({ leaderboard: [] }));
@@ -1506,8 +1485,7 @@ async function handleSetReminder(body, env) {
   if (isNaN(freq) || freq < 1 || freq > 3) return corsResponse(jsonResponse({ error: 'frequency must be 1, 2 or 3' }, 400));
 
   const key = userKey(username);
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
-  const user = await userRes.json();
+  const user = await rtdbGetJson(`/users/${encodeURIComponent(key)}.json`, env);
   if (!user || user.password !== b64EncodeUtf8(password)) return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
 
   await rtdbFetch(`/users/${encodeURIComponent(key)}/reminder.json`, env, {
@@ -1529,8 +1507,7 @@ async function handleCancelReminder(body, env) {
   if (!username || !password) return corsResponse(jsonResponse({ error: 'missing auth' }, 401));
 
   const key = userKey(username);
-  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
-  const user = await userRes.json();
+  const user = await rtdbGetJson(`/users/${encodeURIComponent(key)}.json`, env);
   if (!user || user.password !== b64EncodeUtf8(password)) return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
 
   await rtdbFetch(`/users/${encodeURIComponent(key)}/reminder.json`, env, { method: 'DELETE' });
@@ -1554,8 +1531,7 @@ async function sendDailyReminders(env) {
   if (currentMinute > 10) return;
 
   // Load all users
-  const allRes = await rtdbFetch('/users.json', env);
-  const users = await allRes.json();
+  const users = await rtdbGetJson('/users.json', env);
   if (!users) return;
 
   const accessToken = await getAccessToken(env, 'https://www.googleapis.com/auth/firebase.messaging');
@@ -1645,8 +1621,7 @@ async function handlePush(request, env) {
   if (!targetUid || !title) return corsResponse(jsonResponse({ error: 'missing targetUid/title' }, 400));
 
     const key = userKey(targetUid);
-    const tokensRes = await rtdbFetch(`/users/${encodeURIComponent(key)}/fcmTokens.json`, env);
-    const tokensObj = await tokensRes.json();
+    const tokensObj = await rtdbGetJson(`/users/${encodeURIComponent(key)}/fcmTokens.json`, env);
     const tokens = tokensObj ? Object.keys(tokensObj) : [];
     if (!tokens.length) return corsResponse(jsonResponse({ ok: true, sent: 0, reason: 'no tokens' }));
 
