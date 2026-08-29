@@ -568,10 +568,8 @@ body{
 
 /* ================= STUDY ================= */
 .search-wrap{
-  position:relative; margin-bottom:14px; flex-shrink:0; padding:0 20px; overflow:hidden; max-height:60px;
-  transition: max-height .25s var(--ease), opacity .2s var(--ease), margin-bottom .25s var(--ease);
+  position:relative; margin-bottom:14px; flex-shrink:0; padding:0 20px;
 }
-.search-wrap.collapsed{ max-height:0; opacity:0; margin-bottom:0; pointer-events:none; }
 .search-wrap input{
   width:100%; background:var(--glass); backdrop-filter:blur(12px); border:1px solid var(--line); border-radius:var(--r-pill);
   padding:13px 18px 13px 42px; color:var(--ivory); font-family:var(--font-body); font-size:14px; font-weight:300; outline:none;
@@ -614,6 +612,19 @@ body{
 .skin-picker-opt.active{ border-color:var(--gold); background:var(--accent-tint); }
 .skin-picker-opt.active .skin-picker-check{ opacity:1; }
 
+/* Collapses the whole search+Коран-card+tabs block together on scroll-down
+   (see initMiscHeaderCollapse), reappearing on scroll-up or at the very
+   top. A grid-rows 1fr↔0fr transition, not max-height — the block's real
+   height depends on which theme/skin is active and how the Коран card
+   wraps, so animating to/from an actual known height is what a max-height
+   guess can't reliably do; grid-template-rows already knows the content's
+   real height without being told. */
+.misc-collapsible-header{
+  display:grid; grid-template-rows:1fr; transition:grid-template-rows .3s var(--ease);
+  flex-shrink:0;
+}
+.misc-collapsible-header.collapsed{ grid-template-rows:0fr; }
+.misc-collapsible-header-inner{ overflow:hidden; min-height:0; }
 .segmented-wrap{ flex-shrink:0; padding:0 20px 14px; }
 .segmented{ display:flex; gap:4px; border:1px solid var(--line); border-radius:var(--r-pill); padding:4px; background:var(--glass); backdrop-filter:blur(12px); overflow:hidden; }
 .seg-btn{
@@ -2291,11 +2302,11 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 
     <!-- MISC: ЗИКРЫ / АЗКАРЫ / ДУА -->
     <section class="screen" data-screen="misc">
-      <div class="search-wrap">
-        <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-        <input id="miscSearchInput" type="search" inputmode="search" placeholder="Поиск" autocomplete="off">
-      </div>
-      <!-- Two weekly challenge cards side by side -->
+      <!-- Two weekly challenge cards side by side — relocated into whichever
+           category's own .scroll is active (see moveWeeklyChallengeCardInto)
+           the instant scripts run, so its position here is only ever seen
+           for a single frame before load; left outside the collapsible
+           header below since by runtime it isn't a sibling of these anyway. -->
       <div id="weeklyChallengeCardsRow" style="display:none;flex-direction:row;gap:10px;margin:0 auto 14px;max-width:90%;width:100%;">
         <!-- SALAWAT card (Thu 20:00 - Fri 20:00) -->
         <div id="salavat_weeklyCard" class="weekly-challenge-card" style="flex:1;min-width:0;cursor:pointer;" onclick="openWeeklyChallengeSheet('salavat')">
@@ -2318,23 +2329,36 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
           <div class="weekly-challenge-count-label" id="istighfar_weeklyLabel"></div>
         </div>
       </div>
-      <button class="quran-entry-card" id="quranEntryCard">
-        <span class="quran-entry-icon">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M4 5.8c2.2-1.2 4.8-1.2 7 0v13c-2.2-1.2-4.8-1.2-7 0v-13z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M20 5.8c-2.2-1.2-4.8-1.2-7 0v13c2.2-1.2 4.8-1.2 7 0v-13z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
-        </span>
-        <span class="quran-entry-text">
-          <span class="quran-entry-title">Коран</span>
-          <span class="quran-entry-sub">Читать постранично, с таджвидом</span>
-        </span>
-        <svg class="quran-entry-chevron" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
-      <div class="segmented-wrap" id="miscSegmentWrap">
-        <div class="segmented" id="miscSegment">
-          <button class="seg-btn active" data-misc="zikr">Зикры</button>
-          <button class="seg-btn" data-misc="azkar">Азкары</button>
-          <button class="seg-btn" data-misc="dua">Дуа</button>
-          <button class="seg-btn" data-misc="namaz">Намаз</button>
-          <button class="seg-btn" data-misc="favorites" title="Избранное" style="font-size:16px;">★</button>
+      <!-- Collapses on scroll-down, reappears on scroll-up (see the
+           misc-collapsible-header scroll listener) — a grid-rows 1fr↔0fr
+           transition rather than max-height, since it animates smoothly
+           from/to the content's real height without ever having to know
+           what that height actually is. -->
+      <div class="misc-collapsible-header" id="miscCollapsibleHeader">
+        <div class="misc-collapsible-header-inner">
+          <div class="search-wrap">
+            <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            <input id="miscSearchInput" type="search" inputmode="search" placeholder="Поиск" autocomplete="off">
+          </div>
+          <button class="quran-entry-card" id="quranEntryCard">
+            <span class="quran-entry-icon">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M4 5.8c2.2-1.2 4.8-1.2 7 0v13c-2.2-1.2-4.8-1.2-7 0v-13z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M20 5.8c-2.2-1.2-4.8-1.2-7 0v13c2.2-1.2 4.8-1.2 7 0v-13z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            </span>
+            <span class="quran-entry-text">
+              <span class="quran-entry-title">Коран</span>
+              <span class="quran-entry-sub">Читать постранично, с таджвидом</span>
+            </span>
+            <svg class="quran-entry-chevron" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="segmented-wrap" id="miscSegmentWrap">
+            <div class="segmented" id="miscSegment">
+              <button class="seg-btn active" data-misc="zikr">Зикры</button>
+              <button class="seg-btn" data-misc="azkar">Азкары</button>
+              <button class="seg-btn" data-misc="dua">Дуа</button>
+              <button class="seg-btn" data-misc="namaz">Намаз</button>
+              <button class="seg-btn" data-misc="favorites" title="Избранное" style="font-size:16px;">★</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -5316,18 +5340,19 @@ miscSearchInput.addEventListener('input', ()=>{
   moveWeeklyChallengeCardInto(miscSearchWrap);
 });
 
-// Collapses the search bar while scrolling down through any of the misc
-// screen's lists (зикры/азкары/дуа/намаз/избранное/search results — each is
-// its own .scroll element, swapped via display:none/contents rather than
-// all sharing one), to free up reading space; scrolling back up or landing
-// at the very top brings it back. 'scroll' events don't bubble, but a
-// capture-phase listener on a shared ancestor still catches them from
-// whichever of the six .scroll children is currently visible, without
-// needing to attach/detach a listener on every tab switch.
-(function initMiscSearchCollapse(){
+// Collapses the search bar + Коран card + tabs together while scrolling
+// down through any of the misc screen's lists (зикры/азкары/дуа/намаз/
+// избранное/search results — each is its own .scroll element, swapped via
+// display:none/contents rather than all sharing one), to free up reading
+// space; scrolling back up or landing at the very top brings it back.
+// 'scroll' events don't bubble, but a capture-phase listener on a shared
+// ancestor still catches them from whichever of the six .scroll children
+// is currently visible, without needing to attach/detach a listener on
+// every tab switch.
+(function initMiscHeaderCollapse(){
   const miscScreen = document.querySelector('[data-screen="misc"]');
-  const searchWrap = document.querySelector('[data-screen="misc"] .search-wrap');
-  if(!miscScreen || !searchWrap) return;
+  const header = document.getElementById('miscCollapsibleHeader');
+  if(!miscScreen || !header) return;
   miscScreen.addEventListener('scroll', e=>{
     const scrollEl = e.target;
     if(!scrollEl.classList || !scrollEl.classList.contains('scroll')) return;
@@ -5335,11 +5360,11 @@ miscSearchInput.addEventListener('input', ()=>{
     const last = scrollEl._miscScrollLast || 0;
     scrollEl._miscScrollLast = st;
     if(st <= 4){
-      searchWrap.classList.remove('collapsed');
+      header.classList.remove('collapsed');
     } else if(st - last > 4){
-      searchWrap.classList.add('collapsed');
+      header.classList.add('collapsed');
     } else if(st - last < -4){
-      searchWrap.classList.remove('collapsed');
+      header.classList.remove('collapsed');
     }
   }, { capture: true, passive: true });
 })();
