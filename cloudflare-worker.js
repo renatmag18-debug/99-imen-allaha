@@ -12,7 +12,9 @@
  *   POST /api/accept-friend-request — Accept a pending request (makes both friends)
  *   POST /api/decline-friend-request — Decline/withdraw a pending request
  *   POST /api/remove-friend  — Remove an existing friend (both directions)
- *   POST /api/update-avatar  — Set avatar {emoji, color} from the preset picker
+ *   POST /api/update-avatar  — Set avatar: either {emoji, color} from the
+ *                               preset picker, or {photo} (a client-cropped/
+ *                               compressed data: URL, capped at 60000 chars)
  *   POST /api/track-time     — Add elapsed seconds to stats.totalTimeSeconds
  *   POST /api/track-zikr     — Add taps to stats.totalZikrCount (lifetime, all counters combined)
  *   POST /api/set-reminder   — Save daily reminder time (UTC hour 0-23) for a user
@@ -1335,13 +1337,28 @@ async function handleRegisterPushToken(body, env) {
 }
 
 async function handleUpdateAvatar(body, env) {
-  const { username, password, emoji, color } = body || {};
+  const { username, password, emoji, color, photo } = body || {};
 
-  if (!username || !password || !emoji || !color) {
+  if (!username || !password) {
     return corsResponse(jsonResponse({ error: 'missing data' }, 400));
   }
-  if (typeof emoji !== 'string' || emoji.length > 8 || typeof color !== 'string' || color.length > 20) {
-    return corsResponse(jsonResponse({ error: 'invalid avatar' }, 400));
+
+  let avatarValue;
+  if (photo) {
+    // A data: URL the client already cropped/compressed client-side. Capped
+    // well under RTDB's own per-value limits — the real reason for the cap
+    // is that /api/leaderboard fetches every user's FULL record wholesale
+    // (see handleLeaderboard), so an uncompressed photo per account would
+    // make that payload balloon for everyone, not just its owner.
+    if (typeof photo !== 'string' || !photo.startsWith('data:image/') || photo.length > 60000) {
+      return corsResponse(jsonResponse({ error: 'invalid avatar' }, 400));
+    }
+    avatarValue = { photo };
+  } else {
+    if (!emoji || !color || typeof emoji !== 'string' || emoji.length > 8 || typeof color !== 'string' || color.length > 20) {
+      return corsResponse(jsonResponse({ error: 'invalid avatar' }, 400));
+    }
+    avatarValue = { emoji, color };
   }
 
   const key = userKey(username);
@@ -1354,7 +1371,11 @@ async function handleUpdateAvatar(body, env) {
   await rtdbFetch(`/users/${encodeURIComponent(key)}/avatar.json`, env, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ emoji, color })
+    // PUT replaces the whole avatar node, so switching between a photo and
+    // an emoji+color combo (either direction) cleanly drops the other one's
+    // fields — no leftover `photo` sitting alongside a chosen emoji or vice
+    // versa.
+    body: JSON.stringify(avatarValue)
   });
 
   return corsResponse(jsonResponse({ ok: true }));

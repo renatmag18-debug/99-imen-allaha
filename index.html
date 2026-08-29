@@ -1668,6 +1668,25 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
   width:100%; aspect-ratio:1; border-radius:50%; cursor:pointer; border:2px solid transparent;
 }
 .avatar-pick-color.active{ border-color:var(--ivory); }
+/* Drag-to-position photo cropper: the image itself is shown at full size
+   (not clipped to a circle) so there's context for positioning it, with a
+   dark mask over everything OUTSIDE the circular crop area — the box-shadow
+   trick (a transparent circle with a huge shadow) is what actually paints
+   the darkened surround, clipped to the viewport by its own overflow:hidden. */
+.avatar-crop-viewport{
+  position:relative; width:100%; max-width:240px; aspect-ratio:1; margin:0 auto;
+  overflow:hidden; border-radius:var(--r-card); background:var(--fill-1); touch-action:none;
+}
+.avatar-crop-viewport img{
+  position:absolute; left:0; top:0; transform-origin:0 0; user-select:none; -webkit-user-drag:none; pointer-events:none;
+}
+.avatar-crop-mask{
+  position:absolute; left:50%; top:50%; width:88%; height:88%; transform:translate(-50%,-50%);
+  border-radius:50%; box-shadow:0 0 0 9999px rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.5);
+  pointer-events:none;
+}
+.avatar-crop-hint{ font-size:11.5px; color:var(--ivory-dim); text-align:center; margin:10px 0 4px; }
+#avatarCropZoom{ width:100%; margin-top:6px; accent-color:var(--gold); }
 .profile-view-avatar{
   width:72px; height:72px; border-radius:50%; display:flex; align-items:center; justify-content:center;
   font-size:32px; margin:0 auto; color:var(--on-accent); font-family:var(--font-display); font-weight:700;
@@ -3217,11 +3236,39 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
     </div>
     <div class="sheet-body">
       <div class="profile-view-avatar" id="avatarPreview" style="margin-bottom:16px;"></div>
-      <div class="section-label" style="margin-top:0;">Значок</div>
-      <div class="avatar-picker-grid" id="avatarEmojiGrid"></div>
-      <div class="section-label">Цвет</div>
-      <div class="avatar-color-grid" id="avatarColorGrid"></div>
-      <button class="btn btn-primary" id="avatarSaveBtn" style="width:100%;margin-top:6px;">Сохранить</button>
+
+      <div class="segmented-wrap" style="margin-bottom:6px;">
+        <div class="segmented" id="avatarModeSegment">
+          <button class="seg-btn active" data-avatar-mode="emoji">Значок</button>
+          <button class="seg-btn" data-avatar-mode="photo">Фото</button>
+        </div>
+      </div>
+
+      <div id="avatarEmojiTab">
+        <div class="section-label" style="margin-top:0;">Значок</div>
+        <div class="avatar-picker-grid" id="avatarEmojiGrid"></div>
+        <div class="section-label">Цвет</div>
+        <div class="avatar-color-grid" id="avatarColorGrid"></div>
+      </div>
+
+      <div id="avatarPhotoTab" style="display:none;">
+        <input type="file" accept="image/*" id="avatarPhotoInput" style="display:none">
+        <div id="avatarPhotoEmpty">
+          <button class="btn btn-ghost" id="avatarPhotoChooseBtn" style="width:100%;">Выбрать фото</button>
+        </div>
+        <div id="avatarPhotoCropWrap" style="display:none;">
+          <div class="avatar-crop-viewport" id="avatarCropViewport">
+            <img id="avatarCropImg" draggable="false" alt="">
+            <div class="avatar-crop-mask"></div>
+          </div>
+          <div class="avatar-crop-hint">Перетащите фото и настройте масштаб — затемнённая область не попадёт в аватарку</div>
+          <input type="range" id="avatarCropZoom" min="100" max="300" value="100">
+          <button class="btn btn-ghost" id="avatarPhotoChangeBtn" style="width:100%;margin-top:10px;">Выбрать другое фото</button>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="avatarSaveBtn" style="width:100%;margin-top:14px;">Сохранить</button>
+      <button class="btn btn-ghost" id="avatarRemovePhotoBtn" style="width:100%;margin-top:8px;color:var(--rose);border-color:var(--rose);display:none;">Удалить фото</button>
     </div>
   </div>
 
@@ -7142,14 +7189,22 @@ function avatarGradient(colorKey){
   const c = AVATAR_COLORS[colorKey] || AVATAR_COLORS.gold;
   return `linear-gradient(145deg, ${c[0]}, ${c[1]})`;
 }
-// Applies either a custom {emoji,color} avatar or the default letter-on-gold
-// fallback onto an existing .friend-avatar-style element.
+// Applies a custom photo, an {emoji,color} avatar, or the default
+// letter-on-gold fallback onto an existing .friend-avatar-style element.
 function renderAvatarInto(el, avatar, fallbackName){
   if(!el) return;
-  if(avatar && avatar.emoji && avatar.color){
+  if(avatar && avatar.photo){
+    el.style.background = '';
+    el.style.backgroundImage = `url("${avatar.photo}")`;
+    el.style.backgroundSize = 'cover';
+    el.style.backgroundPosition = 'center';
+    el.textContent = '';
+  } else if(avatar && avatar.emoji && avatar.color){
+    el.style.backgroundImage = '';
     el.style.background = avatarGradient(avatar.color);
     el.textContent = avatar.emoji;
   } else {
+    el.style.backgroundImage = '';
     el.style.background = '';
     el.textContent = avatarLetter(fallbackName);
   }
@@ -11199,6 +11254,11 @@ window.onOpenChatFromNotification = function(username){
 
 /* ---------------- avatar picker ---------------- */
 let avatarPickerState = { emoji: AVATAR_EMOJIS[0], color: Object.keys(AVATAR_COLORS)[0] };
+let avatarPickerMode = 'emoji'; // 'emoji' | 'photo' — which tab is active right now
+// Set only while a photo is loaded into the cropper this session (freshly
+// picked, or the account's existing photo re-opened for adjustment) — null
+// means "photo tab has nothing staged", so Save falls back to emoji/color.
+let avatarCropState = null; // { natW, natH, baseScale, zoom, offsetX, offsetY, viewportSize }
 const avatarPickerSheet = document.getElementById('avatarPickerSheet');
 const avatarPickerBackdrop = document.getElementById('avatarPickerBackdrop');
 function renderAvatarPickerGrids(){
@@ -11210,12 +11270,148 @@ function renderAvatarPickerGrids(){
   ).join('');
   renderAvatarInto(document.getElementById('avatarPreview'), avatarPickerState, state.profile && state.profile.username);
 }
+function setAvatarPickerMode(mode){
+  avatarPickerMode = mode;
+  document.querySelectorAll('#avatarModeSegment .seg-btn').forEach(b=>b.classList.toggle('active', b.dataset.avatarMode===mode));
+  document.getElementById('avatarEmojiTab').style.display = mode==='emoji' ? 'block' : 'none';
+  document.getElementById('avatarPhotoTab').style.display = mode==='photo' ? 'block' : 'none';
+  // The round preview above the tabs only ever shows the emoji/color combo —
+  // the crop viewport itself is already the photo's own live preview, so
+  // showing both at once would just be two previews saying the same thing.
+  document.getElementById('avatarPreview').style.display = mode==='emoji' ? 'flex' : 'none';
+}
+document.querySelectorAll('#avatarModeSegment .seg-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>setAvatarPickerMode(btn.dataset.avatarMode));
+});
+
+/* --- photo cropper: drag to pan, slider to zoom, dark ring previews the
+   final circular crop before anything is saved --- */
+function centerAvatarCrop(){
+  if(!avatarCropState) return;
+  const { natW, natH, baseScale, zoom, viewportSize } = avatarCropState;
+  const scale = baseScale*zoom;
+  avatarCropState.offsetX = (viewportSize - natW*scale)/2;
+  avatarCropState.offsetY = (viewportSize - natH*scale)/2;
+}
+function clampAvatarCropOffsets(){
+  if(!avatarCropState) return;
+  const { natW, natH, baseScale, zoom, viewportSize } = avatarCropState;
+  const scale = baseScale*zoom;
+  const dispW = natW*scale, dispH = natH*scale;
+  const minX = Math.min(0, viewportSize-dispW), minY = Math.min(0, viewportSize-dispH);
+  avatarCropState.offsetX = Math.min(0, Math.max(minX, avatarCropState.offsetX));
+  avatarCropState.offsetY = Math.min(0, Math.max(minY, avatarCropState.offsetY));
+}
+function applyAvatarCropTransform(){
+  if(!avatarCropState) return;
+  const { natW, natH, baseScale, zoom, offsetX, offsetY } = avatarCropState;
+  const scale = baseScale*zoom;
+  const img = document.getElementById('avatarCropImg');
+  img.style.width = (natW*scale)+'px';
+  img.style.height = (natH*scale)+'px';
+  img.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+}
+function loadAvatarPhotoFromDataUrl(dataUrl){
+  const probe = new Image();
+  probe.onload = () => {
+    // Must show the crop wrap BEFORE measuring the viewport — it starts
+    // display:none, and an element with no box has clientWidth 0, which
+    // collapsed baseScale (and the displayed image) to nothing.
+    document.getElementById('avatarPhotoEmpty').style.display = 'none';
+    document.getElementById('avatarPhotoCropWrap').style.display = 'block';
+
+    const viewport = document.getElementById('avatarCropViewport');
+    const size = viewport.clientWidth;
+    avatarCropState = {
+      natW: probe.naturalWidth, natH: probe.naturalHeight,
+      baseScale: size / Math.min(probe.naturalWidth, probe.naturalHeight),
+      zoom: 1, offsetX: 0, offsetY: 0, viewportSize: size
+    };
+    document.getElementById('avatarCropImg').src = dataUrl;
+    document.getElementById('avatarCropZoom').value = 100;
+    centerAvatarCrop();
+    applyAvatarCropTransform();
+  };
+  probe.src = dataUrl;
+}
+function loadAvatarPhotoFile(file){
+  const reader = new FileReader();
+  reader.onload = () => loadAvatarPhotoFromDataUrl(reader.result);
+  reader.readAsDataURL(file);
+}
+document.getElementById('avatarPhotoChooseBtn').addEventListener('click', ()=>document.getElementById('avatarPhotoInput').click());
+document.getElementById('avatarPhotoChangeBtn').addEventListener('click', ()=>document.getElementById('avatarPhotoInput').click());
+document.getElementById('avatarPhotoInput').addEventListener('change', e=>{
+  const file = e.target.files && e.target.files[0];
+  if(file) loadAvatarPhotoFile(file);
+  e.target.value = '';
+});
+document.getElementById('avatarCropZoom').addEventListener('input', e=>{
+  if(!avatarCropState) return;
+  avatarCropState.zoom = Number(e.target.value)/100;
+  clampAvatarCropOffsets();
+  applyAvatarCropTransform();
+});
+(function initAvatarCropDrag(){
+  const viewport = document.getElementById('avatarCropViewport');
+  let dragging = false, startX = 0, startY = 0, startOffX = 0, startOffY = 0;
+  viewport.addEventListener('pointerdown', e=>{
+    if(!avatarCropState) return;
+    dragging = true; startX = e.clientX; startY = e.clientY;
+    startOffX = avatarCropState.offsetX; startOffY = avatarCropState.offsetY;
+    viewport.setPointerCapture(e.pointerId);
+  });
+  viewport.addEventListener('pointermove', e=>{
+    if(!dragging || !avatarCropState) return;
+    avatarCropState.offsetX = startOffX + (e.clientX-startX);
+    avatarCropState.offsetY = startOffY + (e.clientY-startY);
+    clampAvatarCropOffsets();
+    applyAvatarCropTransform();
+  });
+  ['pointerup','pointercancel'].forEach(evt=>viewport.addEventListener(evt, ()=>{ dragging = false; }));
+})();
+// Renders exactly the circle the dark mask outlines (88% of the square
+// viewport, centered) at increasingly lossy quality until it's small enough
+// for an RTDB record that also gets fetched whole for every leaderboard
+// load — an uncompressed photo per user would make that payload balloon.
+function buildAvatarPhotoDataUrl(){
+  const { natW, natH, baseScale, zoom, offsetX, offsetY, viewportSize } = avatarCropState;
+  const scale = baseScale*zoom;
+  const cropSizeOnScreen = viewportSize*0.88;
+  const cropOffsetOnScreen = (viewportSize-cropSizeOnScreen)/2;
+  const srcSize = cropSizeOnScreen/scale;
+  const srcX = Math.max(0, Math.min(natW-srcSize, (cropOffsetOnScreen-offsetX)/scale));
+  const srcY = Math.max(0, Math.min(natH-srcSize, (cropOffsetOnScreen-offsetY)/scale));
+
+  const img = document.getElementById('avatarCropImg');
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const attempts = [[240,.82],[240,.6],[200,.5],[160,.4]];
+  for(const [outSize, quality] of attempts){
+    canvas.width = outSize; canvas.height = outSize;
+    ctx.clearRect(0,0,outSize,outSize);
+    ctx.drawImage(img, srcX, srcY, srcSize, srcSize, 0, 0, outSize, outSize);
+    const dataUrl = canvas.toDataURL('image/jpeg', quality);
+    if(dataUrl.length <= 46000) return dataUrl;
+  }
+  return canvas.toDataURL('image/jpeg', 0.35);
+}
+
 function openAvatarPicker(){
   pushSheetHistory();
   const current = (state.profile && state.profile.avatar) || {};
   avatarPickerState.emoji = current.emoji || AVATAR_EMOJIS[0];
   avatarPickerState.color = current.color || Object.keys(AVATAR_COLORS)[0];
   renderAvatarPickerGrids();
+
+  avatarCropState = null;
+  document.getElementById('avatarPhotoCropWrap').style.display = 'none';
+  document.getElementById('avatarPhotoEmpty').style.display = 'block';
+  document.getElementById('avatarRemovePhotoBtn').style.display = current.photo ? 'block' : 'none';
+
+  setAvatarPickerMode(current.photo ? 'photo' : 'emoji');
+  if(current.photo) loadAvatarPhotoFromDataUrl(current.photo);
+
   avatarPickerSheet.classList.add('show');
   avatarPickerBackdrop.classList.add('show');
 }
@@ -11239,25 +11435,38 @@ document.getElementById('avatarColorGrid').addEventListener('click', e=>{
   avatarPickerState.color = btn.dataset.color;
   renderAvatarPickerGrids();
 });
-document.getElementById('avatarSaveBtn').addEventListener('click', async ()=>{
+async function saveAvatarAndReport(resultPromise, newAvatar){
   const btn = document.getElementById('avatarSaveBtn');
   const originalText = btn.textContent;
   btn.disabled = true;
   btn.textContent = 'Сохранение…';
-  const result = await apiUpdateAvatar(avatarPickerState.emoji, avatarPickerState.color);
+  const result = await resultPromise;
   btn.disabled = false;
   if(result.error){
     btn.textContent = originalText;
     showToast(result.error === 'Not authenticated' ? 'Сначала войдите в аккаунт' : 'Не удалось сохранить — проверьте соединение');
     return;
   }
-  state.profile.avatar = { emoji: avatarPickerState.emoji, color: avatarPickerState.color };
+  state.profile.avatar = newAvatar;
   renderAvatarInto(document.getElementById('ownAvatarCircle'), state.profile.avatar, state.profile.username);
+  document.getElementById('avatarRemovePhotoBtn').style.display = newAvatar.photo ? 'block' : 'none';
   btn.textContent = 'Сохранено ✓';
   showToast('Аватарка сохранена');
   setTimeout(()=>{ btn.textContent = originalText; }, 1500);
   // Stays open on purpose — the preview + toast are the confirmation;
   // auto-closing right after saving made it easy to miss that it worked.
+}
+document.getElementById('avatarSaveBtn').addEventListener('click', ()=>{
+  if(avatarPickerMode === 'photo' && avatarCropState){
+    const photo = buildAvatarPhotoDataUrl();
+    saveAvatarAndReport(apiUpdateAvatarPhoto(photo), { photo });
+  } else {
+    saveAvatarAndReport(apiUpdateAvatar(avatarPickerState.emoji, avatarPickerState.color), { emoji: avatarPickerState.emoji, color: avatarPickerState.color });
+  }
+});
+document.getElementById('avatarRemovePhotoBtn').addEventListener('click', ()=>{
+  setAvatarPickerMode('emoji');
+  saveAvatarAndReport(apiUpdateAvatar(avatarPickerState.emoji, avatarPickerState.color), { emoji: avatarPickerState.emoji, color: avatarPickerState.color });
 });
 
 /* ---------------- public profile view ---------------- */

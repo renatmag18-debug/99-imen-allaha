@@ -266,6 +266,24 @@ async function apiUpdateAvatar(emoji, color) {
   }
 }
 
+async function apiUpdateAvatarPhoto(photo) {
+  const auth = getAuthCredentials();
+  if (!auth) return { error: 'Not authenticated' };
+
+  try {
+    const res = await fetch(`${API_BASE}/api/update-avatar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: auth.username, password: auth.password, photo })
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Failed to update avatar' };
+    return { ok: true };
+  } catch (e) {
+    return { error: 'Network error' };
+  }
+}
+
 async function apiTrackTime(seconds) {
   const auth = getAuthCredentials();
   if (!auth) return { error: 'Not authenticated' };
