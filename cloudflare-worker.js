@@ -2,7 +2,7 @@
  * 99ism API + push relay — Cloudflare Worker
  *
  * Endpoints:
- *   POST /api/register       — Register user (email is optional)
+ *   POST /api/register       — Register user (email required)
  *   POST /api/login          — Login user (username OR a linked email)
  *   POST /api/sync-progress  — Sync quiz progress
  *   GET /api/profile/:username — Get user profile
@@ -62,6 +62,10 @@
  *                                         cross-reference and the emailIndex
  *                                         entry, since the username IS the
  *                                         record's key)
+ *   POST /api/delete-account           — Permanently delete the logged-in
+ *                                         account (record + emailIndex entry
+ *                                         + every friend/pending-request
+ *                                         cross-reference on other accounts)
  *
  * Required secrets (Cloudflare dashboard -> Worker -> Settings -> Variables
  * and Secrets, all as "Encrypt"):
@@ -302,6 +306,11 @@ async function handleAPI(request, env, url) {
     return handleChangeUsername(body, env);
   }
 
+  // POST /api/delete-account
+  if (request.method === 'POST' && path === 'delete-account') {
+    return handleDeleteAccount(body, env);
+  }
+
   return corsResponse(jsonResponse({ error: 'not found' }, 404));
 }
 
@@ -331,16 +340,16 @@ async function handleAdminUserCount(body, env) {
 async function handleRegister(body, env) {
   const { username, password, securityQuestion, securityAnswer, email } = body || {};
 
-  if (!username || !password) {
-    return corsResponse(jsonResponse({ error: 'missing username or password' }, 400));
+  if (!username || !password || !email) {
+    return corsResponse(jsonResponse({ error: 'missing username, password or email' }, 400));
   }
 
   if (username.length < 3 || password.length < 3) {
     return corsResponse(jsonResponse({ error: 'username and password must be at least 3 chars' }, 400));
   }
 
-  const normalizedEmail = email ? email.trim().toLowerCase() : null;
-  if (normalizedEmail && !isValidEmail(normalizedEmail)) {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!isValidEmail(normalizedEmail)) {
     return corsResponse(jsonResponse({ error: 'invalid email' }, 400));
   }
 
@@ -354,7 +363,13 @@ async function handleRegister(body, env) {
     return corsResponse(jsonResponse({ error: 'username already taken' }, 409));
   }
 
-  if (normalizedEmail && (await lookupEmailOwner(normalizedEmail, env))) {
+  // Blocks the exact scenario that used to slip through: someone already
+  // has an account with this email linked, forgets it, and "registers"
+  // again under a fresh nickname — this used to only fail if the *nickname*
+  // collided, so a same-email duplicate sailed straight through and the
+  // person ended up with two disconnected accounts (their real one, and an
+  // empty phantom that could never legitimately use that email itself).
+  if (await lookupEmailOwner(normalizedEmail, env)) {
     return corsResponse(jsonResponse({ error: 'email already in use' }, 409));
   }
 
@@ -368,6 +383,8 @@ async function handleRegister(body, env) {
     joinedAt: new Date().toISOString(),
     friends: {},
     quizProgress: {},
+    email: normalizedEmail,
+    emailVerified: false,
     stats: {
       totalStudied: 0,
       correctAnswers: 0,
@@ -377,10 +394,6 @@ async function handleRegister(body, env) {
       lastActive: new Date().toISOString()
     }
   };
-  if (normalizedEmail) {
-    userData.email = normalizedEmail;
-    userData.emailVerified = false;
-  }
 
   const createRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env, {
     method: 'PUT',
@@ -392,13 +405,10 @@ async function handleRegister(body, env) {
     return corsResponse(jsonResponse({ error: 'failed to create user' }, 500));
   }
 
-  let emailSent = false;
-  if (normalizedEmail) {
-    await rtdbFetch(`/emailIndex/${emailKey(normalizedEmail)}.json`, env, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(key)
-    });
-    emailSent = await sendVerificationCode(key, displayUsername, normalizedEmail, env);
-  }
+  await rtdbFetch(`/emailIndex/${emailKey(normalizedEmail)}.json`, env, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(key)
+  });
+  const emailSent = await sendVerificationCode(key, displayUsername, normalizedEmail, env);
 
   return corsResponse(jsonResponse({ ok: true, username: displayUsername, emailSent }));
 }
@@ -901,6 +911,46 @@ async function handleChangeUsername(body, env) {
   await rtdbFetch(`/users/${encodeURIComponent(oldKey)}.json`, env, { method: 'DELETE' });
 
   return corsResponse(jsonResponse({ ok: true, username: trimmedNew }));
+}
+
+/**
+ * POST /api/delete-account
+ * Body: { username, password }
+ * Permanently deletes the account: the record itself, its emailIndex entry
+ * (if any), and every friend/pending-request cross-reference on OTHER
+ * accounts that point back at this one — those live on the other party's
+ * own record (same reasoning as handleChangeUsername), so they'd otherwise
+ * be left dangling, pointing at a key that no longer exists.
+ */
+async function handleDeleteAccount(body, env) {
+  const { username, password } = body || {};
+  if (!username || !password) return corsResponse(jsonResponse({ error: 'missing data' }, 400));
+
+  const key = userKey(username);
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
+  const user = await userRes.json();
+  if (!user || user.password !== b64EncodeUtf8(password)) {
+    return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
+  }
+
+  const cleanup = [];
+  if (user.email) {
+    cleanup.push(rtdbFetch(`/emailIndex/${emailKey(user.email)}.json`, env, { method: 'DELETE' }));
+  }
+  for (const friendKey of Object.keys(user.friends || {})) {
+    cleanup.push(rtdbFetch(`/users/${encodeURIComponent(friendKey)}/friends/${encodeURIComponent(key)}.json`, env, { method: 'DELETE' }));
+  }
+  for (const fromKey of Object.keys(user.friendRequestsIn || {})) {
+    cleanup.push(rtdbFetch(`/users/${encodeURIComponent(fromKey)}/friendRequestsOut/${encodeURIComponent(key)}.json`, env, { method: 'DELETE' }));
+  }
+  for (const toKey of Object.keys(user.friendRequestsOut || {})) {
+    cleanup.push(rtdbFetch(`/users/${encodeURIComponent(toKey)}/friendRequestsIn/${encodeURIComponent(key)}.json`, env, { method: 'DELETE' }));
+  }
+  await Promise.all(cleanup);
+
+  await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env, { method: 'DELETE' });
+
+  return corsResponse(jsonResponse({ ok: true }));
 }
 
 async function handleSyncProgress(body, env) {
