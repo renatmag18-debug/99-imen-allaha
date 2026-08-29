@@ -543,6 +543,15 @@ async function handleLinkEmail(body, env) {
     return corsResponse(jsonResponse({ error: 'email already in use' }, 409));
   }
 
+  // Replacing a previously-linked (typically not-yet-verified — e.g. the
+  // person mistyped it) email with a different one — drop the old
+  // emailIndex entry so it doesn't sit there forever pointing at this
+  // account and blocking anyone (including this same person, later) from
+  // ever using that address.
+  if (user.email && user.email !== normalizedEmail) {
+    await rtdbFetch(`/emailIndex/${emailKey(user.email)}.json`, env, { method: 'DELETE' });
+  }
+
   await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
