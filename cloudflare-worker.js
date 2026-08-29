@@ -54,6 +54,14 @@
  *                                         meant it silently never worked for
  *                                         any account actually registered on
  *                                         the server)
+ *   POST /api/change-password          — Change the logged-in account's
+ *                                         password (current password required)
+ *   POST /api/change-username          — Rename the logged-in account
+ *                                         (relocates its RTDB record + fixes
+ *                                         up every friend/pending-request
+ *                                         cross-reference and the emailIndex
+ *                                         entry, since the username IS the
+ *                                         record's key)
  *
  * Required secrets (Cloudflare dashboard -> Worker -> Settings -> Variables
  * and Secrets, all as "Encrypt"):
@@ -282,6 +290,16 @@ async function handleAPI(request, env, url) {
   // POST /api/reset-with-security-answer
   if (request.method === 'POST' && path === 'reset-with-security-answer') {
     return handleResetWithSecurityAnswer(body, env);
+  }
+
+  // POST /api/change-password
+  if (request.method === 'POST' && path === 'change-password') {
+    return handleChangePassword(body, env);
+  }
+
+  // POST /api/change-username
+  if (request.method === 'POST' && path === 'change-username') {
+    return handleChangeUsername(body, env);
   }
 
   return corsResponse(jsonResponse({ error: 'not found' }, 404));
@@ -771,8 +789,122 @@ async function handleResetWithSecurityAnswer(body, env) {
   return corsResponse(jsonResponse({ ok: true, username: user.username || key }));
 }
 
+/* =====================================================
+   ACCOUNT SETTINGS (change nickname / password)
+   The client only offers these once the account has a verified email —
+   not enforced here server-side (the current password is still the real
+   gate on both), but the client's reasoning is: without a working recovery
+   path, changing your own login details is one typo away from locking
+   yourself out for good.
+===================================================== */
+
+/**
+ * POST /api/change-password
+ * Body: { username, password, newPassword }
+ */
+async function handleChangePassword(body, env) {
+  const { username, password, newPassword } = body || {};
+  if (!username || !password || !newPassword) return corsResponse(jsonResponse({ error: 'missing data' }, 400));
+  if (newPassword.length < 3) return corsResponse(jsonResponse({ error: 'password must be at least 3 chars' }, 400));
+
+  const key = userKey(username);
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env);
+  const user = await userRes.json();
+  if (!user || user.password !== b64EncodeUtf8(password)) {
+    return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
+  }
+
+  await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: b64EncodeUtf8(newPassword) })
+  });
+  return corsResponse(jsonResponse({ ok: true }));
+}
+
+// Moves one cross-reference entry (a friend's copy of this account's old
+// key, under e.g. "friends" or "friendRequestsIn") to the new key, with the
+// corrected display name — used by handleChangeUsername for every friend/
+// pending-request relationship, since those are stored on the OTHER
+// party's own record and won't move just because this account's record did.
+async function renameCrossRef(otherKey, subPath, oldKey, newKey, newDisplayName, env) {
+  await Promise.all([
+    rtdbFetch(`/users/${encodeURIComponent(otherKey)}/${subPath}/${encodeURIComponent(oldKey)}.json`, env, { method: 'DELETE' }),
+    rtdbFetch(`/users/${encodeURIComponent(otherKey)}/${subPath}/${encodeURIComponent(newKey)}.json`, env, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newDisplayName)
+    })
+  ]);
+}
+
+/**
+ * POST /api/change-username
+ * Body: { username, password, newUsername }
+ * The username IS the RTDB record key (lowercased), so renaming it means
+ * relocating the whole record to a new key and fixing up every place that
+ * references the OLD key: the emailIndex entry (if any), and every
+ * friend's/pending-request's own record (their side of a friendship or
+ * request is stored under THEIR key, not this account's, so it doesn't
+ * move automatically). A same-key rename (casing only, e.g. "Abu"->"abu")
+ * skips all of that and just updates the display field in place.
+ */
+async function handleChangeUsername(body, env) {
+  const { username, password, newUsername } = body || {};
+  if (!username || !password || !newUsername) return corsResponse(jsonResponse({ error: 'missing data' }, 400));
+
+  const trimmedNew = newUsername.trim();
+  if (trimmedNew.length < 3) return corsResponse(jsonResponse({ error: 'username must be at least 3 chars' }, 400));
+
+  const oldKey = userKey(username);
+  const newKey = userKey(trimmedNew);
+
+  const userRes = await rtdbFetch(`/users/${encodeURIComponent(oldKey)}.json`, env);
+  const user = await userRes.json();
+  if (!user || user.password !== b64EncodeUtf8(password)) {
+    return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
+  }
+
+  if (newKey === oldKey) {
+    await rtdbFetch(`/users/${encodeURIComponent(oldKey)}/username.json`, env, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(trimmedNew)
+    });
+    return corsResponse(jsonResponse({ ok: true, username: trimmedNew }));
+  }
+
+  const existingRes = await rtdbFetch(`/users/${encodeURIComponent(newKey)}.json`, env);
+  const existing = await existingRes.json();
+  if (existing && existing.password) {
+    return corsResponse(jsonResponse({ error: 'username already taken' }, 409));
+  }
+
+  const movedUser = { ...user, username: trimmedNew };
+  await rtdbFetch(`/users/${encodeURIComponent(newKey)}.json`, env, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(movedUser)
+  });
+
+  const followUps = [];
+  if (user.email) {
+    followUps.push(rtdbFetch(`/emailIndex/${emailKey(user.email)}.json`, env, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newKey)
+    }));
+  }
+  for (const friendKey of Object.keys(user.friends || {})) {
+    followUps.push(renameCrossRef(friendKey, 'friends', oldKey, newKey, trimmedNew, env));
+  }
+  for (const fromKey of Object.keys(user.friendRequestsIn || {})) {
+    followUps.push(renameCrossRef(fromKey, 'friendRequestsOut', oldKey, newKey, trimmedNew, env));
+  }
+  for (const toKey of Object.keys(user.friendRequestsOut || {})) {
+    followUps.push(renameCrossRef(toKey, 'friendRequestsIn', oldKey, newKey, trimmedNew, env));
+  }
+  await Promise.all(followUps);
+
+  await rtdbFetch(`/users/${encodeURIComponent(oldKey)}.json`, env, { method: 'DELETE' });
+
+  return corsResponse(jsonResponse({ ok: true, username: trimmedNew }));
+}
+
 async function handleSyncProgress(body, env) {
-  const { username, password, quizProgress, stats, incrementQuizzesCompleted } = body || {};
+  const { username, password, quizProgress, stats, incrementQuizzesCompleted, learnedNames } = body || {};
 
   if (!username || !password) {
     return corsResponse(jsonResponse({ error: 'missing auth' }, 401));
@@ -789,6 +921,12 @@ async function handleSyncProgress(body, env) {
   // Update progress
   const updateData = {};
   if (quizProgress) updateData.quizProgress = quizProgress;
+  // Which specific names are marked "learned" (not just the count, which
+  // already lived in stats.totalStudied) — this is what used to live only
+  // in a local export/import backup file; syncing it here is what lets
+  // logging into the same account on a different device/reinstall actually
+  // restore those checkmarks instead of just the aggregate stats.
+  if (Array.isArray(learnedNames)) updateData.learnedNames = learnedNames;
   if (stats || incrementQuizzesCompleted) {
     const mergedStats = { ...user.stats, ...stats, lastActive: new Date().toISOString() };
     // bestPercent is a high-water mark, not a plain overwrite — a worse
@@ -824,7 +962,8 @@ async function handleGetProfile(username, env) {
     avatar: user.avatar || null,
     joinedAt: user.joinedAt || null,
     stats: user.stats || {},
-    friendsCount: Object.keys(user.friends || {}).length
+    friendsCount: Object.keys(user.friends || {}).length,
+    learnedNames: user.learnedNames || []
   }));
 }
 
