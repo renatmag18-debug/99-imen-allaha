@@ -90,8 +90,16 @@ async function apiLogin(username, password) {
     const data = await res.json();
     if (!res.ok) return { error: data.error || 'Login failed' };
 
-    setAuthCredentials(username, password);
-    return { ok: true, username, stats: data.stats };
+    // The server resolves the real account (by nickname, or by a linked
+    // email typed into the same field) and returns ITS canonical username
+    // in data.username — which can differ from whatever was typed in.
+    // Echoing back the typed-in value here instead used to make a
+    // successful login-by-email display and save the wrong profile name
+    // (the raw email string) even though the password had correctly
+    // matched the real account server-side.
+    const canonicalUsername = data.username || username;
+    setAuthCredentials(canonicalUsername, password);
+    return { ok: true, username: canonicalUsername, stats: data.stats };
   } catch (e) {
     return { error: 'Network error: ' + e.message };
   }

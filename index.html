@@ -7797,9 +7797,21 @@ document.getElementById('loginBtn').addEventListener('click', async ()=>{
   const result = await apiLogin(username, password);
   let canonicalUsername = username;
 
+  // A real server rejection (wrong password, unknown account) must show as
+  // exactly that — falling through to the localStorage check below used to
+  // treat ANY error identically to the server being unreachable, so a
+  // wrong password against a real server account could still silently
+  // resurrect and log into an unrelated, stale local-only account sharing
+  // the same typed-in nickname (the same bug class already fixed for
+  // registration's error handling).
+  if(result.error && !result.error.startsWith('Network error')){
+    authStatus.textContent = API_ERRORS[result.error] || 'Неверный никнейм или пароль';
+    return;
+  }
+
   if(result.error){
-    // Fallback to localStorage if API fails — match the nickname regardless
-    // of how it was cased when the account was first created here.
+    // Fallback to localStorage if API is genuinely unreachable — match the
+    // nickname regardless of how it was cased when created here.
     const allUsers = JSON.parse(localStorage.getItem('users') || '{}');
     const matchKey = Object.keys(allUsers).find(k => k.toLowerCase() === username.toLowerCase());
     const localUser = matchKey ? allUsers[matchKey] : null;
