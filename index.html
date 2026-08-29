@@ -612,32 +612,33 @@ body{
 .skin-picker-opt.active{ border-color:var(--gold); background:var(--accent-tint); }
 .skin-picker-opt.active .skin-picker-check{ opacity:1; }
 
-.misc-collapsible-header{ flex-shrink:0; }
+.misc-collapsible-header{ flex-shrink:0; overflow:hidden; }
 /* Collapses the whole search+Коран-card+tabs block together on scroll-down
    (see setMiscHeaderCollapsed), reappearing on scroll-up or at the very
-   top. Two separate, independently-timed things happen, both driven from
-   JS with plain setTimeout rather than CSS transition-delay arithmetic
-   (a fragile, hard-to-verify approach across several earlier attempts that
-   never actually landed right):
-     1. Each .misc-collapse-item's own .faded class, added/removed with a
-        per-item JS setTimeout stagger — a plain opacity+transform fade,
-        nothing clever, so it's easy to trust it does what it says.
-     2. The parent's own .collapsed class, which only ever flips *after*
-        JS confirms the fade cascade above has actually finished (collapsing)
-        or *before* it starts (expanding) — this is the one that reclaims
-        layout space (max-height), and it does so in a single instant
-        (0s-transition) jump, always while every item is already invisible,
-        so that jump itself is never seen.
+   top. Two phases, sequenced from JS with plain setTimeout:
+     1. Each .misc-collapse-item fades out (staggered) via opacity+transform
+        — compositor-only, doesn't reclaim any space yet (translateY
+        doesn't change box size), so nothing below shifts during this part.
+     2. Only once every item is fully invisible does the header's own
+        max-height get *animated* down to 0 (via a JS-set inline
+        transition, since it needs a real starting pixel value — max-height
+        can't transition away from its default "none"), sliding whatever
+        is below it up smoothly. The previous version snapped max-height
+        to 0 in a single instant frame here instead of animating it: the
+        items were already invisible so that jump itself couldn't be seen,
+        but everything *below* the header — already visible on screen —
+        still jerked upward in one frame when the reclaimed space vanished
+        instantly. Animating this step, not just deferring it, is what
+        actually fixes that.
    transform:translateY(), not scaleY() — scaling a box toward zero height
    visibly squishes its own content (text/icons flatten as they shrink),
    which reads as an abrupt, rubbery jump rather than something leaving
    smoothly; a small upward drift while fading keeps proportions intact. */
 .misc-collapse-item{
-  overflow:hidden; max-height:none;
   transition: transform .34s var(--ease), opacity .34s var(--ease);
 }
 .misc-collapse-item.faded{ transform:translateY(-10px); opacity:0; pointer-events:none; }
-.misc-collapsible-header.collapsed .misc-collapse-item{ max-height:0; transition:max-height 0s linear; }
+.misc-collapsible-header.collapsed{ max-height:0; }
 .segmented-wrap{ flex-shrink:0; padding:0 20px 14px; }
 .segmented{ display:flex; gap:4px; border:1px solid var(--line); border-radius:var(--r-pill); padding:4px; background:var(--glass); backdrop-filter:blur(12px); overflow:hidden; }
 .seg-btn{
@@ -5369,6 +5370,7 @@ miscSearchInput.addEventListener('input', ()=>{
 // every tab switch.
 const MISC_COLLAPSE_STAGGER_MS = [0, 90, 180];
 const MISC_COLLAPSE_FADE_MS = 340;
+const MISC_COLLAPSE_HEIGHT_MS = 260;
 let miscHeaderCollapsed = false;
 let miscHeaderTimers = [];
 function setMiscHeaderCollapsed(collapsed){
@@ -5380,17 +5382,35 @@ function setMiscHeaderCollapsed(collapsed){
   miscHeaderTimers = [];
   const items = header.querySelectorAll('.misc-collapse-item');
   if(collapsed){
-    // Fade each item out first (staggered), and only once every item is
-    // already invisible do we snap the parent's max-height to 0 — so the
-    // one unavoidable layout jump lands where nothing is left to see it.
+    // Phase 1: fade each item out (staggered) — opacity/transform only,
+    // nothing below shifts yet.
     items.forEach((el, i)=>{
       miscHeaderTimers.push(setTimeout(()=> el.classList.add('faded'), MISC_COLLAPSE_STAGGER_MS[i] || 0));
     });
-    const totalMs = MISC_COLLAPSE_FADE_MS + Math.max.apply(null, MISC_COLLAPSE_STAGGER_MS);
-    miscHeaderTimers.push(setTimeout(()=> header.classList.add('collapsed'), totalMs));
+    const fadeDoneMs = MISC_COLLAPSE_FADE_MS + Math.max.apply(null, MISC_COLLAPSE_STAGGER_MS);
+    miscHeaderTimers.push(setTimeout(()=>{
+      // Phase 2: every item is now invisible — shrink the header's own
+      // height smoothly instead of snapping it, so whatever is below
+      // slides up into place rather than jumping in a single frame.
+      header.style.transition = 'none';
+      header.style.maxHeight = header.scrollHeight + 'px';
+      header.offsetHeight; // force layout so the browser commits the start height before animating
+      requestAnimationFrame(()=>{
+        header.style.transition = 'max-height ' + (MISC_COLLAPSE_HEIGHT_MS / 1000) + 's var(--ease)';
+        header.style.maxHeight = '0px';
+      });
+      miscHeaderTimers.push(setTimeout(()=>{
+        header.classList.add('collapsed');
+        header.style.maxHeight = '';
+        header.style.transition = '';
+      }, MISC_COLLAPSE_HEIGHT_MS));
+    }, fadeDoneMs));
   } else {
     // Reclaim the layout space immediately (matches how this already felt
-    // right), then fade each item back in with the same stagger.
+    // right), clearing any mid-animation inline styles, then fade each
+    // item back in with the same stagger.
+    header.style.transition = '';
+    header.style.maxHeight = '';
     header.classList.remove('collapsed');
     items.forEach((el, i)=>{
       miscHeaderTimers.push(setTimeout(()=> el.classList.remove('faded'), MISC_COLLAPSE_STAGGER_MS[i] || 0));
