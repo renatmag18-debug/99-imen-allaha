@@ -612,26 +612,38 @@ body{
 .skin-picker-opt.active{ border-color:var(--gold); background:var(--accent-tint); }
 .skin-picker-opt.active .skin-picker-check{ opacity:1; }
 
+.misc-collapsible-header{ flex-shrink:0; }
 /* Collapses the whole search+Коран-card+tabs block together on scroll-down
    (see initMiscHeaderCollapse), reappearing on scroll-up or at the very
-   top. A grid-rows 1fr↔0fr transition, not max-height — the block's real
-   height depends on which theme/skin is active and how the Коран card
-   wraps, so animating to/from an actual known height is what a max-height
-   guess can't reliably do; grid-template-rows already knows the content's
-   real height without being told. */
-.misc-collapsible-header{
-  display:grid; grid-template-rows:1fr; transition:grid-template-rows .45s cubic-bezier(.4,0,.2,1);
-  flex-shrink:0;
+   top. grid-template-rows and max-height both trigger a full layout recalc
+   on *every frame* of the transition, not just at the
+   end — cheap enough for one element, but animating it while its
+   backdrop-filter:blur() children (.search-wrap input, .segmented) also
+   have to re-blur against a resizing box every frame is exactly the kind
+   of combination that drops frames on a WebView. transform:scaleY() and
+   opacity are compositor-only — no layout, no repaint of the blur — so the
+   *visible* animation runs on those instead. max-height still does the
+   actual space-reclaiming, but jumps in a single instant reflow, timed
+   (via transition-delay) to land only once the item is already invisible,
+   so that one reflow is never seen.
+   Each item also gets its own --stagger offset, so search collapses
+   first, then the Коран card, then the tabs, rather than all three
+   folding away at once. */
+.misc-collapse-item{
+  --stagger: 0s;
+  overflow:hidden; transform-origin:top center; max-height:none;
+  transition: transform .26s cubic-bezier(.4,0,.2,1) var(--stagger),
+              opacity .2s ease var(--stagger),
+              max-height 0s linear 0s;
 }
-.misc-collapsible-header.collapsed{ grid-template-rows:0fr; }
-/* Fading the content out (not just clipping it via the row-height
-   collapse above) is what actually reads as smooth — a height-only
-   collapse squashes the search bar/card/tabs into a shrinking sliver
-   before they vanish, which looks like a jump cut rather than a glide.
-   Faster than the row transition so content is fully gone well before
-   the space closes up, avoiding that squash entirely. */
-.misc-collapsible-header-inner{ overflow:hidden; min-height:0; opacity:1; transition:opacity .2s ease; }
-.misc-collapsible-header.collapsed .misc-collapsible-header-inner{ opacity:0; transition:opacity .15s ease; }
+.misc-collapse-2{ --stagger: .07s; }
+.misc-collapse-3{ --stagger: .14s; }
+.misc-collapsible-header.collapsed .misc-collapse-item{
+  transform:scaleY(0); opacity:0; pointer-events:none; max-height:0;
+  transition: transform .26s cubic-bezier(.4,0,.2,1) var(--stagger),
+              opacity .16s ease var(--stagger),
+              max-height 0s linear calc(.26s + var(--stagger));
+}
 .segmented-wrap{ flex-shrink:0; padding:0 20px 14px; }
 .segmented{ display:flex; gap:4px; border:1px solid var(--line); border-radius:var(--r-pill); padding:4px; background:var(--glass); backdrop-filter:blur(12px); overflow:hidden; }
 .seg-btn{
@@ -2336,17 +2348,20 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
           <div class="weekly-challenge-count-label" id="istighfar_weeklyLabel"></div>
         </div>
       </div>
-      <!-- Collapses on scroll-down, reappears on scroll-up (see the
-           misc-collapsible-header scroll listener) — a grid-rows 1fr↔0fr
-           transition rather than max-height, since it animates smoothly
-           from/to the content's real height without ever having to know
-           what that height actually is. -->
+      <!-- Collapses on scroll-down, reappears on scroll-up (see
+           initMiscHeaderCollapse). Each piece is its own .misc-collapse-item
+           with a staggered delay (search, then the Коран card, then the
+           tabs), rather than one block collapsing all at once — see that
+           class's own comment for why this is also what actually fixed the
+           jank a single combined grid-row collapse had. -->
       <div class="misc-collapsible-header" id="miscCollapsibleHeader">
-        <div class="misc-collapsible-header-inner">
+        <div class="misc-collapse-item misc-collapse-1">
           <div class="search-wrap">
             <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
             <input id="miscSearchInput" type="search" inputmode="search" placeholder="Поиск" autocomplete="off">
           </div>
+        </div>
+        <div class="misc-collapse-item misc-collapse-2">
           <button class="quran-entry-card" id="quranEntryCard">
             <span class="quran-entry-icon">
               <svg viewBox="0 0 24 24" fill="none"><path d="M4 5.8c2.2-1.2 4.8-1.2 7 0v13c-2.2-1.2-4.8-1.2-7 0v-13z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M20 5.8c-2.2-1.2-4.8-1.2-7 0v13c2.2-1.2 4.8-1.2 7 0v-13z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
@@ -2357,6 +2372,8 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
             </span>
             <svg class="quran-entry-chevron" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
+        </div>
+        <div class="misc-collapse-item misc-collapse-3">
           <div class="segmented-wrap" id="miscSegmentWrap">
             <div class="segmented" id="miscSegment">
               <button class="seg-btn active" data-misc="zikr">Зикры</button>
