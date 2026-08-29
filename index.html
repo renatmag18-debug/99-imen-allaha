@@ -612,7 +612,11 @@ body{
 .skin-picker-opt.active{ border-color:var(--gold); background:var(--accent-tint); }
 .skin-picker-opt.active .skin-picker-check{ opacity:1; }
 
-.misc-collapsible-header{ flex-shrink:0; }
+/* --collapse-total = --dur + the largest --stagger below (.34s + .18s) —
+   how long the full staggered fade-out cascade takes, start to finish.
+   Keep this in sync by hand if either of those change; it can't be a
+   calc() of them since --stagger is set per-child, not available up here. */
+.misc-collapsible-header{ flex-shrink:0; --collapse-total: .52s; }
 /* Collapses the whole search+Коран-card+tabs block together on scroll-down
    (see initMiscHeaderCollapse), reappearing on scroll-up or at the very
    top. grid-template-rows and max-height both trigger a full layout recalc
@@ -648,7 +652,18 @@ body{
   transform:translateY(-10px); opacity:0; pointer-events:none; max-height:0;
   transition: transform var(--dur) var(--ease) var(--stagger),
               opacity var(--dur) var(--ease) var(--stagger),
-              max-height 0s linear calc(var(--dur) + var(--stagger));
+              /* Expanding reclaims every item's space in one shared instant
+                 jump, at the very start (0s), before any fade-in is even
+                 visible — that's what makes opening feel clean. Collapsing
+                 used to mirror that per item instead (each item's own space
+                 vanishing the moment *its* fade finished), which meant three
+                 separate reflows clustered together near the end — read as
+                 one abrupt jolt rather than the cascade fading out above it.
+                 Using the same shared instant-jump idea, just at the far end
+                 of the cascade instead of the start, fixes that: all three
+                 fades finish first, then one single reflow (once everything
+                 is already invisible) collapses the whole block at once. */
+              max-height 0s linear var(--collapse-total);
 }
 .segmented-wrap{ flex-shrink:0; padding:0 20px 14px; }
 .segmented{ display:flex; gap:4px; border:1px solid var(--line); border-radius:var(--r-pill); padding:4px; background:var(--glass); backdrop-filter:blur(12px); overflow:hidden; }
