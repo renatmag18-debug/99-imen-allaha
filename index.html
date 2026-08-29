@@ -7531,14 +7531,20 @@ async function updateLinkEmailBanner(){
 function updateAccountSettingsUI(info){
   const section = document.getElementById('accountSettingsSection');
   if(!section) return;
-  if(!state.profile || !state.profile.authenticated || !info){
+  // The section's own visibility depends only on being logged in — NOT on
+  // apiGetAccountInfo() having succeeded. "Удалить аккаунт" lives inside
+  // this section and must stay reachable even when that call fails (stale
+  // cached credentials, a malformed legacy record, etc.) — deletion is
+  // exactly the way out of an account stuck in a bad state like that, so
+  // hiding it right when it's needed most would be backwards.
+  if(!state.profile || !state.profile.authenticated){
     section.style.display = 'none';
     return;
   }
   section.style.display = 'block';
   const locked = document.getElementById('accountLockedNotice');
   const controls = document.getElementById('accountControls');
-  if(info.emailVerified){
+  if(info && !info.error && info.emailVerified){
     locked.style.display = 'none';
     controls.style.display = 'block';
     document.getElementById('accountUsernameCurrent').textContent = state.profile.username;
