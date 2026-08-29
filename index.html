@@ -620,11 +620,18 @@ body{
    guess can't reliably do; grid-template-rows already knows the content's
    real height without being told. */
 .misc-collapsible-header{
-  display:grid; grid-template-rows:1fr; transition:grid-template-rows .3s var(--ease);
+  display:grid; grid-template-rows:1fr; transition:grid-template-rows .45s cubic-bezier(.4,0,.2,1);
   flex-shrink:0;
 }
 .misc-collapsible-header.collapsed{ grid-template-rows:0fr; }
-.misc-collapsible-header-inner{ overflow:hidden; min-height:0; }
+/* Fading the content out (not just clipping it via the row-height
+   collapse above) is what actually reads as smooth — a height-only
+   collapse squashes the search bar/card/tabs into a shrinking sliver
+   before they vanish, which looks like a jump cut rather than a glide.
+   Faster than the row transition so content is fully gone well before
+   the space closes up, avoiding that squash entirely. */
+.misc-collapsible-header-inner{ overflow:hidden; min-height:0; opacity:1; transition:opacity .2s ease; }
+.misc-collapsible-header.collapsed .misc-collapsible-header-inner{ opacity:0; transition:opacity .15s ease; }
 .segmented-wrap{ flex-shrink:0; padding:0 20px 14px; }
 .segmented{ display:flex; gap:4px; border:1px solid var(--line); border-radius:var(--r-pill); padding:4px; background:var(--glass); backdrop-filter:blur(12px); overflow:hidden; }
 .seg-btn{
