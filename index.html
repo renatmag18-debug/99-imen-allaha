@@ -9687,15 +9687,26 @@ function renderChatThreadMessages(messagesObj, isLiveSnapshot){
   // frame re-measures after that settles.
   scrollEl.scrollTop = scrollEl.scrollHeight;
   requestAnimationFrame(()=>{ scrollEl.scrollTop = scrollEl.scrollHeight; });
-  // If a voice message is still playing across this re-render (e.g. a new
-  // message just arrived), the old button was just destroyed — reattach the
-  // playing/progress UI to its freshly rendered replacement.
-  if(chatVoicePlayingId && !chatVoiceAudioEl.paused){
+  // If a voice message is active (playing or paused mid-way) across this
+  // re-render (e.g. a new message just arrived), the old button/waveform
+  // were just destroyed — reattach the playing/progress UI to the freshly
+  // rendered replacement. Without restoring the waveform fill here too, the
+  // new one starts fully unfilled regardless of how far playback already
+  // got, so it visibly falls behind the real audio and never catches back
+  // up — the exact "audio ends, bar's still only halfway" bug this fixes.
+  if(chatVoicePlayingId){
     const newBtn = wrap.querySelector(`.chat-voice-play[data-voice-id="${CSS.escape(chatVoicePlayingId)}"]`);
     if(newBtn){
       chatVoicePlayingBtn = newBtn;
-      newBtn.querySelector('.icon-play').style.display = 'none';
-      newBtn.querySelector('.icon-pause').style.display = '';
+      const playing = !chatVoiceAudioEl.paused;
+      newBtn.querySelector('.icon-play').style.display = playing ? 'none' : '';
+      newBtn.querySelector('.icon-pause').style.display = playing ? '' : 'none';
+      const durationEl = newBtn.parentElement.querySelector('.chat-voice-duration');
+      const total = durationEl ? (parseFloat(durationEl.dataset.total) || 0) : 0;
+      if(total){
+        setVoiceWaveformProgress(newBtn.parentElement, chatVoiceAudioEl.currentTime / total);
+        durationEl.textContent = formatVoiceDuration(chatVoiceAudioEl.currentTime);
+      }
     } else {
       chatVoicePlayingBtn = null;
       chatVoicePlayingId = null;
