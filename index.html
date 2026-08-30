@@ -11626,18 +11626,7 @@ chatVoiceAudioEl.addEventListener('pause', ()=>{
 });
 chatVoiceAudioEl.addEventListener('ended', ()=>{
   if(chatVoiceProgressRAF){ cancelAnimationFrame(chatVoiceProgressRAF); chatVoiceProgressRAF = null; }
-  if(chatVoicePlayingBtn){
-    // TEMPORARY diagnostic toast — real numbers off a real device are the
-    // only way left to find what's actually wrong here, since every fix so
-    // far has tested correctly in isolation but not changed anything for
-    // the reporter. Remove once that's actually identified.
-    const wave = chatVoicePlayingBtn.parentElement.querySelector('.chat-voice-waveform');
-    const durationEl = chatVoicePlayingBtn.parentElement.querySelector('.chat-voice-duration');
-    const total = durationEl ? (parseFloat(durationEl.dataset.total)||0) : 0;
-    const wfLen = wave ? wave.dataset.wfLen : '?';
-    showToast(`[debug] currentTime=${chatVoiceAudioEl.currentTime.toFixed(2)} realDur=${chatVoiceAudioEl.duration} storedTotal=${total.toFixed(2)} wfLen=${wfLen}`, 9000);
-    resetVoiceButtonUI(chatVoicePlayingBtn);
-  }
+  if(chatVoicePlayingBtn) resetVoiceButtonUI(chatVoicePlayingBtn);
   chatVoicePlayingBtn = null;
   chatVoicePlayingId = null;
 });
