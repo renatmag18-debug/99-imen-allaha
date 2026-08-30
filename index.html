@@ -6495,12 +6495,17 @@ document.getElementById('shareBtn').addEventListener('click', ()=>{
   });
 });
 
-function showToast(msg){
+function showToast(msg, duration){
   const t = document.getElementById('toast');
   t.textContent = msg;
+  // Every other call here is a short one-liner (the default nowrap/no-
+  // max-width CSS fits those fine) — a long diagnostic message needs to
+  // actually wrap instead of running off both edges of a narrow phone.
+  t.style.whiteSpace = msg.length > 40 ? 'normal' : '';
+  t.style.maxWidth = msg.length > 40 ? '85vw' : '';
   t.classList.add('show');
   clearTimeout(showToast._tm);
-  showToast._tm = setTimeout(()=>t.classList.remove('show'), 2400);
+  showToast._tm = setTimeout(()=>t.classList.remove('show'), duration || 2400);
 }
 
 /* =====================================================
@@ -9565,7 +9570,7 @@ function renderChatThreadMessages(messagesObj, isLiveSnapshot){
            <svg class="icon-pause" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
          </button>
          <div class="chat-voice-body">
-           <div class="chat-voice-waveform" data-voice-id="${escapeHtml(id)}" data-total="${m.duration||0}">
+           <div class="chat-voice-waveform" data-voice-id="${escapeHtml(id)}" data-total="${m.duration||0}" data-wf-len="${(m.waveform||[]).length}">
              <div class="chat-voice-wave-bg">${voiceWaveformBarsHtml(m.waveform)}</div>
              <div class="chat-voice-wave-fg">${voiceWaveformBarsHtml(m.waveform)}</div>
            </div>
@@ -11621,7 +11626,18 @@ chatVoiceAudioEl.addEventListener('pause', ()=>{
 });
 chatVoiceAudioEl.addEventListener('ended', ()=>{
   if(chatVoiceProgressRAF){ cancelAnimationFrame(chatVoiceProgressRAF); chatVoiceProgressRAF = null; }
-  if(chatVoicePlayingBtn) resetVoiceButtonUI(chatVoicePlayingBtn);
+  if(chatVoicePlayingBtn){
+    // TEMPORARY diagnostic toast — real numbers off a real device are the
+    // only way left to find what's actually wrong here, since every fix so
+    // far has tested correctly in isolation but not changed anything for
+    // the reporter. Remove once that's actually identified.
+    const wave = chatVoicePlayingBtn.parentElement.querySelector('.chat-voice-waveform');
+    const durationEl = chatVoicePlayingBtn.parentElement.querySelector('.chat-voice-duration');
+    const total = durationEl ? (parseFloat(durationEl.dataset.total)||0) : 0;
+    const wfLen = wave ? wave.dataset.wfLen : '?';
+    showToast(`[debug] currentTime=${chatVoiceAudioEl.currentTime.toFixed(2)} realDur=${chatVoiceAudioEl.duration} storedTotal=${total.toFixed(2)} wfLen=${wfLen}`, 9000);
+    resetVoiceButtonUI(chatVoicePlayingBtn);
+  }
   chatVoicePlayingBtn = null;
   chatVoicePlayingId = null;
 });
