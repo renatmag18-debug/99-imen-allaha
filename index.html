@@ -1128,8 +1128,18 @@ body{
 .chat-bubble-row.mine .chat-voice-play{ background:rgba(0,0,0,.16); }
 .chat-voice-play svg{ width:15px; height:15px; }
 .chat-voice-body{ flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; }
-.chat-voice-bar{ height:3px; border-radius:2px; background:currentColor; opacity:.28; overflow:hidden; }
-.chat-voice-bar-fill{ height:100%; width:0%; background:currentColor; opacity:1; }
+/* Telegram-style two-tone waveform, seekable by dragging — bg/fg render the
+   exact same bars (see the shared markup in renderChatMessage), with fg
+   clipped to the played fraction rather than resized, so its bars land
+   pixel-for-pixel over bg's regardless of bubble width (see the JS side's
+   own comment on why clip-path beats a width percentage here). */
+.chat-voice-waveform{ position:relative; height:22px; cursor:pointer; touch-action:none; }
+.chat-voice-wave-bg, .chat-voice-wave-fg{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:space-between;
+}
+.chat-voice-wave-bg{ opacity:.32; }
+.chat-voice-wave-fg{ clip-path:inset(0 100% 0 0); }
+.chat-voice-wave-bar{ flex:0 0 2px; width:2px; min-height:3px; border-radius:1px; background:currentColor; }
 .chat-voice-duration{ font-size:11px; opacity:.75; font-family:var(--font-num); }
 
 .chat-video-record-bar{
@@ -9555,7 +9565,10 @@ function renderChatThreadMessages(messagesObj, isLiveSnapshot){
            <svg class="icon-pause" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
          </button>
          <div class="chat-voice-body">
-           <div class="chat-voice-bar"><div class="chat-voice-bar-fill"></div></div>
+           <div class="chat-voice-waveform" data-voice-id="${escapeHtml(id)}" data-total="${m.duration||0}">
+             <div class="chat-voice-wave-bg">${voiceWaveformBarsHtml(m.waveform)}</div>
+             <div class="chat-voice-wave-fg">${voiceWaveformBarsHtml(m.waveform)}</div>
+           </div>
            <span class="chat-voice-duration" data-total="${m.duration||0}">${formatVoiceDuration(m.duration||0)}</span>
          </div>`;
     } else if(m.type === 'video'){
@@ -10223,6 +10236,10 @@ function formatVoiceDuration(sec){
 // real per-value size ceiling, and every conversation's full history syncs
 // down to the message-list listener, so voice notes need to stay small.
 const MAX_VOICE_RECORDING_SEC = 120;
+// Bars saved with a voice message for its playback waveform — same idea as
+// Telegram's compact per-message waveform, fixed count regardless of how
+// long the recording was so bubble width doesn't dictate resolution.
+const VOICE_WAVEFORM_BUCKETS = 40;
 
 let chatRecorder = null;
 let chatRecordedChunks = [];
@@ -10349,8 +10366,54 @@ function startDecorativeWaveform(){
   }, 100);
   chatWaveformStop = () => clearInterval(handle);
 }
+// Real per-frame level samples collected across the whole recording (not
+// just what's shown live) — downsampled and saved with the message once it's
+// sent, so the played-back bubble shows the same real waveform rather than a
+// flat bar (see downsampleWaveform below and its callers).
+let chatVoiceWaveformSamples = [];
+function downsampleWaveform(samples, buckets){
+  if(!samples.length) return null;
+  const out = [];
+  const bucketSize = samples.length / buckets;
+  for(let i=0;i<buckets;i++){
+    const start = Math.floor(i*bucketSize);
+    const end = Math.max(start+1, Math.floor((i+1)*bucketSize));
+    let sum = 0, count = 0;
+    for(let j=start;j<end && j<samples.length;j++){ sum += samples[j]; count++; }
+    out.push(count ? Math.round((sum/count)*100)/100 : 0);
+  }
+  return out;
+}
+// Renders the bar markup shared by a voice bubble's bg (dim) and fg (played,
+// clipped by CSS to the current fraction — see .chat-voice-wave-fg) layers.
+// Falls back to a flat low waveform for messages sent before this existed
+// (no m.waveform saved), so old messages still render sensibly.
+function voiceWaveformBarsHtml(waveform){
+  const values = (waveform && waveform.length) ? waveform : new Array(VOICE_WAVEFORM_BUCKETS).fill(0.15);
+  return values.map(v => `<span class="chat-voice-wave-bar" style="height:${3 + Math.max(0,Math.min(1,v))*16}px"></span>`).join('');
+}
+// Native path: MediaRecorder.getMaxAmplitude() polled on the Kotlin side
+// (see startNativeVoiceAmplitudePolling) — a real level, just not real audio
+// data, so this can't use an AnalyserNode the way the browser path below
+// does, but it's still actual mic input rather than a random animation. Bars
+// scroll left as new samples arrive, same idea as a live VU meter.
+let chatNativeWaveformBars = null;
+function startNativeWaveform(){
+  chatNativeWaveformBars = renderWaveformBars();
+  chatVoiceWaveformSamples = [];
+  chatWaveformStop = () => { chatNativeWaveformBars = null; };
+}
+window.onNativeVoiceAmplitude = function(level){
+  level = Math.max(0, Math.min(1, level));
+  chatVoiceWaveformSamples.push(level);
+  if(!chatNativeWaveformBars) return;
+  const bars = chatNativeWaveformBars;
+  for(let i=0;i<bars.length-1;i++) bars[i].style.height = bars[i+1].style.height;
+  bars[bars.length-1].style.height = (3 + level*21) + 'px';
+};
 function startLiveWaveform(stream){
   const bars = renderWaveformBars();
+  chatVoiceWaveformSamples = [];
   try{
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const source = ctx.createMediaStreamSource(stream);
@@ -10359,13 +10422,21 @@ function startLiveWaveform(stream){
     source.connect(analyser);
     const data = new Uint8Array(analyser.frequencyBinCount);
     const step = Math.max(1, Math.floor(data.length / bars.length));
-    let raf;
-    const tick = () => {
+    let raf, lastSampleAt = 0;
+    const tick = (now) => {
       analyser.getByteFrequencyData(data);
       bars.forEach((bar,i) => { bar.style.height = (3 + (data[i*step]/255)*21) + 'px'; });
+      // Throttled to roughly the native path's own cadence — recording the
+      // full 60fps stream would make for a needlessly huge sample array to
+      // downsample later.
+      if(now - lastSampleAt > 90){
+        lastSampleAt = now;
+        const avg = data.reduce((a,b)=>a+b,0) / data.length / 255;
+        chatVoiceWaveformSamples.push(avg);
+      }
       raf = requestAnimationFrame(tick);
     };
-    tick();
+    tick(0);
     chatWaveformStop = () => { cancelAnimationFrame(raf); ctx.close().catch(()=>{}); };
   }catch(e){
     console.warn('live waveform unavailable, falling back to decorative:', e);
@@ -10374,6 +10445,7 @@ function startLiveWaveform(stream){
 }
 function stopWaveform(){
   if(chatWaveformStop){ chatWaveformStop(); chatWaveformStop = null; }
+  chatNativeWaveformBars = null;
 }
 
 function stopChatRecordingUI(){
@@ -10397,7 +10469,7 @@ async function startVoiceRecording(){
     chatRecordingStartTime = Date.now();
     document.getElementById('chatInputBar').style.display = 'none';
     document.getElementById('chatRecordingBar').style.display = 'flex';
-    startDecorativeWaveform();
+    startNativeWaveform();
     chatRecordingTick();
     chatRecordingTimerHandle = setInterval(chatRecordingTick, 250);
     return;
@@ -10483,12 +10555,12 @@ async function finishAndSendVoiceRecording(){
   chatRecorder = null;
   stopChatRecordingUI();
   if(durationSec < 1){ showToast('Слишком короткая запись'); return; }
-  await sendVoiceMessage(blob, durationSec);
+  await sendVoiceMessage(blob, durationSec, downsampleWaveform(chatVoiceWaveformSamples, VOICE_WAVEFORM_BUCKETS));
 }
 window.onNativeVoiceRecorded = function(base64, durationSec){
   chatUsingNativeRecording = false;
   if(durationSec < 1){ showToast('Слишком короткая запись'); return; }
-  sendVoiceMessage(base64ToBlob(base64, 'audio/mp4'), durationSec);
+  sendVoiceMessage(base64ToBlob(base64, 'audio/mp4'), durationSec, downsampleWaveform(chatVoiceWaveformSamples, VOICE_WAVEFORM_BUCKETS));
 };
 window.onNativeVoiceRecordError = function(reason){
   chatUsingNativeRecording = false;
@@ -10795,7 +10867,7 @@ document.getElementById('chatAttachInput').addEventListener('change', async e=>{
   else showToast('Можно отправить только фото или видео');
 });
 
-async function sendVoiceMessage(blob, durationSec){
+async function sendVoiceMessage(blob, durationSec, waveform){
   if(!state.activeChat) return;
   if(!fbDb){ showToast('Нет соединения с сервером'); return; }
   const otherUsername = state.activeChat.uid;
@@ -10809,7 +10881,12 @@ async function sendVoiceMessage(blob, durationSec){
     // into the thread until the file is actually available to play.
     const msgRef = fbDb.ref(path+'/messages').push();
     const audioUrl = await uploadChatMedia(path, msgRef.key, blob, 'audio', pct => chatUpdatePendingProgress(tempId, pct));
-    await msgRef.set({ from: myKeyVal, type: 'voice', audioUrl, duration: durationSec, ts });
+    const payload = { from: myKeyVal, type: 'voice', audioUrl, duration: durationSec, ts };
+    // Absent for a decorative-fallback recording (no real samples to show) —
+    // the bubble just falls back to a flat bar in that case (see
+    // renderChatMessage's own voice-bubble markup).
+    if(waveform) payload.waveform = waveform;
+    await msgRef.set(payload);
     // See sendImageMessage's own comment on why this runs right here.
     chatRemovePendingBubble(tempId);
     await fbDb.ref(path+'/meta').set({ lastText: '🎤 Голосовое сообщение', lastTs: ts, lastFrom: myKeyVal });
@@ -11032,14 +11109,31 @@ const chatVoiceAudioEl = new Audio();
 let chatVoicePlayingBtn = null;
 let chatVoicePlayingId = null;
 let chatMediaDataById = {};
+// Shared by the bg/fg waveform layers' own comment (see the CSS) — `scope`
+// is any ancestor of a bubble's .chat-voice-wave-fg (the bubble, the body,
+// or the waveform element itself all work, since querySelector searches
+// every descendant).
+function setVoiceWaveformProgress(scope, fraction){
+  const fg = scope.querySelector('.chat-voice-wave-fg');
+  if(fg) fg.style.clipPath = `inset(0 ${(1-Math.max(0,Math.min(1,fraction)))*100}% 0 0)`;
+}
 function resetVoiceButtonUI(btn){
   const playIcon = btn.querySelector('.icon-play'), pauseIcon = btn.querySelector('.icon-pause');
   if(playIcon) playIcon.style.display = '';
   if(pauseIcon) pauseIcon.style.display = 'none';
-  const bar = btn.parentElement.querySelector('.chat-voice-bar-fill');
-  if(bar) bar.style.width = '0%';
+  setVoiceWaveformProgress(btn.parentElement, 0);
   const durationEl = btn.parentElement.querySelector('.chat-voice-duration');
   if(durationEl) durationEl.textContent = formatVoiceDuration(parseFloat(durationEl.dataset.total) || 0);
+}
+// Loads a voice message as the "active" one (shared <audio> element) without
+// necessarily playing it — used by both the play-button tap and dragging the
+// waveform to seek, so a scrub on a not-yet-selected message switches to it
+// first instead of doing nothing.
+function selectVoiceMessage(id, btn, src){
+  if(chatVoicePlayingBtn && chatVoicePlayingBtn !== btn) resetVoiceButtonUI(chatVoicePlayingBtn);
+  chatVoicePlayingBtn = btn;
+  chatVoicePlayingId = id;
+  if(chatVoiceAudioEl.src !== src) chatVoiceAudioEl.src = src;
 }
 // Grabs a frame from a video-circle or clip message as a small JPEG data URL
 // and caches it (chatVideoPosterById), so an unopened video shows an actual
@@ -11283,12 +11377,60 @@ document.getElementById('chatThreadMessages').addEventListener('click', e=>{
     return;
   }
   closeVideoViewer();
-  if(chatVoicePlayingBtn && chatVoicePlayingBtn !== btn) resetVoiceButtonUI(chatVoicePlayingBtn);
-  chatVoicePlayingBtn = btn;
-  chatVoicePlayingId = id;
-  if(chatVoiceAudioEl.src !== src) chatVoiceAudioEl.src = src;
+  selectVoiceMessage(id, btn, src);
   chatVoiceAudioEl.play().catch(()=> showToast('Не удалось воспроизвести'));
 });
+
+// Drag-to-seek on a voice bubble's waveform, Telegram-style — works whether
+// or not that message is already the active/playing one (see
+// selectVoiceMessage). Delegated + pointer-captured the same way
+// wireHoldToRecord is, so dragging past the waveform's own edges still
+// tracks correctly instead of "handing off" to whatever's under the finger.
+let chatVoiceSeek = null;
+function chatVoiceSeekFraction(wave, clientX){
+  const rect = wave.getBoundingClientRect();
+  return rect.width ? Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) : 0;
+}
+function applyVoiceSeek(clientX){
+  if(!chatVoiceSeek) return;
+  const { wave, total } = chatVoiceSeek;
+  const fraction = chatVoiceSeekFraction(wave, clientX);
+  setVoiceWaveformProgress(wave, fraction);
+  const durationEl = wave.parentElement.querySelector('.chat-voice-duration');
+  if(durationEl) durationEl.textContent = formatVoiceDuration(fraction * total);
+  chatVoiceSeek.fraction = fraction;
+  if(chatVoiceAudioEl.duration) chatVoiceAudioEl.currentTime = fraction * chatVoiceAudioEl.duration;
+}
+document.getElementById('chatThreadMessages').addEventListener('pointerdown', e=>{
+  const wave = e.target.closest('.chat-voice-waveform');
+  if(!wave) return;
+  const id = wave.dataset.voiceId;
+  const src = chatMediaDataById[id];
+  const btn = wave.closest('.chat-bubble')?.querySelector('.chat-voice-play');
+  if(!src || !btn) return;
+  e.preventDefault();
+  wave.setPointerCapture(e.pointerId);
+  closeVideoViewer();
+  selectVoiceMessage(id, btn, src);
+  chatVoiceSeek = { wave, pointerId: e.pointerId, total: parseFloat(wave.dataset.total) || 0 };
+  applyVoiceSeek(e.clientX);
+});
+document.getElementById('chatThreadMessages').addEventListener('pointermove', e=>{
+  if(!chatVoiceSeek || e.pointerId !== chatVoiceSeek.pointerId) return;
+  applyVoiceSeek(e.clientX);
+});
+const endVoiceSeek = (e)=>{
+  if(!chatVoiceSeek || e.pointerId !== chatVoiceSeek.pointerId) return;
+  chatVoiceSeek = null;
+  // Setting currentTime doesn't fire timeupdate immediately on every
+  // browser, and audio.duration may not have been ready during the drag
+  // (a message not yet actually loaded) — starting playback now both
+  // finishes the seek for real and matches the intuitive "scrub to jump
+  // there and listen" gesture.
+  chatVoiceAudioEl.play().catch(()=> showToast('Не удалось воспроизвести'));
+};
+document.getElementById('chatThreadMessages').addEventListener('pointerup', endVoiceSeek);
+document.getElementById('chatThreadMessages').addEventListener('pointercancel', endVoiceSeek);
 
 /* --- message actions: reactions + delete (long-press a bubble) ---
    Long-press (not tap, so it can't collide with a bubble's own tap action —
@@ -11435,8 +11577,8 @@ chatVoiceAudioEl.addEventListener('ended', ()=>{
 });
 chatVoiceAudioEl.addEventListener('timeupdate', ()=>{
   if(!chatVoicePlayingBtn || !chatVoiceAudioEl.duration) return;
-  const bar = chatVoicePlayingBtn.parentElement.querySelector('.chat-voice-bar-fill');
-  if(bar) bar.style.width = (chatVoiceAudioEl.currentTime / chatVoiceAudioEl.duration * 100)+'%';
+  if(chatVoiceSeek) return; // the drag's own applyVoiceSeek is already driving this
+  setVoiceWaveformProgress(chatVoicePlayingBtn.parentElement, chatVoiceAudioEl.currentTime / chatVoiceAudioEl.duration);
   const durationEl = chatVoicePlayingBtn.parentElement.querySelector('.chat-voice-duration');
   if(durationEl) durationEl.textContent = formatVoiceDuration(chatVoiceAudioEl.currentTime);
 });
