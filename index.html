@@ -1077,6 +1077,7 @@ body{
 .chat-send-btn{
   width:40px; height:40px; border-radius:50%; border:none; background:var(--gold); color:var(--on-accent);
   display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;
+  touch-action:none; -webkit-user-select:none; user-select:none;
 }
 .chat-send-btn svg{ width:18px; height:18px; }
 .chat-send-btn:disabled{ opacity:.4; pointer-events:none; }
@@ -1092,12 +1093,32 @@ body{
 }
 @keyframes chatRecPulse{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
 .chat-recording-timer{ font-family:var(--font-num); font-size:14px; color:var(--ivory); flex-shrink:0; }
-.chat-recording-hint{ flex:1; font-size:13px; color:var(--ivory-dim); }
 .chat-recording-cancel{
   width:36px; height:36px; border-radius:50%; border:1px solid var(--line); background:var(--fill-1);
   color:var(--ivory-dim); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;
 }
 .chat-recording-cancel svg{ width:16px; height:16px; }
+.chat-recording-waveform{
+  flex:1; min-width:0; display:flex; align-items:center; gap:2.5px; height:24px;
+}
+.chat-recording-waveform .bar{
+  flex:0 0 3px; width:3px; min-height:3px; border-radius:2px; background:#e14b4b;
+}
+/* Telegram-style hold-to-record lock: fixed so it floats above either
+   recording bar, positioned over whichever button started the hold (see
+   showRecordLockIndicator) — the chevron bobs to hint "drag me up", and the
+   whole pill gains the gold outline once dragged past the lock threshold. */
+.chat-record-lock-indicator{
+  position:fixed; display:none; flex-direction:column; align-items:center; gap:8px;
+  width:38px; padding:10px 0; border-radius:19px; transform:translateX(-50%);
+  background:var(--panel-2); border:1px solid var(--line); box-shadow:0 4px 16px rgba(0,0,0,.3);
+  color:var(--ivory-dim); z-index:30; pointer-events:none;
+}
+.chat-record-lock-indicator .lock-icon{ width:17px; height:17px; }
+.chat-record-lock-indicator .lock-chevron{ width:14px; height:14px; animation:chatLockChevron 1.2s ease-in-out infinite; }
+.chat-record-lock-indicator.armed{ border-color:var(--gold); color:var(--gold); }
+.chat-record-lock-indicator.armed .lock-chevron{ animation:none; opacity:0; }
+@keyframes chatLockChevron{ 0%,100%{ transform:translateY(0); opacity:.6; } 50%{ transform:translateY(-3px); opacity:1; } }
 
 .chat-bubble.voice{ display:flex; align-items:center; gap:9px; min-width:170px; }
 .chat-voice-play{
@@ -3008,7 +3029,7 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
       <div class="chat-recording-bar" id="chatRecordingBar" style="display:none;">
         <span class="chat-recording-dot"></span>
         <span class="chat-recording-timer" id="chatRecordingTimer">0:00</span>
-        <span class="chat-recording-hint">Запись голосового…</span>
+        <div class="chat-recording-waveform" id="chatRecordingWaveform"></div>
         <button class="chat-recording-cancel" id="chatRecordingCancelBtn" aria-label="Отменить запись">
           <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
@@ -3030,6 +3051,14 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
         <button class="chat-send-btn" id="chatVideoRecordSendBtn" aria-label="Отправить видео-кружок">
           <svg viewBox="0 0 24 24" fill="none"><path d="M4 12l16-8-6 8 6 8-16-8z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
         </button>
+      </div>
+      <!-- Telegram-style "slide up to lock" affordance while holding the
+           mic/video-circle button — positioned over whichever button is
+           being held (see showRecordLockIndicator), fixed so it floats
+           above either recording bar regardless of which one is showing. -->
+      <div class="chat-record-lock-indicator" id="chatRecordLockIndicator">
+        <svg class="lock-icon" viewBox="0 0 24 24" fill="none"><rect x="6" y="10.5" width="12" height="9" rx="2.5" stroke="currentColor" stroke-width="1.6"/><path d="M8.5 10.5V7.5a3.5 3.5 0 017 0v3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <svg class="lock-chevron" viewBox="0 0 24 24" fill="none"><path d="M6 15l6-6 6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
     </section>
 
@@ -10223,6 +10252,61 @@ function base64ToBlob(base64, mimeType){
   return new Blob([bytes], { type: mimeType });
 }
 
+/* --- Telegram-style hold-to-record + slide-up-to-lock ---
+   Press and hold the mic/video-circle button to record; release to send
+   (a too-short hold is discarded by the existing duration checks above/
+   below). Drag upward past RECORD_LOCK_PX before releasing to "lock" the
+   recording hands-free — after that, releasing does nothing, and the
+   explicit cancel/send buttons already in the recording bar take over. */
+const RECORD_LOCK_PX = 70;
+function showRecordLockIndicator(buttonEl){
+  const el = document.getElementById('chatRecordLockIndicator');
+  const rect = buttonEl.getBoundingClientRect();
+  el.style.left = (rect.left + rect.width/2) + 'px';
+  el.style.bottom = (window.innerHeight - rect.top + 10) + 'px';
+  el.classList.remove('armed');
+  el.style.display = 'flex';
+}
+function armRecordLockIndicator(){
+  document.getElementById('chatRecordLockIndicator').classList.add('armed');
+}
+function hideRecordLockIndicator(){
+  document.getElementById('chatRecordLockIndicator').style.display = 'none';
+}
+function wireHoldToRecord(buttonEl, { onStart, onRelease, onCancel }){
+  let active = false, locked = false, startY = 0, pointerId = null;
+  buttonEl.addEventListener('pointerdown', e=>{
+    if(active) return;
+    active = true; locked = false; startY = e.clientY; pointerId = e.pointerId;
+    buttonEl.setPointerCapture(pointerId);
+    showRecordLockIndicator(buttonEl);
+    onStart();
+  });
+  buttonEl.addEventListener('pointermove', e=>{
+    if(!active || locked || e.pointerId !== pointerId) return;
+    if(startY - e.clientY > RECORD_LOCK_PX){
+      locked = true;
+      armRecordLockIndicator();
+      setTimeout(hideRecordLockIndicator, 250);
+    }
+  });
+  const release = (e)=>{
+    if(!active || e.pointerId !== pointerId) return;
+    active = false; pointerId = null;
+    hideRecordLockIndicator();
+    // Locked: recording keeps going hands-free — the cancel/send buttons
+    // now visible in the recording bar are how it ends from here.
+    if(!locked) onRelease();
+  };
+  buttonEl.addEventListener('pointerup', release);
+  buttonEl.addEventListener('pointercancel', e=>{
+    if(!active || e.pointerId !== pointerId) return;
+    active = false; pointerId = null;
+    hideRecordLockIndicator();
+    if(!locked) onCancel(); // an interrupted gesture (not a deliberate release) discards, never sends
+  });
+}
+
 function chatRecordingTick(){
   const sec = Math.floor((Date.now() - chatRecordingStartTime) / 1000);
   document.getElementById('chatRecordingTimer').textContent = formatVoiceDuration(sec);
@@ -10231,19 +10315,84 @@ function chatRecordingTick(){
     finishAndSendVoiceRecording();
   }
 }
+
+/* --- live waveform in the recording bar ---
+   Real levels when we hold the actual mic stream (browser getUserMedia
+   path); the native-bridge path (see hasNativeVoiceRecording — routed
+   there specifically because WebView's own getUserMedia is broken on real
+   devices) never exposes raw audio to JS at all, so it gets a decorative
+   animated version instead. Either way `chatWaveformStop` is however the
+   currently-running one gets torn down, so stopChatRecordingUI doesn't
+   need to know which kind is active. */
+let chatWaveformStop = null;
+function renderWaveformBars(){
+  const container = document.getElementById('chatRecordingWaveform');
+  container.innerHTML = '';
+  const bars = [];
+  for(let i=0;i<27;i++){
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    container.appendChild(bar);
+    bars.push(bar);
+  }
+  return bars;
+}
+function startDecorativeWaveform(){
+  const bars = renderWaveformBars();
+  const handle = setInterval(() => {
+    bars.forEach(bar => { bar.style.height = (3 + Math.random()*21) + 'px'; });
+  }, 100);
+  chatWaveformStop = () => clearInterval(handle);
+}
+function startLiveWaveform(stream){
+  const bars = renderWaveformBars();
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const source = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 256;
+    source.connect(analyser);
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    const step = Math.max(1, Math.floor(data.length / bars.length));
+    let raf;
+    const tick = () => {
+      analyser.getByteFrequencyData(data);
+      bars.forEach((bar,i) => { bar.style.height = (3 + (data[i*step]/255)*21) + 'px'; });
+      raf = requestAnimationFrame(tick);
+    };
+    tick();
+    chatWaveformStop = () => { cancelAnimationFrame(raf); ctx.close().catch(()=>{}); };
+  }catch(e){
+    console.warn('live waveform unavailable, falling back to decorative:', e);
+    startDecorativeWaveform();
+  }
+}
+function stopWaveform(){
+  if(chatWaveformStop){ chatWaveformStop(); chatWaveformStop = null; }
+}
+
 function stopChatRecordingUI(){
   if(chatRecordingTimerHandle){ clearInterval(chatRecordingTimerHandle); chatRecordingTimerHandle = null; }
   if(chatRecordingStream){ chatRecordingStream.getTracks().forEach(t=>t.stop()); chatRecordingStream = null; }
+  stopWaveform();
   document.getElementById('chatRecordingBar').style.display = 'none';
   document.getElementById('chatInputBar').style.display = 'flex';
 }
+// Set if the hold-to-record gesture already released (or was cancelled)
+// before getUserMedia had a chance to resolve — a plain tap can easily be
+// faster than the permission/device round-trip. Checked right after the
+// await below so a too-quick tap doesn't leave a live mic stream open with
+// no UI pointing at it.
+let chatRecordingReleasePending = false;
 async function startVoiceRecording(){
+  chatRecordingReleasePending = false;
   if(hasNativeVoiceRecording()){
     chatUsingNativeRecording = true;
     window.AndroidApp.startNativeVoiceRecording();
     chatRecordingStartTime = Date.now();
     document.getElementById('chatInputBar').style.display = 'none';
     document.getElementById('chatRecordingBar').style.display = 'flex';
+    startDecorativeWaveform();
     chatRecordingTick();
     chatRecordingTimerHandle = setInterval(chatRecordingTick, 250);
     return;
@@ -10266,6 +10415,13 @@ async function startVoiceRecording(){
     showToast('Нет доступа к микрофону: '+(e.name||e.message||e));
     return;
   }
+  if(chatRecordingReleasePending){
+    // Already let go (or cancelled) while permission/device setup was in
+    // flight — don't open a recording UI for a gesture that's already over.
+    stream.getTracks().forEach(t=>t.stop());
+    chatRecordingReleasePending = false;
+    return;
+  }
   chatRecordingStream = stream;
   chatRecordedChunks = [];
   const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find(t => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t));
@@ -10279,6 +10435,7 @@ async function startVoiceRecording(){
   chatRecordingStartTime = Date.now();
   document.getElementById('chatInputBar').style.display = 'none';
   document.getElementById('chatRecordingBar').style.display = 'flex';
+  startLiveWaveform(stream);
   chatRecordingTick();
   chatRecordingTimerHandle = setInterval(chatRecordingTick, 250);
 }
@@ -10292,6 +10449,8 @@ function cancelVoiceRecording(){
   if(chatRecorder && chatRecorder.state !== 'inactive'){
     chatRecorder.ondataavailable = null;
     chatRecorder.stop();
+  } else {
+    chatRecordingReleasePending = true;
   }
   chatRecorder = null;
   chatRecordedChunks = [];
@@ -10305,7 +10464,11 @@ async function finishAndSendVoiceRecording(){
     stopChatRecordingUI();
     return;
   }
-  if(!chatRecorder || chatRecorder.state === 'inactive'){ stopChatRecordingUI(); return; }
+  if(!chatRecorder || chatRecorder.state === 'inactive'){
+    chatRecordingReleasePending = true;
+    stopChatRecordingUI();
+    return;
+  }
   const durationSec = (Date.now() - chatRecordingStartTime) / 1000;
   const recorder = chatRecorder;
   const blob = await new Promise(resolve=>{
@@ -10328,7 +10491,11 @@ window.onNativeVoiceRecordError = function(reason){
   console.warn('native voice recording failed:', reason);
   showToast(reason === 'permission' ? 'Нет доступа к микрофону' : 'Не удалось записать голосовое сообщение');
 };
-document.getElementById('chatMicBtn').addEventListener('click', startVoiceRecording);
+wireHoldToRecord(document.getElementById('chatMicBtn'), {
+  onStart: startVoiceRecording,
+  onRelease: finishAndSendVoiceRecording,
+  onCancel: cancelVoiceRecording
+});
 document.getElementById('chatRecordingCancelBtn').addEventListener('click', cancelVoiceRecording);
 document.getElementById('chatRecordingSendBtn').addEventListener('click', finishAndSendVoiceRecording);
 
@@ -10760,7 +10927,11 @@ function stopVideoCircleRecordingUI(){
   document.getElementById('chatVideoRecordBar').style.display = 'none';
   document.getElementById('chatInputBar').style.display = 'flex';
 }
+// Same reasoning as chatRecordingReleasePending above — a hold-to-record
+// tap can release before getUserMedia resolves.
+let chatVideoReleasePending = false;
 async function startVideoCircleRecording(){
+  chatVideoReleasePending = false;
   if(hasNativeVideoCircle()){
     window.AndroidApp.startVideoCircleCapture();
     return;
@@ -10775,6 +10946,11 @@ async function startVideoCircleRecording(){
   }catch(e){
     console.warn('getUserMedia (video) failed:', e);
     showToast('Нет доступа к камере: '+(e.name||e.message||e));
+    return;
+  }
+  if(chatVideoReleasePending){
+    stream.getTracks().forEach(t=>t.stop());
+    chatVideoReleasePending = false;
     return;
   }
   chatVideoRecordingStream = stream;
@@ -10798,13 +10974,19 @@ function cancelVideoCircleRecording(){
   if(chatVideoRecorder && chatVideoRecorder.state !== 'inactive'){
     chatVideoRecorder.ondataavailable = null;
     chatVideoRecorder.stop();
+  } else {
+    chatVideoReleasePending = true;
   }
   chatVideoRecorder = null;
   chatVideoRecordedChunks = [];
   stopVideoCircleRecordingUI();
 }
 async function finishAndSendVideoCircleRecording(){
-  if(!chatVideoRecorder || chatVideoRecorder.state === 'inactive'){ stopVideoCircleRecordingUI(); return; }
+  if(!chatVideoRecorder || chatVideoRecorder.state === 'inactive'){
+    chatVideoReleasePending = true;
+    stopVideoCircleRecordingUI();
+    return;
+  }
   const recorder = chatVideoRecorder;
   const blob = await new Promise(resolve=>{
     recorder.onstop = () => resolve(new Blob(chatVideoRecordedChunks, { type: recorder.mimeType || 'video/webm' }));
@@ -10814,7 +10996,20 @@ async function finishAndSendVideoCircleRecording(){
   stopVideoCircleRecordingUI();
   await sendVideoMessage(blob);
 }
-document.getElementById('chatVideoCircleBtn').addEventListener('click', startVideoCircleRecording);
+// Native video circles launch a full-screen native camera activity on a
+// single tap (see hasNativeVideoCircle) — nothing in our own recording bar
+// to hold/lock/drag toward, so it stays a plain tap there. Only the
+// browser fallback (its own recording bar, entirely our UI) gets the
+// Telegram-style hold gesture.
+if(hasNativeVideoCircle()){
+  document.getElementById('chatVideoCircleBtn').addEventListener('click', startVideoCircleRecording);
+} else {
+  wireHoldToRecord(document.getElementById('chatVideoCircleBtn'), {
+    onStart: startVideoCircleRecording,
+    onRelease: finishAndSendVideoCircleRecording,
+    onCancel: cancelVideoCircleRecording
+  });
+}
 document.getElementById('chatVideoRecordCancelBtn').addEventListener('click', cancelVideoCircleRecording);
 document.getElementById('chatVideoRecordSendBtn').addEventListener('click', finishAndSendVideoCircleRecording);
 
