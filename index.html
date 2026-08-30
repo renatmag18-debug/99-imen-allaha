@@ -803,9 +803,13 @@ body{
 }
 .chat-call-btn:active{ transform:scale(.9); }
 .chat-call-btn svg{ width:18px; height:18px; }
-.chats-connection-status{ font-size:11px; color:var(--ivory-dim); margin-top:1px; }
+.chats-connection-status{ font-size:14px; color:var(--ivory-dim); margin-top:3px; }
 .chats-connection-status.offline{ color:var(--rose); }
 .chats-connection-status.online{ color:var(--jade); }
+/* Only while actively waiting to connect — not on "Нет соединения",
+   which is a dead end, not something happening right now. */
+.chats-connection-status.connecting{ animation:chatsConnPulse 1.4s ease-in-out infinite; }
+@keyframes chatsConnPulse{ 0%,100%{ opacity:1; } 50%{ opacity:.4; } }
 
 /* ================= QURAN READER =================
    Страницы приходят с api.quran.com (/verses/by_page/N) — та же
@@ -9213,6 +9217,7 @@ function watchChatsConnectionStatus(){
       el.textContent = connected ? 'Подключено' : 'Подключение…';
       el.classList.toggle('online', connected);
       el.classList.toggle('offline', !connected);
+      el.classList.toggle('connecting', !connected);
     });
   });
 }
