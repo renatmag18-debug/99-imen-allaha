@@ -11399,7 +11399,10 @@ function applyVoiceSeek(clientX){
   const durationEl = wave.parentElement.querySelector('.chat-voice-duration');
   if(durationEl) durationEl.textContent = formatVoiceDuration(fraction * total);
   chatVoiceSeek.fraction = fraction;
-  if(chatVoiceAudioEl.duration) chatVoiceAudioEl.currentTime = fraction * chatVoiceAudioEl.duration;
+  // Same reasoning as the timeupdate handler's own comment — seek against
+  // the stored (correct) duration, not the browser's own possibly-wrong
+  // chatVoiceAudioEl.duration guess for this file.
+  if(total) chatVoiceAudioEl.currentTime = fraction * total;
 }
 document.getElementById('chatThreadMessages').addEventListener('pointerdown', e=>{
   const wave = e.target.closest('.chat-voice-waveform');
@@ -11576,10 +11579,19 @@ chatVoiceAudioEl.addEventListener('ended', ()=>{
   chatVoicePlayingId = null;
 });
 chatVoiceAudioEl.addEventListener('timeupdate', ()=>{
-  if(!chatVoicePlayingBtn || !chatVoiceAudioEl.duration) return;
+  if(!chatVoicePlayingBtn) return;
   if(chatVoiceSeek) return; // the drag's own applyVoiceSeek is already driving this
-  setVoiceWaveformProgress(chatVoicePlayingBtn.parentElement, chatVoiceAudioEl.currentTime / chatVoiceAudioEl.duration);
   const durationEl = chatVoicePlayingBtn.parentElement.querySelector('.chat-voice-duration');
+  // The stored recording length (m.duration, known-correct from when the
+  // message was sent), not chatVoiceAudioEl.duration — a MediaRecorder-
+  // produced file (webm from the browser fallback, m4a from the native
+  // bridge) frequently reports a browser-guessed duration that doesn't match
+  // the real playable length until a late seek forces a recalculation, which
+  // made the waveform run out of sync with the actual sound (finishing well
+  // before the bar filled up). The stored duration doesn't have that problem.
+  const total = durationEl ? (parseFloat(durationEl.dataset.total) || 0) : 0;
+  if(!total) return;
+  setVoiceWaveformProgress(chatVoicePlayingBtn.parentElement, chatVoiceAudioEl.currentTime / total);
   if(durationEl) durationEl.textContent = formatVoiceDuration(chatVoiceAudioEl.currentTime);
 });
 
