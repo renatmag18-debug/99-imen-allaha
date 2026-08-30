@@ -11424,6 +11424,13 @@ document.getElementById('chatThreadMessages').addEventListener('pointerdown', e=
   if(!src || !btn) return;
   e.preventDefault();
   wave.setPointerCapture(e.pointerId);
+  // Belt-and-suspenders alongside the delegated pointerup/pointercancel
+  // below — lostpointercapture fires whenever capture ends for *any* reason
+  // (including cases some WebView versions don't reliably bubble a plain
+  // pointerup/pointercancel for), so a drag can never leave chatVoiceSeek
+  // stuck set, which would otherwise freeze the waveform's progress in
+  // place for the rest of that playback (see tickVoiceProgress's own guard).
+  wave.addEventListener('lostpointercapture', endVoiceSeek, { once:true });
   closeVideoViewer();
   selectVoiceMessage(id, btn, src);
   chatVoiceSeek = { wave, pointerId: e.pointerId, total: parseFloat(wave.dataset.total) || 0 };
@@ -11574,36 +11581,49 @@ document.getElementById('chatThreadMessages').addEventListener('load', e=>{
 document.getElementById('chatThreadMessages').addEventListener('loadedmetadata', e=>{
   if(e.target && e.target.tagName === 'VIDEO') chatStickScrollOnMediaLoad(e);
 }, true);
+// Drives the waveform fill from a requestAnimationFrame loop rather than the
+// <audio> element's own 'timeupdate' event — that event's firing rate isn't
+// guaranteed (spec only requires "roughly" 4-66ms to 250ms, and in practice
+// WebViews can fire it far more sparsely for a cross-origin Storage-hosted
+// file than a desktop browser does), which was leaving the bar visibly
+// behind real playback and never catching up before 'ended' snapped it back
+// to empty. A per-frame loop has no such gap.
+let chatVoiceProgressRAF = null;
+function tickVoiceProgress(){
+  chatVoiceProgressRAF = null;
+  if(!chatVoicePlayingBtn || chatVoiceAudioEl.paused || chatVoiceAudioEl.ended) return;
+  if(!chatVoiceSeek){
+    const durationEl = chatVoicePlayingBtn.parentElement.querySelector('.chat-voice-duration');
+    // The stored recording length (m.duration, known-correct from when the
+    // message was sent), not chatVoiceAudioEl.duration — a MediaRecorder-
+    // produced file (webm from the browser fallback, m4a from the native
+    // bridge) can report a browser-guessed duration that doesn't match the
+    // real playable length until a late seek forces a recalculation.
+    const total = durationEl ? (parseFloat(durationEl.dataset.total) || 0) : 0;
+    if(total){
+      setVoiceWaveformProgress(chatVoicePlayingBtn.parentElement, chatVoiceAudioEl.currentTime / total);
+      durationEl.textContent = formatVoiceDuration(chatVoiceAudioEl.currentTime);
+    }
+  }
+  chatVoiceProgressRAF = requestAnimationFrame(tickVoiceProgress);
+}
 chatVoiceAudioEl.addEventListener('play', ()=>{
   if(!chatVoicePlayingBtn) return;
   chatVoicePlayingBtn.querySelector('.icon-play').style.display = 'none';
   chatVoicePlayingBtn.querySelector('.icon-pause').style.display = '';
+  if(!chatVoiceProgressRAF) chatVoiceProgressRAF = requestAnimationFrame(tickVoiceProgress);
 });
 chatVoiceAudioEl.addEventListener('pause', ()=>{
+  if(chatVoiceProgressRAF){ cancelAnimationFrame(chatVoiceProgressRAF); chatVoiceProgressRAF = null; }
   if(!chatVoicePlayingBtn) return;
   chatVoicePlayingBtn.querySelector('.icon-play').style.display = '';
   chatVoicePlayingBtn.querySelector('.icon-pause').style.display = 'none';
 });
 chatVoiceAudioEl.addEventListener('ended', ()=>{
+  if(chatVoiceProgressRAF){ cancelAnimationFrame(chatVoiceProgressRAF); chatVoiceProgressRAF = null; }
   if(chatVoicePlayingBtn) resetVoiceButtonUI(chatVoicePlayingBtn);
   chatVoicePlayingBtn = null;
   chatVoicePlayingId = null;
-});
-chatVoiceAudioEl.addEventListener('timeupdate', ()=>{
-  if(!chatVoicePlayingBtn) return;
-  if(chatVoiceSeek) return; // the drag's own applyVoiceSeek is already driving this
-  const durationEl = chatVoicePlayingBtn.parentElement.querySelector('.chat-voice-duration');
-  // The stored recording length (m.duration, known-correct from when the
-  // message was sent), not chatVoiceAudioEl.duration — a MediaRecorder-
-  // produced file (webm from the browser fallback, m4a from the native
-  // bridge) frequently reports a browser-guessed duration that doesn't match
-  // the real playable length until a late seek forces a recalculation, which
-  // made the waveform run out of sync with the actual sound (finishing well
-  // before the bar filled up). The stored duration doesn't have that problem.
-  const total = durationEl ? (parseFloat(durationEl.dataset.total) || 0) : 0;
-  if(!total) return;
-  setVoiceWaveformProgress(chatVoicePlayingBtn.parentElement, chatVoiceAudioEl.currentTime / total);
-  if(durationEl) durationEl.textContent = formatVoiceDuration(chatVoiceAudioEl.currentTime);
 });
 
 // ?chat=<username> deep link (from a chat-message push notification) — opened
