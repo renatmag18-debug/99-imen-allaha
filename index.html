@@ -10273,7 +10273,7 @@ function armRecordLockIndicator(){
 function hideRecordLockIndicator(){
   document.getElementById('chatRecordLockIndicator').style.display = 'none';
 }
-function wireHoldToRecord(buttonEl, { onStart, onRelease, onCancel }){
+function wireHoldToRecord(buttonEl, { onStart, onRelease, onCancel, onLock }){
   let active = false, locked = false, startY = 0, pointerId = null;
   buttonEl.addEventListener('pointerdown', e=>{
     if(active) return;
@@ -10288,6 +10288,11 @@ function wireHoldToRecord(buttonEl, { onStart, onRelease, onCancel }){
       locked = true;
       armRecordLockIndicator();
       setTimeout(hideRecordLockIndicator, 250);
+      // Native video circles render their own floating camera preview on
+      // top of everything (see hasNativeVideoCircle()), which covers this
+      // very DOM indicator — onLock lets that native overlay know to show
+      // its own twin instead of the drag going visually silent.
+      if(onLock) onLock();
     }
   });
   const release = (e)=>{
@@ -10825,7 +10830,7 @@ async function sendVoiceMessage(blob, durationSec){
 const MAX_VIDEO_CIRCLE_SEC = 25;
 
 function hasNativeVideoCircle(){
-  return !!(window.AndroidApp && window.AndroidApp.startVideoCircleCapture);
+  return !!(window.AndroidApp && window.AndroidApp.startNativeVideoCircleRecording);
 }
 // Reads actual duration from the recorded file itself rather than tracking
 // a separate timer — the only reliable source once the native path hands
@@ -10888,8 +10893,10 @@ async function sendVideoMessage(blob){
   }
 }
 
-// Native path: the system camera app takes over the whole screen, so there's
-// no recording bar of our own to show — just wait for the callback.
+// Native path: a floating native camera overlay (see hasNativeVideoCircle)
+// renders on top of this page, driven by the same press/hold/slide-up-to-lock
+// gesture below — there's no DOM recording bar of our own to show while it's
+// up, just wait for the callback.
 window.onNativeVideoRecorded = async function(base64){
   const blob = base64ToBlob(base64, 'video/mp4');
   await sendVideoMessage(blob);
@@ -10933,7 +10940,7 @@ let chatVideoReleasePending = false;
 async function startVideoCircleRecording(){
   chatVideoReleasePending = false;
   if(hasNativeVideoCircle()){
-    window.AndroidApp.startVideoCircleCapture();
+    window.AndroidApp.startNativeVideoCircleRecording();
     return;
   }
   if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined'){
@@ -10971,6 +10978,10 @@ async function startVideoCircleRecording(){
   chatVideoRecordingTimerHandle = setInterval(chatVideoRecordingTick, 250);
 }
 function cancelVideoCircleRecording(){
+  if(hasNativeVideoCircle()){
+    window.AndroidApp.cancelNativeVideoCircleRecording();
+    return;
+  }
   if(chatVideoRecorder && chatVideoRecorder.state !== 'inactive'){
     chatVideoRecorder.ondataavailable = null;
     chatVideoRecorder.stop();
@@ -10982,6 +10993,10 @@ function cancelVideoCircleRecording(){
   stopVideoCircleRecordingUI();
 }
 async function finishAndSendVideoCircleRecording(){
+  if(hasNativeVideoCircle()){
+    window.AndroidApp.stopNativeVideoCircleRecording();
+    return;
+  }
   if(!chatVideoRecorder || chatVideoRecorder.state === 'inactive'){
     chatVideoReleasePending = true;
     stopVideoCircleRecordingUI();
@@ -10996,20 +11011,17 @@ async function finishAndSendVideoCircleRecording(){
   stopVideoCircleRecordingUI();
   await sendVideoMessage(blob);
 }
-// Native video circles launch a full-screen native camera activity on a
-// single tap (see hasNativeVideoCircle) — nothing in our own recording bar
-// to hold/lock/drag toward, so it stays a plain tap there. Only the
-// browser fallback (its own recording bar, entirely our UI) gets the
-// Telegram-style hold gesture.
-if(hasNativeVideoCircle()){
-  document.getElementById('chatVideoCircleBtn').addEventListener('click', startVideoCircleRecording);
-} else {
-  wireHoldToRecord(document.getElementById('chatVideoCircleBtn'), {
-    onStart: startVideoCircleRecording,
-    onRelease: finishAndSendVideoCircleRecording,
-    onCancel: cancelVideoCircleRecording
-  });
-}
+// Same press/hold/slide-up-to-lock gesture as the voice-message button (see
+// wireHoldToRecord above) for both the native and browser-fallback paths —
+// the native camera overlay renders over this page's own #chatRecordLockIndicator,
+// so onLock tells it to show its own twin instead (see notifyVideoCircleLocked
+// on the Kotlin side).
+wireHoldToRecord(document.getElementById('chatVideoCircleBtn'), {
+  onStart: startVideoCircleRecording,
+  onRelease: finishAndSendVideoCircleRecording,
+  onCancel: cancelVideoCircleRecording,
+  onLock: () => { if(hasNativeVideoCircle()) window.AndroidApp.notifyVideoCircleLocked(); }
+});
 document.getElementById('chatVideoRecordCancelBtn').addEventListener('click', cancelVideoCircleRecording);
 document.getElementById('chatVideoRecordSendBtn').addEventListener('click', finishAndSendVideoCircleRecording);
 
