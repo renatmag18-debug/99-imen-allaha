@@ -963,9 +963,15 @@ body{
 .tajweed-table td{ padding:8px 7px; color:var(--ivory-dim); border-bottom:1px solid var(--line); vertical-align:top; line-height:1.5; }
 .tajweed-table tr:last-child td{ border-bottom:none; }
 .tajweed-table td.ar-cell{ font-family:var(--font-ar); font-size:17px; color:var(--gold-soft); direction:rtl; unicode-bidi:isolate; white-space:nowrap; }
-.tajweed-table td.tajweed-audio-cell{ cursor:pointer; font-size:20px; transition:background .15s; }
+.tajweed-table td.tajweed-audio-cell{
+  cursor:pointer; transition:background .15s;
+  display:flex; align-items:center; justify-content:center; gap:4px; direction:ltr;
+}
 .tajweed-table td.tajweed-audio-cell:active{ background:var(--fill-3); }
 .tajweed-table td.tajweed-audio-cell.playing{ background:var(--accent-tint); }
+.tajweed-audio-letter{ font-size:20px; }
+.tajweed-audio-icon{ width:11px; height:11px; color:var(--gold); opacity:.75; flex-shrink:0; }
+.tajweed-table td.tajweed-audio-cell.playing .tajweed-audio-icon{ opacity:1; color:var(--gold-soft); }
 
 .quran-head{ display:flex; align-items:center; gap:10px; padding:16px 20px 12px; flex-shrink:0; }
 .quran-surah-btn{
@@ -4845,34 +4851,34 @@ const TAJWEED_LESSONS = {
         `<div class="tajweed-table-wrap"><table class="tajweed-table">
           <thead><tr><th>Буква</th><th>Название</th><th>Начальная</th><th>Средняя</th><th>Конечная</th></tr></thead>
           <tbody>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="alif">ا</td><td>Алиф</td><td class="ar-cell">ا</td><td class="ar-cell">ـا</td><td class="ar-cell">ـا</td></tr>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="ba">ب</td><td>Ба</td><td class="ar-cell">بـ</td><td class="ar-cell">ـبـ</td><td class="ar-cell">ـب</td></tr>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="ta">ت</td><td>Та</td><td class="ar-cell">تـ</td><td class="ar-cell">ـتـ</td><td class="ar-cell">ـت</td></tr>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="tha">ث</td><td>Са</td><td class="ar-cell">ثـ</td><td class="ar-cell">ـثـ</td><td class="ar-cell">ـث</td></tr>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="jim">ج</td><td>Джим</td><td class="ar-cell">جـ</td><td class="ar-cell">ـجـ</td><td class="ar-cell">ـج</td></tr>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="ha">ح</td><td>Ха</td><td class="ar-cell">حـ</td><td class="ar-cell">ـحـ</td><td class="ar-cell">ـح</td></tr>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="kha">خ</td><td>Хъа</td><td class="ar-cell">خـ</td><td class="ar-cell">ـخـ</td><td class="ar-cell">ـخ</td></tr>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="dal">د</td><td>Даль</td><td class="ar-cell">د</td><td class="ar-cell">ـد</td><td class="ar-cell">ـد</td></tr>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="dhal">ذ</td><td>Заль</td><td class="ar-cell">ذ</td><td class="ar-cell">ـذ</td><td class="ar-cell">ـذ</td></tr>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="ra">ر</td><td>Ра</td><td class="ar-cell">ر</td><td class="ar-cell">ـر</td><td class="ar-cell">ـر</td></tr>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="zay">ز</td><td>За</td><td class="ar-cell">ز</td><td class="ar-cell">ـز</td><td class="ar-cell">ـز</td></tr>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="sin">س</td><td>Син</td><td class="ar-cell">سـ</td><td class="ar-cell">ـسـ</td><td class="ar-cell">ـس</td></tr>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="shin">ش</td><td>Шин</td><td class="ar-cell">شـ</td><td class="ar-cell">ـشـ</td><td class="ar-cell">ـش</td></tr>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="sad">ص</td><td>Сад</td><td class="ar-cell">صـ</td><td class="ar-cell">ـصـ</td><td class="ar-cell">ـص</td></tr>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="dad">ض</td><td>Дад</td><td class="ar-cell">ضـ</td><td class="ar-cell">ـضـ</td><td class="ar-cell">ـض</td></tr>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="ta2">ط</td><td>Та (тяж.)</td><td class="ar-cell">طـ</td><td class="ar-cell">ـطـ</td><td class="ar-cell">ـط</td></tr>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="za2">ظ</td><td>За (тяж.)</td><td class="ar-cell">ظـ</td><td class="ar-cell">ـظـ</td><td class="ar-cell">ـظ</td></tr>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="ain">ع</td><td>Айн</td><td class="ar-cell">عـ</td><td class="ar-cell">ـعـ</td><td class="ar-cell">ـع</td></tr>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="ghain">غ</td><td>Гайн</td><td class="ar-cell">غـ</td><td class="ar-cell">ـغـ</td><td class="ar-cell">ـغ</td></tr>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="fa">ف</td><td>Фа</td><td class="ar-cell">فـ</td><td class="ar-cell">ـفـ</td><td class="ar-cell">ـف</td></tr>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="qaf">ق</td><td>Къаф</td><td class="ar-cell">قـ</td><td class="ar-cell">ـقـ</td><td class="ar-cell">ـق</td></tr>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="kaf">ك</td><td>Каф</td><td class="ar-cell">كـ</td><td class="ar-cell">ـكـ</td><td class="ar-cell">ـك</td></tr>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="lam">ل</td><td>Лям</td><td class="ar-cell">لـ</td><td class="ar-cell">ـلـ</td><td class="ar-cell">ـل</td></tr>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="mim">م</td><td>Мим</td><td class="ar-cell">مـ</td><td class="ar-cell">ـمـ</td><td class="ar-cell">ـم</td></tr>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="nun">ن</td><td>Нун</td><td class="ar-cell">نـ</td><td class="ar-cell">ـنـ</td><td class="ar-cell">ـن</td></tr>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="ha2">ه</td><td>Ха (лёгк.)</td><td class="ar-cell">هـ</td><td class="ar-cell">ـهـ</td><td class="ar-cell">ـه</td></tr>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="waw">و</td><td>Вав</td><td class="ar-cell">و</td><td class="ar-cell">ـو</td><td class="ar-cell">ـو</td></tr>
-            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="ya">ي</td><td>Я</td><td class="ar-cell">يـ</td><td class="ar-cell">ـيـ</td><td class="ar-cell">ـي</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="alif"><span class="tajweed-audio-letter">ا</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>Алиф</td><td class="ar-cell">ا</td><td class="ar-cell">ـا</td><td class="ar-cell">ـا</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="ba"><span class="tajweed-audio-letter">ب</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>Ба</td><td class="ar-cell">بـ</td><td class="ar-cell">ـبـ</td><td class="ar-cell">ـب</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="ta"><span class="tajweed-audio-letter">ت</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>Та</td><td class="ar-cell">تـ</td><td class="ar-cell">ـتـ</td><td class="ar-cell">ـت</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="tha"><span class="tajweed-audio-letter">ث</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>Са</td><td class="ar-cell">ثـ</td><td class="ar-cell">ـثـ</td><td class="ar-cell">ـث</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="jim"><span class="tajweed-audio-letter">ج</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>Джим</td><td class="ar-cell">جـ</td><td class="ar-cell">ـجـ</td><td class="ar-cell">ـج</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="ha"><span class="tajweed-audio-letter">ح</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>Ха</td><td class="ar-cell">حـ</td><td class="ar-cell">ـحـ</td><td class="ar-cell">ـح</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="kha"><span class="tajweed-audio-letter">خ</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>Хъа</td><td class="ar-cell">خـ</td><td class="ar-cell">ـخـ</td><td class="ar-cell">ـخ</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="dal"><span class="tajweed-audio-letter">د</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>Даль</td><td class="ar-cell">د</td><td class="ar-cell">ـد</td><td class="ar-cell">ـد</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="dhal"><span class="tajweed-audio-letter">ذ</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>Заль</td><td class="ar-cell">ذ</td><td class="ar-cell">ـذ</td><td class="ar-cell">ـذ</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="ra"><span class="tajweed-audio-letter">ر</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>Ра</td><td class="ar-cell">ر</td><td class="ar-cell">ـر</td><td class="ar-cell">ـر</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="zay"><span class="tajweed-audio-letter">ز</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>За</td><td class="ar-cell">ز</td><td class="ar-cell">ـز</td><td class="ar-cell">ـز</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="sin"><span class="tajweed-audio-letter">س</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>Син</td><td class="ar-cell">سـ</td><td class="ar-cell">ـسـ</td><td class="ar-cell">ـس</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="shin"><span class="tajweed-audio-letter">ش</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>Шин</td><td class="ar-cell">شـ</td><td class="ar-cell">ـشـ</td><td class="ar-cell">ـش</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="sad"><span class="tajweed-audio-letter">ص</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>Сад</td><td class="ar-cell">صـ</td><td class="ar-cell">ـصـ</td><td class="ar-cell">ـص</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="dad"><span class="tajweed-audio-letter">ض</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>Дад</td><td class="ar-cell">ضـ</td><td class="ar-cell">ـضـ</td><td class="ar-cell">ـض</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="ta2"><span class="tajweed-audio-letter">ط</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>Та (тяж.)</td><td class="ar-cell">طـ</td><td class="ar-cell">ـطـ</td><td class="ar-cell">ـط</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="za2"><span class="tajweed-audio-letter">ظ</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>За (тяж.)</td><td class="ar-cell">ظـ</td><td class="ar-cell">ـظـ</td><td class="ar-cell">ـظ</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="ain"><span class="tajweed-audio-letter">ع</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>Айн</td><td class="ar-cell">عـ</td><td class="ar-cell">ـعـ</td><td class="ar-cell">ـع</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="ghain"><span class="tajweed-audio-letter">غ</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>Гайн</td><td class="ar-cell">غـ</td><td class="ar-cell">ـغـ</td><td class="ar-cell">ـغ</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="fa"><span class="tajweed-audio-letter">ف</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>Фа</td><td class="ar-cell">فـ</td><td class="ar-cell">ـفـ</td><td class="ar-cell">ـف</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="qaf"><span class="tajweed-audio-letter">ق</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>Къаф</td><td class="ar-cell">قـ</td><td class="ar-cell">ـقـ</td><td class="ar-cell">ـق</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="kaf"><span class="tajweed-audio-letter">ك</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>Каф</td><td class="ar-cell">كـ</td><td class="ar-cell">ـكـ</td><td class="ar-cell">ـك</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="lam"><span class="tajweed-audio-letter">ل</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>Лям</td><td class="ar-cell">لـ</td><td class="ar-cell">ـلـ</td><td class="ar-cell">ـل</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="mim"><span class="tajweed-audio-letter">م</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>Мим</td><td class="ar-cell">مـ</td><td class="ar-cell">ـمـ</td><td class="ar-cell">ـم</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="nun"><span class="tajweed-audio-letter">ن</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>Нун</td><td class="ar-cell">نـ</td><td class="ar-cell">ـنـ</td><td class="ar-cell">ـن</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="ha2"><span class="tajweed-audio-letter">ه</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>Ха (лёгк.)</td><td class="ar-cell">هـ</td><td class="ar-cell">ـهـ</td><td class="ar-cell">ـه</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="waw"><span class="tajweed-audio-letter">و</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>Вав</td><td class="ar-cell">و</td><td class="ar-cell">ـو</td><td class="ar-cell">ـو</td></tr>
+            <tr><td class="ar-cell tajweed-audio-cell" data-tajweed-audio="ya"><span class="tajweed-audio-letter">ي</span><svg class="tajweed-audio-icon" viewBox="0 0 24 24" fill="none"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></td><td>Я</td><td class="ar-cell">يـ</td><td class="ar-cell">ـيـ</td><td class="ar-cell">ـي</td></tr>
           </tbody>
         </table></div>`,
         'Отдельно от букв стоит хамза <span class="ar">ء</span> — не входит в 28 букв алфавита, но обозначает самостоятельный звук (гортанная смычка) и часто пишется на «подставке» из алиф, вав или я (<span class="ar">أ إ ؤ ئ</span>) в зависимости от огласовки. С неё, кстати, начинается перечисление мест выхода в следующем уроке.',
@@ -4982,8 +4988,18 @@ document.getElementById('tajweedLessonList').addEventListener('click', e=>{
     const id = audioCell.dataset.tajweedAudio;
     document.querySelectorAll('.tajweed-audio-cell.playing').forEach(el => el.classList.remove('playing'));
     audioCell.classList.add('playing');
-    tajweedAudioEl.src = `audio/tajweed-alphabet/${id}.ogg`;
-    tajweedAudioEl.play().catch(()=>{});
+    // Absolute URL, not relative — the WebView's base URL for the freshly-
+    // fetched index.html stays file:///android_asset/www/ (see
+    // loadFreshWebContent()'s own comment in MainActivity.kt), which is
+    // whatever was bundled at the last APK build. New web-only assets like
+    // this audio never get self-updated onto that local path, so a relative
+    // src 404s silently on every install that hasn't had a fresh APK.
+    tajweedAudioEl.src = `https://99ism.ru/audio/tajweed-alphabet/${id}.ogg`;
+    tajweedAudioEl.play().catch(err => {
+      console.warn('tajweed letter audio failed to play:', id, err);
+      audioCell.classList.remove('playing');
+      showToast('Не удалось воспроизвести звук — проверьте интернет');
+    });
     tajweedAudioEl.onended = () => audioCell.classList.remove('playing');
     return;
   }
@@ -14659,6 +14675,11 @@ async function quranHandleSearchInput(query){
     // just needlessly shrink the tab-swipe's usable area for no reason.
     if(state.screen === 'home' && isInDrawerOpenZone(sx)) return;
     if(e.target.closest('.sheet, input, textarea, .tabbar')) return;
+    // A horizontally-scrollable element (e.g. a wide tajweed table) needs
+    // its own native touch-scroll — without this, the touchmove handler
+    // below calls preventDefault() on every horizontal drag on the stage
+    // and the table's own overflow-x:auto never gets a chance to engage.
+    if(e.target.closest('.tajweed-table-wrap')) return;
     if(document.querySelector('.sheet.show')) return;
     // #sideDrawer isn't a .sheet (it slides in from the side, not the
     // bottom), so the check above doesn't already cover it — without this,
