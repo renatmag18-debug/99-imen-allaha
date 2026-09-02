@@ -12936,16 +12936,15 @@ function quranSurahDisplayName(chapter){
 
 /* =====================================================
    LISTEN TO QURAN — reciters list with streaming + offline download.
-   Two source types, chosen per reciter:
-   - "single-file" reciters stream/download one continuous mp3quran.net
-     recording per surah (LISTEN_RECITERS entries with a `server`).
-   - "ayah-sequence" reciters (LISTEN_KARAOKE_RECITATION_IDS) instead play
-     the surah as a sequence of separate per-ayah clips from api.quran.com
-     — the only source that splits a recitation into individually-timed
-     pieces, which is what makes exact text-sync ("show text") possible.
-     This is the SAME audio whether or not the text view is open, so
-     switching it on/off never restarts or re-syncs playback — it's just a
-     visibility toggle over whatever ayah is already playing.
+   Every reciter always plays one continuous recording per surah (never
+   split into per-ayah pieces, so listening stays gapless) — for the 8
+   reciters in LISTEN_KARAOKE_RECITATION_IDS, that continuous file comes
+   with a "Показать текст" option: api.qurancdn.com's audio_files endpoint
+   (segments=true) hands back that exact same continuous mp3 PLUS
+   millisecond-accurate verse_timings for it, so the text view just tracks
+   listenAudioEl.currentTime against those ranges — the audio never
+   changes shape depending on whether the text is shown, only which ayah
+   is highlighted does.
 ===================================================== */
 const LISTEN_RECITERS = [
   { id:'afs',      name:'Мишари ар-Рашид аль-Афаси',   server:'https://server8.mp3quran.net/afs/' },
@@ -12976,26 +12975,37 @@ const LISTEN_ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14
 const listenState = { reciter:null, chapters:null, downloaded:new Set(), currentSurah:null, loadedReciterId:null, playing:false };
 const listenAudioEl = new Audio();
 let listenCurrentObjectUrl = null;
-let listenAyahObjectUrls = [];
 let listenDbPromise = null;
 
 // "Show text" is only offered for reciters whose recitation is ALSO hosted
-// on api.quran.com under one of its small set of legacy recitation ids —
-// see the file header comment above.
+// on api.qurancdn.com under one of its small set of legacy recitation ids
+// — see the file header comment above.
 const LISTEN_KARAOKE_RECITATION_IDS = { afs:7, sds:3, shatri:4, hani:5, husr:6, minsh:9, shur:10, basit:2 };
 function listenHasKaraoke(reciterId){ return !!LISTEN_KARAOKE_RECITATION_IDS[reciterId]; }
-// Playback state for ayah-sequence reciters — populated once per loaded
-// surah, `active` true whenever the audio element currently holds one of
-// its clips (as opposed to a single-file reciter's one continuous track).
-const listenAyah = { active:false, ayahs:[], index:-1 };
+// Per-ayah timing for the currently loaded track (karaoke-capable reciters
+// only) — `active` once verse_timings has loaded; `currentIndex` is kept
+// live off listenAudioEl.currentTime via the 'timeupdate' listener below,
+// independent of whether the text overlay is actually open.
+const listenAyah = { active:false, timings:[], currentIndex:-1 };
 let listenKaraokeOverlayOpen = false;
 
 function listenPad3(n){ return String(n).padStart(3,'0'); }
 function listenTrackUrl(reciter, surahNum){ return reciter.server + listenPad3(surahNum) + '.mp3'; }
 function listenTrackKey(reciterId, surahNum){ return reciterId + '_' + surahNum; }
-function listenRevokeAyahObjectUrls(){
-  listenAyahObjectUrls.forEach(u => URL.revokeObjectURL(u));
-  listenAyahObjectUrls = [];
+// The continuous recording + its verse timings, for a karaoke-capable
+// reciter's surah — same audio_url used for both streaming and download.
+async function listenFetchContinuousTrack(reciter, chapterNum){
+  const recitationId = LISTEN_KARAOKE_RECITATION_IDS[reciter.id];
+  const data = await fetch(`https://api.qurancdn.com/api/qdc/audio/reciters/${recitationId}/audio_files?chapter=${chapterNum}&segments=true`).then(r => r.json());
+  const af = (data.audio_files || [])[0];
+  if(!af || !af.audio_url) throw new Error('no audio file');
+  return { audioUrl: af.audio_url, verseTimings: af.verse_timings || [] };
+}
+async function listenFetchVerseTexts(chapterNum){
+  try{
+    const data = await fetch(`https://api.quran.com/api/v4/quran/verses/uthmani?chapter_number=${chapterNum}`).then(r => r.json());
+    return data.verses || [];
+  }catch(e){ return []; }
 }
 
 function listenOpenDb(){
@@ -13008,8 +13018,6 @@ function listenOpenDb(){
   });
   return listenDbPromise;
 }
-// Stored value is a single Blob for single-file reciters, or an ARRAY of
-// per-ayah Blobs (same order as the surah's ayahs) for ayah-sequence ones.
 async function listenGetCachedBlob(reciterId, surahNum){
   try{
     const db = await listenOpenDb();
@@ -13020,11 +13028,11 @@ async function listenGetCachedBlob(reciterId, surahNum){
     });
   }catch(e){ return null; }
 }
-async function listenSaveBlob(reciterId, surahNum, blobOrBlobs){
+async function listenSaveBlob(reciterId, surahNum, blob){
   const db = await listenOpenDb();
   return new Promise((resolve, reject)=>{
     const tx = db.transaction(LISTEN_DB_STORE, 'readwrite');
-    tx.objectStore(LISTEN_DB_STORE).put(blobOrBlobs, listenTrackKey(reciterId, surahNum));
+    tx.objectStore(LISTEN_DB_STORE).put(blob, listenTrackKey(reciterId, surahNum));
     tx.oncomplete = ()=> resolve();
     tx.onerror = ()=> reject(tx.error);
   });
@@ -13126,7 +13134,7 @@ function listenUpdatePlayButtons(){
 function listenUpdatePlayerLabel(){
   const chapter = quranChapterFor(listenState.currentSurah);
   let label = (chapter ? quranSurahDisplayName(chapter) : '') + ' — ' + (listenState.reciter ? listenState.reciter.name : '');
-  if(listenAyah.active && listenAyah.index >= 0) label += ` (аят ${listenAyah.index + 1}/${listenAyah.ayahs.length})`;
+  if(listenAyah.active && listenAyah.currentIndex >= 0) label += ` (аят ${listenAyah.currentIndex + 1}/${listenAyah.timings.length})`;
   const nameEl = document.getElementById('listenPlayerName');
   if(nameEl) nameEl.textContent = label;
 }
@@ -13145,27 +13153,44 @@ async function listenPlaySurah(surahNum){
   }
   listenState.currentSurah = surahNum;
   listenState.loadedReciterId = reciter.id;
+  listenAyah.active = false;
+  listenAyah.timings = [];
+  listenAyah.currentIndex = -1;
   showListenPlayerBar(surahNum);
   renderListenSurahList();
+  if(listenCurrentObjectUrl){ URL.revokeObjectURL(listenCurrentObjectUrl); listenCurrentObjectUrl = null; }
+  const rawCachedBlob = await listenGetCachedBlob(reciter.id, surahNum);
+  // A leftover value from an earlier, since-replaced storage format
+  // (an array of per-ayah blobs) isn't a playable single file — treat it
+  // as no cache rather than letting it crash playback.
+  const cachedBlob = (rawCachedBlob && !Array.isArray(rawCachedBlob)) ? rawCachedBlob : null;
+  if(listenState.currentSurah !== surahNum || listenState.loadedReciterId !== reciter.id) return;
   if(listenHasKaraoke(reciter.id)){
+    let audioUrl = null, verseTimings = [];
     try{
-      await listenLoadAyahSequence(reciter, surahNum);
-    }catch(e){ return; }
-    if(listenState.currentSurah !== surahNum || listenState.loadedReciterId !== reciter.id) return;
-    listenPlayAyahIndex(0);
-  } else {
-    listenAyah.active = false;
-    if(listenCurrentObjectUrl){ URL.revokeObjectURL(listenCurrentObjectUrl); listenCurrentObjectUrl = null; }
-    const cachedBlob = await listenGetCachedBlob(reciter.id, surahNum);
-    if(listenState.currentSurah !== surahNum || listenState.loadedReciterId !== reciter.id) return;
-    if(cachedBlob && !Array.isArray(cachedBlob)){
-      listenCurrentObjectUrl = URL.createObjectURL(cachedBlob);
-      listenAudioEl.src = listenCurrentObjectUrl;
-    } else {
-      listenAudioEl.src = listenTrackUrl(reciter, surahNum);
+      const track = await listenFetchContinuousTrack(reciter, surahNum);
+      audioUrl = track.audioUrl;
+      verseTimings = track.verseTimings;
+    }catch(e){
+      if(!cachedBlob){ showToast('Не удалось загрузить суру'); return; }
+      // Still playable from the cached copy even though the timing fetch
+      // failed — just without the ayah highlighting.
     }
-    listenAudioEl.play().catch(()=>{ showToast('Не удалось воспроизвести запись'); });
+    if(listenState.currentSurah !== surahNum || listenState.loadedReciterId !== reciter.id) return;
+    if(verseTimings.length){
+      const verses = await listenFetchVerseTexts(surahNum);
+      listenAyah.timings = verseTimings.map((vt, i) => ({ fromSec: vt.timestamp_from / 1000, toSec: vt.timestamp_to / 1000, text: verses[i] ? verses[i].text_uthmani : '' }));
+      listenAyah.active = true;
+      if(listenKaraokeOverlayOpen) renderListenKaraokeAyahs();
+    }
+    listenAudioEl.src = cachedBlob ? (listenCurrentObjectUrl = URL.createObjectURL(cachedBlob)) : audioUrl;
+  } else if(cachedBlob){
+    listenCurrentObjectUrl = URL.createObjectURL(cachedBlob);
+    listenAudioEl.src = listenCurrentObjectUrl;
+  } else {
+    listenAudioEl.src = listenTrackUrl(reciter, surahNum);
   }
+  listenAudioEl.play().catch(()=>{ showToast('Не удалось воспроизвести запись'); });
 }
 function listenPlayAdjacentSurah(delta){
   if(!listenState.currentSurah) return;
@@ -13183,19 +13208,11 @@ async function listenToggleDownload(surahNum, btnEl){
   }
   if(btnEl) btnEl.classList.add('loading');
   try{
-    if(listenHasKaraoke(reciter.id)){
-      const recitationId = LISTEN_KARAOKE_RECITATION_IDS[reciter.id];
-      const audioData = await fetch(`https://api.quran.com/api/v4/quran/recitations/${recitationId}?chapter_number=${surahNum}`).then(r => r.json());
-      const urls = (audioData.audio_files || []).map(a => QURAN_AUDIO_BASE + a.url);
-      if(!urls.length) throw new Error('no audio files');
-      const blobs = await Promise.all(urls.map(u => fetch(u).then(r => { if(!r.ok) throw new Error('http ' + r.status); return r.blob(); })));
-      await listenSaveBlob(reciter.id, surahNum, blobs);
-    } else {
-      const resp = await fetch(listenTrackUrl(reciter, surahNum));
-      if(!resp.ok) throw new Error('http ' + resp.status);
-      const blob = await resp.blob();
-      await listenSaveBlob(reciter.id, surahNum, blob);
-    }
+    const url = listenHasKaraoke(reciter.id) ? (await listenFetchContinuousTrack(reciter, surahNum)).audioUrl : listenTrackUrl(reciter, surahNum);
+    const resp = await fetch(url);
+    if(!resp.ok) throw new Error('http ' + resp.status);
+    const blob = await resp.blob();
+    await listenSaveBlob(reciter.id, surahNum, blob);
     listenState.downloaded.add(String(surahNum));
   }catch(e){
     showToast('Не удалось скачать запись');
@@ -13203,78 +13220,22 @@ async function listenToggleDownload(surahNum, btnEl){
   renderListenSurahList();
 }
 
-/* ---- ayah-sequence playback + "show text" overlay ---- */
-// Loads the surah's ayahs (text + per-ayah audio) for an ayah-sequence
-// reciter. When the surah is already fully downloaded, this skips the
-// audio-URL network call entirely and plays straight from the cached
-// blobs — otherwise a "download for offline" on these reciters would be
-// pointless, since every play would still need network for the URL list.
-async function listenLoadAyahSequence(reciter, chapterNum){
-  const recitationId = LISTEN_KARAOKE_RECITATION_IDS[reciter.id];
-  const cachedBlobs = await listenGetCachedBlob(reciter.id, chapterNum);
-  const hasFullCache = Array.isArray(cachedBlobs) && cachedBlobs.length > 0;
-  listenRevokeAyahObjectUrls();
-  let audioUrls = null;
-  if(!hasFullCache){
-    try{
-      const audioData = await fetch(`https://api.quran.com/api/v4/quran/recitations/${recitationId}?chapter_number=${chapterNum}`).then(r => r.json());
-      audioUrls = (audioData.audio_files || []).map(a => QURAN_AUDIO_BASE + a.url);
-    }catch(e){
-      listenAyah.active = false;
-      showToast('Не удалось загрузить суру');
-      throw e;
-    }
-  }
-  let verses = [];
-  try{
-    const versesData = await fetch(`https://api.quran.com/api/v4/quran/verses/uthmani?chapter_number=${chapterNum}`).then(r => r.json());
-    verses = versesData.verses || [];
-  }catch(e){ /* audio can still play without the Arabic text */ }
-  const count = hasFullCache ? cachedBlobs.length : audioUrls.length;
-  const ayahs = [];
-  for(let i = 0; i < count; i++){
-    let audioUrl;
-    if(hasFullCache && cachedBlobs[i]){
-      audioUrl = URL.createObjectURL(cachedBlobs[i]);
-      listenAyahObjectUrls.push(audioUrl);
-    } else {
-      audioUrl = audioUrls[i];
-    }
-    ayahs.push({ text: verses[i] ? verses[i].text_uthmani : '', audioUrl });
-  }
-  if(!ayahs.length || !ayahs.some(a => a.audioUrl)){
-    listenAyah.active = false;
-    showToast('Не удалось загрузить суру');
-    throw new Error('no playable ayahs');
-  }
-  listenAyah.active = true;
-  listenAyah.ayahs = ayahs;
-  listenAyah.index = -1;
-  if(listenKaraokeOverlayOpen) renderListenKaraokeAyahs();
-}
+/* ---- "show text" overlay — pure visibility toggle over whatever ayah
+   listenAyah.currentIndex (tracked continuously below) says is playing
+   right now; open/close never touches listenAudioEl. ---- */
 function renderListenKaraokeAyahs(){
   const wrap = document.getElementById('listenKaraokeScroll');
-  wrap.innerHTML = listenAyah.ayahs.map((a, i) => `
-    <div class="listen-karaoke-ayah${i === listenAyah.index ? ' active' : ''}" data-index="${i}">
+  wrap.innerHTML = listenAyah.timings.map((a, i) => `
+    <div class="listen-karaoke-ayah${i === listenAyah.currentIndex ? ' active' : ''}" data-index="${i}">
       <div class="listen-karaoke-ayah-num">${i + 1}</div>
       <div class="listen-karaoke-ayah-text">${a.text}</div>
     </div>
   `).join('');
 }
-function listenPlayAyahIndex(i){
-  if(i < 0 || i >= listenAyah.ayahs.length){
-    listenPlayAdjacentSurah(1);
-    return;
-  }
-  listenAyah.index = i;
-  listenAudioEl.src = listenAyah.ayahs[i].audioUrl;
-  listenAudioEl.play().catch(()=>{ showToast('Не удалось воспроизвести запись'); });
-  listenUpdatePlayerLabel();
-  if(listenKaraokeOverlayOpen){
-    renderListenKaraokeAyahs();
-    const el = document.querySelector(`.listen-karaoke-ayah[data-index="${i}"]`);
-    if(el) el.scrollIntoView({ block:'center', behavior:'smooth' });
-  }
+function listenSeekToAyah(i){
+  if(!listenAyah.timings[i]) return;
+  listenAudioEl.currentTime = listenAyah.timings[i].fromSec;
+  if(listenAudioEl.paused) listenAudioEl.play().catch(()=>{});
 }
 function listenOpenKaraoke(){
   if(!listenState.reciter || !listenState.currentSurah){ showToast('Сначала включите суру'); return; }
@@ -13283,9 +13244,9 @@ function listenOpenKaraoke(){
   document.getElementById('listenKaraokeOverlay').style.display = 'flex';
   const chapter = quranChapterFor(listenState.currentSurah);
   document.getElementById('listenKaraokeTitle').textContent = chapter ? quranSurahDisplayName(chapter) : ('Сура ' + listenState.currentSurah);
-  if(listenAyah.active && listenAyah.ayahs.length){
+  if(listenAyah.active && listenAyah.timings.length){
     renderListenKaraokeAyahs();
-    const el = document.querySelector(`.listen-karaoke-ayah[data-index="${listenAyah.index}"]`);
+    const el = document.querySelector(`.listen-karaoke-ayah[data-index="${listenAyah.currentIndex}"]`);
     if(el) el.scrollIntoView({ block:'center' });
   } else {
     document.getElementById('listenKaraokeScroll').innerHTML = '<div class="listen-status">Загрузка текста…</div>';
@@ -13299,28 +13260,37 @@ function listenExitKaraoke(){
 document.getElementById('listenPlayerTextBtn').addEventListener('click', listenOpenKaraoke);
 document.getElementById('listenKaraokeCloseBtn').addEventListener('click', listenExitKaraoke);
 document.getElementById('listenKaraokePlayBtn').addEventListener('click', ()=>{
-  if(!listenAyah.active) return;
   if(listenAudioEl.paused) listenAudioEl.play().catch(()=>{});
   else listenAudioEl.pause();
 });
 document.getElementById('listenKaraokeScroll').addEventListener('click', e=>{
   const row = e.target.closest('.listen-karaoke-ayah');
   if(!row) return;
-  listenPlayAyahIndex(Number(row.dataset.index));
+  listenSeekToAyah(Number(row.dataset.index));
 });
 
 listenAudioEl.addEventListener('play', ()=>{ listenState.playing = true; renderListenSurahList(); listenUpdatePlayButtons(); });
 listenAudioEl.addEventListener('pause', ()=>{ listenState.playing = false; renderListenSurahList(); listenUpdatePlayButtons(); });
-listenAudioEl.addEventListener('ended', ()=>{
-  if(listenAyah.active){ listenPlayAyahIndex(listenAyah.index + 1); return; }
-  listenPlayAdjacentSurah(1);
-});
+listenAudioEl.addEventListener('ended', ()=>{ listenPlayAdjacentSurah(1); });
 listenAudioEl.addEventListener('timeupdate', ()=>{
   if(!listenAudioEl.duration) return;
   const seek = document.getElementById('listenPlayerSeek');
   if(seek && !seek.dataset.dragging) seek.value = String(Math.round((listenAudioEl.currentTime / listenAudioEl.duration) * 1000));
   const timeEl = document.getElementById('listenPlayerTime');
   if(timeEl) timeEl.textContent = listenFormatTime(listenAudioEl.currentTime) + ' / ' + listenFormatTime(listenAudioEl.duration);
+  if(listenAyah.active){
+    const t = listenAudioEl.currentTime;
+    const newIndex = listenAyah.timings.findIndex(seg => t >= seg.fromSec && t < seg.toSec);
+    if(newIndex !== -1 && newIndex !== listenAyah.currentIndex){
+      listenAyah.currentIndex = newIndex;
+      listenUpdatePlayerLabel();
+      if(listenKaraokeOverlayOpen){
+        renderListenKaraokeAyahs();
+        const el = document.querySelector(`.listen-karaoke-ayah[data-index="${newIndex}"]`);
+        if(el) el.scrollIntoView({ block:'center', behavior:'smooth' });
+      }
+    }
+  }
 });
 
 document.getElementById('listenReciterList').addEventListener('click', e=>{
