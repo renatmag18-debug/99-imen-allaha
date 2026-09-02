@@ -934,6 +934,27 @@ body{
 .settings-group-body.open{ max-height:2400px; }
 .settings-group-body-inner{ padding:2px 16px 18px; border-top:1px solid var(--line); }
 
+/* Tajweed lesson accordion — same collapsed-by-default idea as the
+   settings groups above, but for long-form reading content (a lesson's
+   full text) instead of controls, so its own class names and a taller
+   max-height cap for genuinely long articles. */
+.tajweed-lesson{ margin-bottom:12px; border-radius:var(--r-card); border:1px solid var(--line); background:var(--glass); overflow:hidden; }
+.tajweed-lesson-header{
+  display:flex; align-items:center; gap:10px; width:100%; padding:15px 16px;
+  border:none; background:none; cursor:pointer; text-align:left;
+  font-family:var(--font-display); font-size:15.5px; color:var(--ivory);
+}
+.tajweed-lesson-header:active{ opacity:.85; }
+.tajweed-lesson-chevron{ width:16px; height:16px; color:var(--ivory-dim); flex-shrink:0; margin-left:auto; transition:transform .25s ease; }
+.tajweed-lesson-header.open .tajweed-lesson-chevron{ transform:rotate(180deg); }
+.tajweed-lesson-body{ max-height:0; overflow:hidden; transition:max-height .35s ease; }
+.tajweed-lesson-body.open{ max-height:8000px; }
+.tajweed-lesson-body-inner{ padding:2px 16px 20px; border-top:1px solid var(--line); }
+.tajweed-lesson-body-inner p{ font-size:14px; line-height:1.75; color:var(--ivory-dim); margin:14px 0 0; }
+.tajweed-lesson-body-inner p b{ color:var(--ivory); font-weight:600; }
+.tajweed-lesson-body-inner .ar{ font-family:var(--font-ar); font-size:19px; color:var(--gold-soft); direction:rtl; unicode-bidi:isolate; }
+.tajweed-empty{ text-align:center; color:var(--ivory-dim); font-size:13px; padding:40px 20px; }
+
 .quran-head{ display:flex; align-items:center; gap:10px; padding:16px 20px 12px; flex-shrink:0; }
 .quran-surah-btn{
   flex:1; min-width:0; display:flex; align-items:center; justify-content:center; gap:6px;
@@ -3328,6 +3349,26 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
       </div>
     </section>
 
+    <section class="screen" data-screen="tajweed">
+      <div class="scroll">
+        <div class="settings-head">
+          <button class="nav-arrow" data-nav="home" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <div class="section-title" style="padding:0;">Таджвид</div>
+        </div>
+        <p class="section-desc" style="margin-top:0;">Фонетика арабского языка, грамматика и правила чтения Корана — места и свойства выхода букв основаны на классическом труде имама Ибн аль-Джазари «аль-Мукаддима аль-Джазария».</p>
+
+        <div class="segmented-wrap">
+          <div class="segmented" id="tajweedSegment">
+            <button class="seg-btn active" data-tajweed="phonetics">Фонетика</button>
+            <button class="seg-btn" data-tajweed="grammar">Грамматика</button>
+            <button class="seg-btn" data-tajweed="rules" title="Правила чтения Корана">Правила</button>
+          </div>
+        </div>
+
+        <div id="tajweedLessonList"></div>
+      </div>
+    </section>
+
     <section class="screen" data-screen="listenReciter">
       <div class="quran-head">
         <button class="nav-arrow" data-nav="listen" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -4771,6 +4812,97 @@ document.querySelectorAll('#studySegment .seg-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>enterStudyMode(btn.dataset.mode));
 });
 document.getElementById('browseTrainBtn').addEventListener('click', ()=>enterStudyMode('practice'));
+
+/* =====================================================
+   ТАДЖВИД: ФОНЕТИКА / ГРАММАТИКА / ПРАВИЛА ЧТЕНИЯ
+   «Фонетика» и «Правила чтения Корана» построены на классическом труде
+   имама Ибн аль-Джазари (ум. 833 г.х.) «аль-Мукаддима аль-Джазария» —
+   основополагающей поэме науки таджвид, на которой держится подавляющее
+   большинство современных курсов. Порядок и состав правил — из неё;
+   раскрывающий текст к каждому правилу написан для этого приложения.
+   «Грамматика» с аль-Джазарией не связана (это отдельная наука, нахв) —
+   заполняется позже, из другого источника.
+===================================================== */
+const TAJWEED_LESSONS = {
+  phonetics: [
+    {
+      title: 'Места выхода букв (Махариj аль-хуруф)',
+      body: [
+        'Аль-Джазария начинается словами «Махариджуль хуруфи сабъата ашр» — «Мест выхода букв — семнадцать». Махрадж — это точка в речевом аппарате, где для конкретной буквы перекрывается или сужается поток воздуха. Не зная, где рождается буква, невозможно произнести её правильно — а неверное произношение буквы в Коране может исказить смысл слова.',
+        '<b>1. Аль-Джауф (الجوف) — полость рта и горла.</b> Одна точка на все три буквы долготы: <span class="ar">ا</span> (после фатхи), <span class="ar">و</span> (после дамма-сукун) и <span class="ar">ي</span> (после касра-сукун). Воздух проходит совершенно свободно, без касания языком или губами какой-либо точки — поэтому у этой группы нет фиксированного места, только направление потока воздуха.',
+        '<b>2. Аль-Халькъ (الحلق) — горло.</b> Три точки: дальняя, у самого основания горла — <span class="ar">ء</span> и <span class="ar">ه</span>; средняя — <span class="ar">ع</span> и <span class="ar">ح</span>; ближняя к полости рта — <span class="ar">غ</span> и <span class="ar">خ</span>. Эти шесть букв часто произносят слишком слабо или, наоборот, слишком резко, «выталкивая» звук — и то и другое искажает букву.',
+        '<b>3. Аль-Лисан (اللسان) — язык.</b> Самая большая группа, десять точек, от корня языка до кончика: <span class="ar">ق</span> (корень языка и мягкое нёбо), <span class="ar">ك</span> (чуть ближе, у твёрдого нёба), <span class="ar">ج ش ي</span> (середина языка и нёбо), <span class="ar">ض</span> (край языка и коренные зубы — самая сложная буква арабского языка для не-арабов), <span class="ar">ل</span> (край языка ближе к кончику и дёсны верхних резцов), <span class="ar">ن</span> (кончик языка, чуть ниже места ляма), <span class="ar">ر</span> (кончик языка, с лёгкой вибрацией), <span class="ar">ط د ت</span> (кончик языка и основания верхних резцов), <span class="ar">ص س ز</span> (кончик языка и края резцов — свистящие), <span class="ar">ظ ذ ث</span> (кончик языка между зубами).',
+        '<b>4. Аш-Шафатан (الشفتان) — губы.</b> Две точки: <span class="ar">ف</span> (внутренняя часть нижней губы и кончики верхних резцов) и <span class="ar">ب م و</span> (обе губы вместе, с разной степенью смыкания — <span class="ar">ب</span> полностью смыкаются, <span class="ar">م</span> смыкаются с носовым призвуком, <span class="ar">و</span> лишь округляются).',
+        '<b>5. Аль-Хайшум (الخيشوم) — носовая полость.</b> Одна точка — гунна, носовой призвук, который добавляется к нуну и миму в ряде правил (при ташдиде, идгаме с гунной, ихфа, икляб — эти правила разбираются в разделе «Правила чтения Корана»).',
+        'Итого 1 + 3 + 10 + 2 + 1 = 17 точек — ровно то число, с которого начинается поэма.'
+      ]
+    },
+    {
+      title: 'Свойства букв (Сифат аль-хуруф)',
+      body: [
+        'Место выхода — это «где» рождается буква, а свойства (сифат) — это «как» именно она звучит в этой точке: с голосом или без, с задержкой воздуха или свободно, тяжело или легко. Одну и ту же точку выхода могут делить несколько букв (например, <span class="ar">ط د ت</span>) — различает их именно набор свойств.',
+        '<b>Парные (противоположные) свойства — пять пар:</b>',
+        '<b>Хамс ↔ Джахр</b> (شخص هفت... шёпотность ↔ звонкость). При хамсе воздух свободно проходит вместе со звуком (буква звучит почти как выдох): <span class="ar">ف ح ث ه ش خ ص س ك ت</span> (мнемоника «فحثه شخص سكت»). Остальные 18 букв — джахр: воздух задерживается, звук идёт с голосом.',
+        '<b>Шидда ↔ Тавассут ↔ Рахава</b> (взрывной звук ↔ средний ↔ протяжный). Шидда — полная закупорка потока с резким «взрывом» звука: <span class="ar">أ ج د ق ط ب ك ت</span> («أجد قط بكت»). Тавассут — среднее между полной закупоркой и свободным течением: <span class="ar">ل ن ع م ر</span> («لن عمر»). Остальные 15 букв — рахава: воздух течёт свободно на всём протяжении звука.',
+        '<b>Истиля ↔ Истифаль</b> (утяжеление ↔ облегчение). При истиля корень языка поднимается к нёбу, и звук становится «тяжёлым», гулким: <span class="ar">خ ص ض غ ط ق ظ</span> («خص ضغط قظ»). Остальные 21 буква — истифаль, звучат легче.',
+        '<b>Итбак ↔ Инфитах</b> (прилегание ↔ раскрытие). При итбак язык плотно прижимается к нёбу по всей длине: <span class="ar">ص ض ط ظ</span> — это самые тяжёлые буквы арабского языка (все четыре входят и в истиля). Остальные 24 буквы — инфитах.',
+        '<b>Изляк ↔ Исмат</b> (лёгкость ↔ тяжесть в сочетаниях). Изляк — буквы, которые легко подряд сочетаются друг с другом в корне слова (произносятся кончиком языка или губами): <span class="ar">ف ر م ن ل ب</span> («فر من لب»). Остальные 22 — исмат.',
+        '<b>Непарные (одиночные) свойства:</b>',
+        '<b>Сафир</b> (свист) — <span class="ar">ص س ز</span>: при произнесении слышен характерный свистящий призвук.',
+        '<b>Калькаля</b> (отскок, эхо) — <span class="ar">ق ط ب ج د</span> («قطب جد»): когда любая из этих букв стоит с сукуном, в момент её произнесения слышен лёгкий отскок звука — особенно заметно на конце слова при остановке.',
+        '<b>Лин</b> (мягкость) — <span class="ar">و</span> и <span class="ar">ي</span> с сукуном, перед которыми стоит фатха (как в словах <span class="ar">بَيْت</span> или <span class="ar">قَوْل</span>): произносятся мягко, без напряжения.',
+        '<b>Инхираф</b> (отклонение звука в сторону другого места выхода) — <span class="ar">ل</span> и <span class="ar">ر</span>.',
+        '<b>Такрир</b> (вибрация кончика языка) — только <span class="ar">ر</span>: это свойство буквы нужно знать, чтобы НЕ утрировать его при чтении — раскатистое, «рычащее» ро искажает букву не меньше, чем его полное отсутствие.',
+        '<b>Тафашши</b> (распространение воздуха во рту) — только <span class="ar">ش</span>.',
+        '<b>Иститала</b> (протяжённость звука вдоль края языка) — только <span class="ar">ض</span>: это же свойство и делает её самой сложной буквой для точного произношения.'
+      ]
+    }
+  ],
+  rules: [],
+  grammar: []
+};
+
+let tajweedActiveTab = 'phonetics';
+function renderTajweedLessonList(){
+  const list = document.getElementById('tajweedLessonList');
+  if(!list) return;
+  const lessons = TAJWEED_LESSONS[tajweedActiveTab] || [];
+  if(!lessons.length){
+    list.innerHTML = '<p class="tajweed-empty">Этот раздел ещё готовится.</p>';
+    return;
+  }
+  list.innerHTML = lessons.map((lesson, i) => `
+    <div class="tajweed-lesson">
+      <button type="button" class="tajweed-lesson-header" data-tajweed-lesson="${i}">
+        <span>${lesson.title}</span>
+        <svg class="tajweed-lesson-chevron" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="tajweed-lesson-body">
+        <div class="tajweed-lesson-body-inner">${lesson.body.map(p => `<p>${p}</p>`).join('')}</div>
+      </div>
+    </div>
+  `).join('');
+}
+document.querySelectorAll('#tajweedSegment .seg-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#tajweedSegment .seg-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    tajweedActiveTab = btn.dataset.tajweed;
+    renderTajweedLessonList();
+  });
+});
+// Event delegation (not a per-element listener) since the lesson list is
+// re-rendered on every tab switch — a listener attached to individual
+// headers would be lost each time innerHTML is replaced above.
+document.getElementById('tajweedLessonList').addEventListener('click', e=>{
+  const header = e.target.closest('.tajweed-lesson-header');
+  if(!header) return;
+  const body = header.nextElementSibling;
+  const opening = !header.classList.contains('open');
+  header.classList.toggle('open', opening);
+  if(body) body.classList.toggle('open', opening);
+});
+renderTajweedLessonList();
 
 /* =====================================================
    MISC: ЗИКРЫ / АЗКАРЫ / ДУА
@@ -6296,9 +6428,13 @@ const SIDE_DRAWER_ITEMS_META = {
   listen: {
     label: 'Слушать Коран',
     icon: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 15v-3a8 8 0 0116 0v3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M4 15a2 2 0 012-2h1a1 1 0 011 1v4a1 1 0 01-1 1H6a2 2 0 01-2-2v-2zM20 15a2 2 0 00-2-2h-1a1 1 0 00-1 1v4a1 1 0 001 1h1a2 2 0 002-2v-2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>'
+  },
+  tajweed: {
+    label: 'Таджвид',
+    icon: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 4.5c-2.5-1.4-5.5-1.4-8 0v13.5c2.5-1.4 5.5-1.4 8 0 2.5-1.4 5.5-1.4 8 0V4.5c-2.5-1.4-5.5-1.4-8 0z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 4.5v13.5" stroke="currentColor" stroke-width="1.5"/></svg>'
   }
 };
-const SIDE_DRAWER_DEFAULT_ORDER = ['favorites', 'quran', 'listen', 'chats', 'prayer', 'settings'];
+const SIDE_DRAWER_DEFAULT_ORDER = ['favorites', 'quran', 'listen', 'tajweed', 'chats', 'prayer', 'settings'];
 
 function loadSideDrawerOrder(){
   try{
@@ -6372,6 +6508,8 @@ document.getElementById('sideDrawerList').addEventListener('click', e=>{
   } else if(key === 'listen'){
     go('listen');
     if(typeof openListenScreen === 'function') openListenScreen();
+  } else if(key === 'tajweed'){
+    go('tajweed');
   }
 });
 
