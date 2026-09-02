@@ -13000,6 +13000,28 @@ const LISTEN_ICON_DOWNLOAD = '<svg viewBox="0 0 24 24" fill="none"><path d="M12 
 const LISTEN_ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-8 0l1 13a1 1 0 001 1h6a1 1 0 001-1l1-13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 const listenState = { reciter:null, chapters:null, downloaded:new Set(), currentSurah:null, loadedReciterId:null, playing:false };
+// Remembers the last surah+reciter played (not whether it's still
+// playing) so the side-drawer mini-player keeps showing it — and can
+// re-start it in one tap — across pausing, closing, or restarting the
+// app, rather than only within the current session's playback.
+function listenSaveLastPlayed(reciterId, surahNum){
+  try{ localStorage.setItem('listenLastPlayed', JSON.stringify({ reciterId, surahNum })); }catch(e){}
+}
+function listenRestoreLastPlayed(){
+  try{
+    const saved = JSON.parse(localStorage.getItem('listenLastPlayed') || 'null');
+    if(!saved || !saved.surahNum) return;
+    const reciter = LISTEN_RECITERS.find(r => r.id === saved.reciterId);
+    if(!reciter) return;
+    // Only the "what to show / what to resume" fields — loadedReciterId
+    // stays null so the audio engine still does a fresh load (there's
+    // nothing actually loaded after a restart) rather than the
+    // already-loaded fast path in listenPlaySurah.
+    listenState.reciter = reciter;
+    listenState.currentSurah = saved.surahNum;
+  }catch(e){}
+}
+listenRestoreLastPlayed();
 
 // Bridges to ListenAudioService (see its own header comment) when running
 // inside the app, so playback shows up as a real Android media
@@ -13300,27 +13322,37 @@ function showListenPlayerBar(surahNum){
   renderSideDrawerListenPreview();
 }
 // Compact "now playing" widget at the top of the side drawer, same idea as
-// the prayer-times preview above it — only shown once something has
-// actually been played this session (unlike prayer times, there's no
-// meaningful "nothing playing yet" state to preview).
+// the prayer-times preview above it — stays showing the last surah+reciter
+// played (see listenSaveLastPlayed/listenRestoreLastPlayed) even once
+// paused or after the app's been closed and reopened, specifically so it's
+// a one-tap way back into listening rather than something that only
+// exists mid-playback.
 function renderSideDrawerListenPreview(){
   const el = document.getElementById('sideDrawerListenPreview');
   if(!el) return;
   if(!listenState.currentSurah || !listenState.reciter){ el.style.display = 'none'; return; }
   el.style.display = 'flex';
+  // quranState.chapters may not be fetched yet this session (e.g. right
+  // after an app restart, before the Quran/Listen screen has been opened)
+  // — the local transliteration array needs no network and covers that gap.
   const chapter = quranChapterFor(listenState.currentSurah);
-  document.getElementById('sideDrawerListenName').textContent = chapter ? quranSurahDisplayName(chapter) : ('Сура ' + listenState.currentSurah);
+  const name = chapter ? quranSurahDisplayName(chapter) : (QURAN_SURAH_TRANSLIT[listenState.currentSurah - 1] || ('Сура ' + listenState.currentSurah));
+  document.getElementById('sideDrawerListenName').textContent = name;
   document.getElementById('sideDrawerListenSub').textContent = listenState.reciter.name;
   document.getElementById('sideDrawerListenPlayIcon').innerHTML = listenAudioEl.paused ? LISTEN_ICON_PLAY : LISTEN_ICON_PAUSE;
 }
 document.getElementById('sideDrawerListenPreview').addEventListener('click', e=>{
   if(e.target.closest('#sideDrawerListenPlayIcon')){
-    if(listenAudioEl.paused) listenAudioEl.play().catch(()=>{});
-    else listenAudioEl.pause();
+    // Always routes through listenPlaySurah rather than toggling
+    // listenAudioEl directly — it already knows whether this is a genuine
+    // resume (same track still loaded) or needs a fresh load (nothing
+    // loaded yet after a restart, or the audio engine holds a different
+    // track), so it does the right thing either way.
+    if(listenState.reciter && listenState.currentSurah) listenPlaySurah(listenState.currentSurah);
     return;
   }
   closeSideDrawer();
-  go('listenReciter');
+  if(listenState.reciter) openListenReciter(listenState.reciter.id);
 });
 async function listenPlaySurah(surahNum){
   const reciter = listenState.reciter;
@@ -13331,6 +13363,7 @@ async function listenPlaySurah(surahNum){
   }
   listenState.currentSurah = surahNum;
   listenState.loadedReciterId = reciter.id;
+  listenSaveLastPlayed(reciter.id, surahNum);
   listenAyah.active = false;
   listenAyah.approximate = false;
   listenAyah.timings = [];
