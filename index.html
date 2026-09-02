@@ -4981,26 +4981,32 @@ document.querySelectorAll('#tajweedSegment .seg-btn').forEach(btn=>{
 // Event delegation (not a per-element listener) since the lesson list is
 // re-rendered on every tab switch — a listener attached to individual
 // headers would be lost each time innerHTML is replaced above.
-const tajweedAudioEl = new Audio();
 document.getElementById('tajweedLessonList').addEventListener('click', e=>{
   const audioCell = e.target.closest('.tajweed-audio-cell');
   if(audioCell){
     const id = audioCell.dataset.tajweedAudio;
     document.querySelectorAll('.tajweed-audio-cell.playing').forEach(el => el.classList.remove('playing'));
     audioCell.classList.add('playing');
+    // A brand-new Audio() per tap, not one shared/reused element — some
+    // Android WebView versions only ever play the FIRST sound loaded into a
+    // given <audio>/Audio() instance; reassigning .src for a second tap
+    // silently no-ops on those (exactly the "first letter works, every
+    // other one is silent" symptom this replaced). A fresh instance every
+    // time sidesteps that class of bug entirely, at the cost of not
+    // reusing the element — irrelevant for a ~2s clip.
     // Absolute URL, not relative — the WebView's base URL for the freshly-
     // fetched index.html stays file:///android_asset/www/ (see
     // loadFreshWebContent()'s own comment in MainActivity.kt), which is
     // whatever was bundled at the last APK build. New web-only assets like
     // this audio never get self-updated onto that local path, so a relative
     // src 404s silently on every install that hasn't had a fresh APK.
-    tajweedAudioEl.src = `https://99ism.ru/audio/tajweed-alphabet/${id}.ogg`;
-    tajweedAudioEl.play().catch(err => {
+    const player = new Audio(`https://99ism.ru/audio/tajweed-alphabet/${id}.ogg`);
+    player.play().catch(err => {
       console.warn('tajweed letter audio failed to play:', id, err);
       audioCell.classList.remove('playing');
       showToast('Не удалось воспроизвести звук — проверьте интернет');
     });
-    tajweedAudioEl.onended = () => audioCell.classList.remove('playing');
+    player.onended = () => audioCell.classList.remove('playing');
     return;
   }
   const header = e.target.closest('.tajweed-lesson-header');
