@@ -795,6 +795,28 @@ body{
 .drawer-listen-info{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
 .drawer-listen-name{ font-size:13px; color:var(--ivory); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .drawer-listen-sub{ font-size:11px; color:var(--gold-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* One-time "there's a side menu" hint for new users — see
+   maybeShowSideDrawerOnboardingHint() near the end of the script. Peeks
+   the drawer's edge into view (no backdrop, so it reads as a nudge, not
+   an actual open) while a small callout names what's in it. */
+#sideDrawer.peek{ transform:translateX(calc(-100% + 64px)); }
+#sideDrawerBtn.hint-pulse{ animation:sideDrawerHintPulse 1s ease-in-out 2; }
+@keyframes sideDrawerHintPulse{
+  0%,100%{ box-shadow:0 0 0 0 rgba(var(--accent-rgb),0); }
+  50%{ box-shadow:0 0 0 8px rgba(var(--accent-rgb),0.28); }
+}
+.side-drawer-hint-tip{
+  position:fixed; z-index:22; max-width:210px; padding:11px 14px; border-radius:var(--r-input);
+  background:var(--panel); border:1px solid var(--gold); color:var(--ivory); font-family:var(--font-body);
+  font-size:12.5px; line-height:1.4; box-shadow:0 12px 30px -8px rgba(0,0,0,0.4);
+  opacity:0; transform:translateY(-6px); transition:opacity .3s var(--ease), transform .3s var(--ease); pointer-events:none;
+}
+.side-drawer-hint-tip.show{ opacity:1; transform:translateY(0); }
+.side-drawer-hint-tip::before{
+  content:""; position:absolute; top:-6px; right:16px; width:11px; height:11px;
+  background:var(--panel); border-left:1px solid var(--gold); border-top:1px solid var(--gold); transform:rotate(45deg);
+}
 .drawer-cfg-row{ display:flex; align-items:center; gap:8px; padding:11px 0; border-bottom:1px solid var(--line); }
 .drawer-cfg-row:last-child{ border-bottom:none; }
 .drawer-cfg-name{ flex:1; font-size:14px; color:var(--ivory); }
@@ -14916,6 +14938,59 @@ function openPrayerScreen(){
   // showing Mecca's times with no explanation why.
   if(isFirstVisit) locatePrayerCity();
 }
+
+/* =====================================================
+   ONE-TIME HINT — points new users at the side drawer, then never again.
+===================================================== */
+function showSideDrawerOnboardingHint(){
+  const btn = document.getElementById('sideDrawerBtn');
+  const drawer = document.getElementById('sideDrawer');
+  if(!btn || !drawer) return;
+
+  const tip = document.createElement('div');
+  tip.className = 'side-drawer-hint-tip';
+  tip.textContent = 'Здесь боковое меню: Коран, время намаза, друзья и другие разделы';
+  document.body.appendChild(tip);
+  const rect = btn.getBoundingClientRect();
+  tip.style.top = (rect.bottom + 10) + 'px';
+  tip.style.right = (window.innerWidth - rect.right) + 'px';
+
+  btn.classList.add('hint-pulse');
+  requestAnimationFrame(()=> tip.classList.add('show'));
+
+  // Peeks the drawer's edge into view twice, like a nudge rather than an
+  // actual open (no backdrop, closeSideDrawer isn't involved at all).
+  const peekOnce = (delayMs, holdMs) => new Promise(resolve => {
+    setTimeout(()=>{
+      drawer.classList.add('peek');
+      setTimeout(()=>{ drawer.classList.remove('peek'); resolve(); }, holdMs);
+    }, delayMs);
+  });
+  peekOnce(300, 900).then(()=> peekOnce(260, 700)).then(()=>{
+    setTimeout(()=>{
+      tip.classList.remove('show');
+      btn.classList.remove('hint-pulse');
+      setTimeout(()=> tip.remove(), 350);
+    }, 400);
+  });
+}
+function maybeShowSideDrawerOnboardingHint(){
+  try{
+    if(localStorage.getItem('sideDrawerHintShown')) return;
+  }catch(e){ return; }
+  // Delayed rather than immediate so it doesn't compete with the home
+  // screen's own entrance, and re-checked against the active screen once
+  // the delay elapses — a chat/prayer deep link that took over in the
+  // meantime means this wasn't really seen, so the flag stays unset and
+  // it's still owed on the next genuine home-screen visit.
+  setTimeout(()=>{
+    const homeScreen = document.querySelector('.screen[data-screen="home"]');
+    if(!homeScreen || !homeScreen.classList.contains('active')) return;
+    try{ localStorage.setItem('sideDrawerHintShown', '1'); }catch(e){}
+    showSideDrawerOnboardingHint();
+  }, 1400);
+}
+maybeShowSideDrawerOnboardingHint();
 
 </script>
 </body>
