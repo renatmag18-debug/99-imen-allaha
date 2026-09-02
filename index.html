@@ -886,6 +886,31 @@ body{
 .quran-entry-sub{ font-size:11.5px; color:var(--ivory-dim); }
 .quran-entry-chevron{ width:16px; height:16px; color:var(--ivory-dim); flex-shrink:0; }
 
+/* ================= SETTINGS: COLLAPSIBLE GROUPS =================
+   The settings screen used to be one continuous run of section labels
+   and controls — hard to scan and easy to get lost in. Grouped into a
+   small number of collapsible categories (closed by default) so only
+   a title + one-line summary is visible until the user taps one open. */
+.settings-group{ margin-bottom:12px; border-radius:var(--r-card); border:1px solid var(--line); background:var(--glass); overflow:hidden; }
+.settings-group-header{
+  display:flex; align-items:center; gap:14px; width:100%; padding:14px 16px;
+  border:none; background:none; cursor:pointer; text-align:left; font-family:var(--font-body);
+}
+.settings-group-header:active{ opacity:.85; }
+.settings-group-icon{
+  flex-shrink:0; width:40px; height:40px; border-radius:50%; background:var(--fill-2); color:var(--gold);
+  display:flex; align-items:center; justify-content:center;
+}
+.settings-group-icon svg{ width:19px; height:19px; }
+.settings-group-text{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.settings-group-title{ font-family:var(--font-display); font-size:15.5px; font-weight:400; color:var(--ivory); }
+.settings-group-sub{ font-size:11.5px; color:var(--ivory-dim); }
+.settings-group-chevron{ width:16px; height:16px; color:var(--ivory-dim); flex-shrink:0; transition:transform .25s ease; }
+.settings-group-header.open .settings-group-chevron{ transform:rotate(180deg); }
+.settings-group-body{ max-height:0; overflow:hidden; transition:max-height .3s ease; }
+.settings-group-body.open{ max-height:2400px; }
+.settings-group-body-inner{ padding:2px 16px 18px; border-top:1px solid var(--line); }
+
 .quran-head{ display:flex; align-items:center; gap:10px; padding:16px 20px 12px; flex-shrink:0; }
 .quran-surah-btn{
   flex:1; min-width:0; display:flex; align-items:center; justify-content:center; gap:6px;
@@ -2894,203 +2919,258 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
           <div class="section-title" style="padding:0;">Настройки</div>
         </div>
 
-        <div class="section-label">Оформление</div>
-        <div class="skin-picker" id="skinPicker">
-          <button class="skin-picker-opt" data-skin-choice="nafas" style="--sw-a:#06171C;--sw-b:#7FE3D6;--sw-c:#0A2228;">
-            <span class="skin-picker-swatch"></span>
-            <span class="skin-picker-text">
-              <span class="skin-picker-name">Нафас</span>
-              <span class="skin-picker-desc">Текущее — чернильные разводы, бирюза, день и ночь</span>
+        <div class="settings-group">
+          <button type="button" class="settings-group-header" data-settings-group="appearance">
+            <span class="settings-group-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 3a9 9 0 000 18z" fill="currentColor"/></svg></span>
+            <span class="settings-group-text">
+              <span class="settings-group-title">Оформление</span>
+              <span class="settings-group-sub">Цветовая тема, день/ночь</span>
             </span>
-            <svg class="skin-picker-check" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="settings-group-chevron" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <button class="skin-picker-opt" data-skin-choice="classic" style="--sw-a:#0a2129;--sw-b:#cba135;--sw-c:#123a46;">
-            <span class="skin-picker-swatch"></span>
-            <span class="skin-picker-text">
-              <span class="skin-picker-name">Классика</span>
-              <span class="skin-picker-desc">Тема до редизайна — тёмно-бирюзовый и золото, день и ночь</span>
+          <div class="settings-group-body" data-settings-group-body="appearance">
+            <div class="settings-group-body-inner">
+              <div class="section-label" style="margin-top:14px;">Оформление</div>
+              <div class="skin-picker" id="skinPicker">
+                <button class="skin-picker-opt" data-skin-choice="nafas" style="--sw-a:#06171C;--sw-b:#7FE3D6;--sw-c:#0A2228;">
+                  <span class="skin-picker-swatch"></span>
+                  <span class="skin-picker-text">
+                    <span class="skin-picker-name">Нафас</span>
+                    <span class="skin-picker-desc">Текущее — чернильные разводы, бирюза, день и ночь</span>
+                  </span>
+                  <svg class="skin-picker-check" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <button class="skin-picker-opt" data-skin-choice="classic" style="--sw-a:#0a2129;--sw-b:#cba135;--sw-c:#123a46;">
+                  <span class="skin-picker-swatch"></span>
+                  <span class="skin-picker-text">
+                    <span class="skin-picker-name">Классика</span>
+                    <span class="skin-picker-desc">Тема до редизайна — тёмно-бирюзовый и золото, день и ночь</span>
+                  </span>
+                  <svg class="skin-picker-check" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <button class="skin-picker-opt" data-skin-choice="noch" style="--sw-a:#12120F;--sw-b:#E8853A;--sw-c:#1C1B16;">
+                  <span class="skin-picker-swatch"></span>
+                  <span class="skin-picker-text">
+                    <span class="skin-picker-name">Ночь</span>
+                    <span class="skin-picker-desc">Редакционный стиль — уголь и шафран, день и ночь</span>
+                  </span>
+                  <svg class="skin-picker-check" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <button class="skin-picker-opt" data-skin-choice="safar" style="--sw-a:#FDFBF7;--sw-b:#4338CA;--sw-c:#F59E0B;">
+                  <span class="skin-picker-swatch"></span>
+                  <span class="skin-picker-text">
+                    <span class="skin-picker-name">Сафар</span>
+                    <span class="skin-picker-desc">Дружелюбный — индиго, манго, нефрит, день и ночь</span>
+                  </span>
+                  <svg class="skin-picker-check" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <button class="skin-picker-opt" data-skin-choice="matn" style="--sw-a:#FFFFFF;--sw-b:#FF3B00;--sw-c:#E4E4E4;">
+                  <span class="skin-picker-swatch"></span>
+                  <span class="skin-picker-text">
+                    <span class="skin-picker-name">Матн</span>
+                    <span class="skin-picker-desc">Технический справочник — сетка, вермильон, день и ночь</span>
+                  </span>
+                  <svg class="skin-picker-check" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </div>
+
+              <div class="section-label" id="themeSectionLabel">Тема</div>
+              <div class="theme-picker" id="themePicker">
+                <button class="theme-picker-opt" data-theme-choice="light">
+                  <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.6"/><path d="M12 2.5v2.5M12 19v2.5M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2.5 12H5M19 12h2.5M4.2 19.8L6 18M18 6l1.8-1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                  День
+                </button>
+                <button class="theme-picker-opt" data-theme-choice="dark">
+                  <svg viewBox="0 0 24 24" fill="none"><path d="M20.2 13.1A8.2 8.2 0 1110.9 3.8a6.3 6.3 0 009.3 9.3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>
+                  Ночь
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <button type="button" class="settings-group-header" data-settings-group="account">
+            <span class="settings-group-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.6"/><path d="M5 20c.7-3.8 3.4-6.2 7-6.2s6.3 2.4 7 6.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+            <span class="settings-group-text">
+              <span class="settings-group-title">Аккаунт</span>
+              <span class="settings-group-sub">Почта, никнейм, пароль, выход</span>
             </span>
-            <svg class="skin-picker-check" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="settings-group-chevron" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <button class="skin-picker-opt" data-skin-choice="noch" style="--sw-a:#12120F;--sw-b:#E8853A;--sw-c:#1C1B16;">
-            <span class="skin-picker-swatch"></span>
-            <span class="skin-picker-text">
-              <span class="skin-picker-name">Ночь</span>
-              <span class="skin-picker-desc">Редакционный стиль — уголь и шафран, день и ночь</span>
+          <div class="settings-group-body" data-settings-group-body="account">
+            <div class="settings-group-body-inner">
+              <div id="accountSettingsSection" style="display:none;">
+                <!-- Shown regardless of verified state (unlike the locked notice
+                     below it) — this is just informational, so someone can check
+                     which address is on file without having to go find the
+                     "Друзья" profile card. -->
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;">
+                  <div style="font-size:14px;color:var(--ivory);">Email</div>
+                  <div style="font-size:12.5px;color:var(--ivory-dim);margin-top:2px;text-align:right;" id="accountEmailValue">—</div>
+                </div>
+                <p class="section-desc" id="accountLockedNotice" style="display:none;margin-top:0;margin-bottom:24px;">Смена никнейма и пароля станет доступна, как только вы привяжете и подтвердите почту (раздел «Друзья» → профиль) — так вы не рискуете потерять доступ к аккаунту.</p>
+
+                <div id="accountControls" style="display:none;margin-bottom:24px;">
+                  <div id="accountUsernameView" style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-top:1px solid var(--line);">
+                    <div>
+                      <div style="font-size:14px;color:var(--ivory);">Никнейм</div>
+                      <div style="font-size:12.5px;color:var(--ivory-dim);margin-top:2px;" id="accountUsernameCurrent"></div>
+                    </div>
+                    <button class="btn btn-ghost" id="accountChangeUsernameBtn" style="padding:10px 16px;flex:none;">Изменить</button>
+                  </div>
+                  <div id="accountUsernameForm" style="display:none;padding:14px 0;border-top:1px solid var(--line);">
+                    <div class="profile-name-field">
+                      <label>Новый никнейм</label>
+                      <input type="text" id="accountNewUsernameInput" placeholder="Новый никнейм" maxlength="20">
+                    </div>
+                    <div class="profile-name-field">
+                      <label>Пароль (для подтверждения)</label>
+                      <input type="password" id="accountUsernamePasswordInput" placeholder="Текущий пароль" maxlength="20">
+                    </div>
+                    <div style="display:flex;gap:10px;">
+                      <button class="btn btn-primary" id="accountSaveUsernameBtn" style="flex:1;">Сохранить</button>
+                      <button class="btn btn-ghost" id="accountCancelUsernameBtn" style="flex:1;">Отмена</button>
+                    </div>
+                    <p id="accountUsernameStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;"></p>
+                  </div>
+
+                  <div id="accountPasswordView" style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
+                    <div style="font-size:14px;color:var(--ivory);">Пароль</div>
+                    <button class="btn btn-ghost" id="accountChangePasswordBtn" style="padding:10px 16px;flex:none;">Изменить</button>
+                  </div>
+                  <div id="accountPasswordForm" style="display:none;padding:14px 0;border-bottom:1px solid var(--line);">
+                    <div class="profile-name-field">
+                      <label>Текущий пароль</label>
+                      <input type="password" id="accountCurrentPasswordInput" placeholder="Текущий пароль" maxlength="20">
+                    </div>
+                    <div class="profile-name-field">
+                      <label>Новый пароль</label>
+                      <input type="password" id="accountNewPasswordInput" placeholder="Новый пароль" maxlength="20">
+                    </div>
+                    <div style="display:flex;gap:10px;">
+                      <button class="btn btn-primary" id="accountSavePasswordBtn" style="flex:1;">Сохранить</button>
+                      <button class="btn btn-ghost" id="accountCancelPasswordBtn" style="flex:1;">Отмена</button>
+                    </div>
+                    <p id="accountPasswordStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;"></p>
+                  </div>
+                </div>
+
+                <!-- Deletion doesn't carry the same lockout risk that renaming/
+                     changing the password does (quite the opposite — it's the
+                     way OUT for an account with no working recovery), so this
+                     stays available regardless of email-verified state. -->
+                <div id="accountDeleteView" style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-top:1px solid var(--line);margin-bottom:24px;">
+                  <div style="font-size:14px;color:var(--ivory);">Удалить аккаунт</div>
+                  <button class="btn btn-ghost" id="accountDeleteBtn" style="padding:10px 16px;flex:none;color:var(--rose);border-color:var(--rose);">Удалить</button>
+                </div>
+                <div id="accountDeleteForm" style="display:none;padding:14px 0;border-top:1px solid var(--line);margin-bottom:24px;">
+                  <p class="section-desc" style="margin-top:0;color:var(--rose);">Аккаунт, друзья, прогресс и статистика будут удалены безвозвратно.</p>
+                  <div class="profile-name-field">
+                    <label>Пароль (для подтверждения)</label>
+                    <input type="password" id="accountDeletePasswordInput" placeholder="Текущий пароль" maxlength="20">
+                  </div>
+                  <div style="display:flex;gap:10px;">
+                    <button class="btn btn-primary" id="accountDeleteConfirmBtn" style="flex:1;background:var(--rose);">Да, удалить навсегда</button>
+                    <button class="btn btn-ghost" id="accountDeleteCancelBtn" style="flex:1;">Отмена</button>
+                  </div>
+                  <p id="accountDeleteStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;"></p>
+                </div>
+
+                <!-- Admin-only fallback (server-gated to the single hardcoded
+                     admin account regardless of this client-side check) for a
+                     record too broken/forgotten to delete via its own password —
+                     e.g. a leftover from an old buggy fallback path that never
+                     had a normal password set on it. -->
+                <div id="accountAdminDeleteSection" style="display:none;">
+                  <div id="accountAdminDeleteView" style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-top:1px solid var(--line);margin-bottom:24px;">
+                    <div style="font-size:14px;color:var(--ivory);">Удалить чужой аккаунт (админ)</div>
+                    <button class="btn btn-ghost" id="accountAdminDeleteBtn" style="padding:10px 16px;flex:none;color:var(--rose);border-color:var(--rose);">Удалить</button>
+                  </div>
+                  <div id="accountAdminDeleteForm" style="display:none;padding:14px 0;border-top:1px solid var(--line);margin-bottom:24px;">
+                    <div class="profile-name-field">
+                      <label>Никнейм аккаунта для удаления</label>
+                      <input type="text" id="accountAdminDeleteTargetInput" placeholder="Никнейм" maxlength="80">
+                    </div>
+                    <div class="profile-name-field">
+                      <label>Ваш пароль (для подтверждения)</label>
+                      <input type="password" id="accountAdminDeletePasswordInput" placeholder="Ваш пароль" maxlength="20">
+                    </div>
+                    <div style="display:flex;gap:10px;">
+                      <button class="btn btn-primary" id="accountAdminDeleteConfirmBtn" style="flex:1;background:var(--rose);">Да, удалить навсегда</button>
+                      <button class="btn btn-ghost" id="accountAdminDeleteCancelBtn" style="flex:1;">Отмена</button>
+                    </div>
+                    <p id="accountAdminDeleteStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;"></p>
+                  </div>
+                </div>
+              </div>
+
+              <button id="logoutBtn" class="btn btn-ghost" style="width:100%;color:var(--rose);border-color:var(--rose);margin-top:14px;">Выход</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <button type="button" class="settings-group-header" data-settings-group="notifications">
+            <span class="settings-group-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3a5 5 0 00-5 5v3.2c0 .8-.3 1.6-.9 2.2L5 15h14l-1.1-1.6c-.6-.6-.9-1.4-.9-2.2V8a5 5 0 00-5-5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M9.5 18a2.5 2.5 0 005 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+            <span class="settings-group-text">
+              <span class="settings-group-title">Уведомления и напоминания</span>
+              <span class="settings-group-sub">Напоминания об учёбе, зикр недели</span>
             </span>
-            <svg class="skin-picker-check" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="settings-group-chevron" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <button class="skin-picker-opt" data-skin-choice="safar" style="--sw-a:#FDFBF7;--sw-b:#4338CA;--sw-c:#F59E0B;">
-            <span class="skin-picker-swatch"></span>
-            <span class="skin-picker-text">
-              <span class="skin-picker-name">Сафар</span>
-              <span class="skin-picker-desc">Дружелюбный — индиго, манго, нефрит, день и ночь</span>
+          <div class="settings-group-body" data-settings-group-body="notifications">
+            <div class="settings-group-body-inner">
+              <div id="reminderMenuSection" style="display:none;">
+                <div class="section-label" style="margin-top:14px;">Напоминания об учёбе</div>
+                <div id="reminderFreqRow" style="display:flex;gap:8px;margin-bottom:12px;">
+                  <button class="reminder-freq-btn" data-freq="1" style="flex:1;padding:12px 0;border-radius:var(--r-pill);border:1px solid var(--line);background:var(--glass);color:var(--ivory);font-family:var(--font-body);font-size:14px;cursor:pointer;transition:all .2s;">1×</button>
+                  <button class="reminder-freq-btn" data-freq="2" style="flex:1;padding:12px 0;border-radius:var(--r-pill);border:1px solid var(--line);background:var(--glass);color:var(--ivory);font-family:var(--font-body);font-size:14px;cursor:pointer;transition:all .2s;">2×</button>
+                  <button class="reminder-freq-btn" data-freq="3" style="flex:1;padding:12px 0;border-radius:var(--r-pill);border:1px solid var(--line);background:var(--glass);color:var(--ivory);font-family:var(--font-body);font-size:14px;cursor:pointer;transition:all .2s;">3×</button>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+                  <button id="reminderSaveBtn" class="btn btn-primary" style="flex:1;">Сохранить</button>
+                  <button id="reminderOffBtn" class="btn btn-ghost" style="display:none;flex:1;color:var(--rose);border-color:var(--rose);">Выключить</button>
+                </div>
+                <div id="reminderActiveLabel" style="display:none;font-size:12.5px;color:var(--gold);margin-bottom:20px;"></div>
+              </div>
+
+              <div class="section-label" style="margin-top:14px;">Зикр недели</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
+                <div style="font-size:14px;color:var(--ivory);">Уведомлять о начале</div>
+                <label style="position:relative;display:inline-block;width:40px;height:24px;flex-shrink:0;">
+                  <input type="checkbox" id="weeklyNotifToggle" style="opacity:0;width:0;height:0;" checked>
+                  <span class="slider" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:var(--fill-3);transition:.4s;border-radius:24px;border:1px solid var(--line);"></span>
+                  <span class="slider-knob" style="position:absolute;content:'';height:18px;width:18px;left:2px;bottom:2px;background-color:var(--ivory);transition:.4s;border-radius:50%;"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <button type="button" class="settings-group-header" data-settings-group="menu">
+            <span class="settings-group-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h9M4 17h13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M4 12h3M9 12h11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="15" cy="7" r="2" stroke="currentColor" stroke-width="1.6"/><circle cx="6" cy="12" r="2" stroke="currentColor" stroke-width="1.6"/><circle cx="17" cy="17" r="2" stroke="currentColor" stroke-width="1.6"/></svg></span>
+            <span class="settings-group-text">
+              <span class="settings-group-title">Меню и управление</span>
+              <span class="settings-group-sub">Порядок бокового меню, кнопки громкости</span>
             </span>
-            <svg class="skin-picker-check" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="settings-group-chevron" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <button class="skin-picker-opt" data-skin-choice="matn" style="--sw-a:#FFFFFF;--sw-b:#FF3B00;--sw-c:#E4E4E4;">
-            <span class="skin-picker-swatch"></span>
-            <span class="skin-picker-text">
-              <span class="skin-picker-name">Матн</span>
-              <span class="skin-picker-desc">Технический справочник — сетка, вермильон, день и ночь</span>
-            </span>
-            <svg class="skin-picker-check" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-        </div>
+          <div class="settings-group-body" data-settings-group-body="menu">
+            <div class="settings-group-body-inner">
+              <div class="section-label" style="margin-top:14px;">Меню слева</div>
+              <p class="section-desc" style="margin-top:0;">Что показывать в меню слева (значок ☰ вверху) и в каком порядке — стрелками меняете порядок, переключателем скрываете пункт.</p>
+              <div id="sideDrawerCustomizeList" style="margin-bottom:20px;"></div>
 
-        <div class="section-label" id="themeSectionLabel">Тема</div>
-        <div class="theme-picker" id="themePicker">
-          <button class="theme-picker-opt" data-theme-choice="light">
-            <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.6"/><path d="M12 2.5v2.5M12 19v2.5M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2.5 12H5M19 12h2.5M4.2 19.8L6 18M18 6l1.8-1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-            День
-          </button>
-          <button class="theme-picker-opt" data-theme-choice="dark">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M20.2 13.1A8.2 8.2 0 1110.9 3.8a6.3 6.3 0 009.3 9.3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>
-            Ночь
-          </button>
-        </div>
-
-        <div id="reminderMenuSection" style="display:none;">
-          <div class="section-label">Напоминания об учёбе</div>
-          <div id="reminderFreqRow" style="display:flex;gap:8px;margin-bottom:12px;">
-            <button class="reminder-freq-btn" data-freq="1" style="flex:1;padding:12px 0;border-radius:var(--r-pill);border:1px solid var(--line);background:var(--glass);color:var(--ivory);font-family:var(--font-body);font-size:14px;cursor:pointer;transition:all .2s;">1×</button>
-            <button class="reminder-freq-btn" data-freq="2" style="flex:1;padding:12px 0;border-radius:var(--r-pill);border:1px solid var(--line);background:var(--glass);color:var(--ivory);font-family:var(--font-body);font-size:14px;cursor:pointer;transition:all .2s;">2×</button>
-            <button class="reminder-freq-btn" data-freq="3" style="flex:1;padding:12px 0;border-radius:var(--r-pill);border:1px solid var(--line);background:var(--glass);color:var(--ivory);font-family:var(--font-body);font-size:14px;cursor:pointer;transition:all .2s;">3×</button>
-          </div>
-          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
-            <button id="reminderSaveBtn" class="btn btn-primary" style="flex:1;">Сохранить</button>
-            <button id="reminderOffBtn" class="btn btn-ghost" style="display:none;flex:1;color:var(--rose);border-color:var(--rose);">Выключить</button>
-          </div>
-          <div id="reminderActiveLabel" style="display:none;font-size:12.5px;color:var(--gold);margin-bottom:20px;"></div>
-        </div>
-
-        <div class="section-label">Меню слева</div>
-        <p class="section-desc" style="margin-top:0;">Что показывать в меню слева (значок ☰ вверху) и в каком порядке — стрелками меняете порядок, переключателем скрываете пункт.</p>
-        <div id="sideDrawerCustomizeList" style="margin-bottom:24px;"></div>
-
-        <div id="accountSettingsSection" style="display:none;">
-          <div class="section-label">Аккаунт</div>
-          <!-- Shown regardless of verified state (unlike the locked notice
-               below it) — this is just informational, so someone can check
-               which address is on file without having to go find the
-               "Друзья" profile card. -->
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-top:1px solid var(--line);">
-            <div style="font-size:14px;color:var(--ivory);">Email</div>
-            <div style="font-size:12.5px;color:var(--ivory-dim);margin-top:2px;text-align:right;" id="accountEmailValue">—</div>
-          </div>
-          <p class="section-desc" id="accountLockedNotice" style="display:none;margin-top:0;margin-bottom:24px;">Смена никнейма и пароля станет доступна, как только вы привяжете и подтвердите почту (раздел «Друзья» → профиль) — так вы не рискуете потерять доступ к аккаунту.</p>
-
-          <div id="accountControls" style="display:none;margin-bottom:24px;">
-            <div id="accountUsernameView" style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-top:1px solid var(--line);">
-              <div>
-                <div style="font-size:14px;color:var(--ivory);">Никнейм</div>
-                <div style="font-size:12.5px;color:var(--ivory-dim);margin-top:2px;" id="accountUsernameCurrent"></div>
+              <div id="volKeySection" style="display:none;">
+                <div class="section-label">Кнопки громкости</div>
+                <p class="section-desc" style="margin-top:0;">Считать зикр кнопками громкости при запущенном плавающем счётчике — работает даже на заблокированном экране, звук не трогает.</p>
+                <button id="volKeyEnableBtn" class="btn btn-ghost" style="width:100%;">Включить</button>
               </div>
-              <button class="btn btn-ghost" id="accountChangeUsernameBtn" style="padding:10px 16px;flex:none;">Изменить</button>
-            </div>
-            <div id="accountUsernameForm" style="display:none;padding:14px 0;border-top:1px solid var(--line);">
-              <div class="profile-name-field">
-                <label>Новый никнейм</label>
-                <input type="text" id="accountNewUsernameInput" placeholder="Новый никнейм" maxlength="20">
-              </div>
-              <div class="profile-name-field">
-                <label>Пароль (для подтверждения)</label>
-                <input type="password" id="accountUsernamePasswordInput" placeholder="Текущий пароль" maxlength="20">
-              </div>
-              <div style="display:flex;gap:10px;">
-                <button class="btn btn-primary" id="accountSaveUsernameBtn" style="flex:1;">Сохранить</button>
-                <button class="btn btn-ghost" id="accountCancelUsernameBtn" style="flex:1;">Отмена</button>
-              </div>
-              <p id="accountUsernameStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;"></p>
-            </div>
-
-            <div id="accountPasswordView" style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
-              <div style="font-size:14px;color:var(--ivory);">Пароль</div>
-              <button class="btn btn-ghost" id="accountChangePasswordBtn" style="padding:10px 16px;flex:none;">Изменить</button>
-            </div>
-            <div id="accountPasswordForm" style="display:none;padding:14px 0;border-bottom:1px solid var(--line);">
-              <div class="profile-name-field">
-                <label>Текущий пароль</label>
-                <input type="password" id="accountCurrentPasswordInput" placeholder="Текущий пароль" maxlength="20">
-              </div>
-              <div class="profile-name-field">
-                <label>Новый пароль</label>
-                <input type="password" id="accountNewPasswordInput" placeholder="Новый пароль" maxlength="20">
-              </div>
-              <div style="display:flex;gap:10px;">
-                <button class="btn btn-primary" id="accountSavePasswordBtn" style="flex:1;">Сохранить</button>
-                <button class="btn btn-ghost" id="accountCancelPasswordBtn" style="flex:1;">Отмена</button>
-              </div>
-              <p id="accountPasswordStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;"></p>
-            </div>
-          </div>
-
-          <!-- Deletion doesn't carry the same lockout risk that renaming/
-               changing the password does (quite the opposite — it's the
-               way OUT for an account with no working recovery), so this
-               stays available regardless of email-verified state. -->
-          <div id="accountDeleteView" style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-top:1px solid var(--line);margin-bottom:24px;">
-            <div style="font-size:14px;color:var(--ivory);">Удалить аккаунт</div>
-            <button class="btn btn-ghost" id="accountDeleteBtn" style="padding:10px 16px;flex:none;color:var(--rose);border-color:var(--rose);">Удалить</button>
-          </div>
-          <div id="accountDeleteForm" style="display:none;padding:14px 0;border-top:1px solid var(--line);margin-bottom:24px;">
-            <p class="section-desc" style="margin-top:0;color:var(--rose);">Аккаунт, друзья, прогресс и статистика будут удалены безвозвратно.</p>
-            <div class="profile-name-field">
-              <label>Пароль (для подтверждения)</label>
-              <input type="password" id="accountDeletePasswordInput" placeholder="Текущий пароль" maxlength="20">
-            </div>
-            <div style="display:flex;gap:10px;">
-              <button class="btn btn-primary" id="accountDeleteConfirmBtn" style="flex:1;background:var(--rose);">Да, удалить навсегда</button>
-              <button class="btn btn-ghost" id="accountDeleteCancelBtn" style="flex:1;">Отмена</button>
-            </div>
-            <p id="accountDeleteStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;"></p>
-          </div>
-
-          <!-- Admin-only fallback (server-gated to the single hardcoded
-               admin account regardless of this client-side check) for a
-               record too broken/forgotten to delete via its own password —
-               e.g. a leftover from an old buggy fallback path that never
-               had a normal password set on it. -->
-          <div id="accountAdminDeleteSection" style="display:none;">
-            <div id="accountAdminDeleteView" style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-top:1px solid var(--line);margin-bottom:24px;">
-              <div style="font-size:14px;color:var(--ivory);">Удалить чужой аккаунт (админ)</div>
-              <button class="btn btn-ghost" id="accountAdminDeleteBtn" style="padding:10px 16px;flex:none;color:var(--rose);border-color:var(--rose);">Удалить</button>
-            </div>
-            <div id="accountAdminDeleteForm" style="display:none;padding:14px 0;border-top:1px solid var(--line);margin-bottom:24px;">
-              <div class="profile-name-field">
-                <label>Никнейм аккаунта для удаления</label>
-                <input type="text" id="accountAdminDeleteTargetInput" placeholder="Никнейм" maxlength="80">
-              </div>
-              <div class="profile-name-field">
-                <label>Ваш пароль (для подтверждения)</label>
-                <input type="password" id="accountAdminDeletePasswordInput" placeholder="Ваш пароль" maxlength="20">
-              </div>
-              <div style="display:flex;gap:10px;">
-                <button class="btn btn-primary" id="accountAdminDeleteConfirmBtn" style="flex:1;background:var(--rose);">Да, удалить навсегда</button>
-                <button class="btn btn-ghost" id="accountAdminDeleteCancelBtn" style="flex:1;">Отмена</button>
-              </div>
-              <p id="accountAdminDeleteStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;"></p>
             </div>
           </div>
         </div>
-
-        <div id="volKeySection" style="display:none;">
-          <div class="section-label">Кнопки громкости</div>
-          <p class="section-desc" style="margin-top:0;">Считать зикр кнопками громкости при запущенном плавающем счётчике — работает даже на заблокированном экране, звук не трогает.</p>
-          <button id="volKeyEnableBtn" class="btn btn-ghost" style="width:100%;margin-bottom:20px;">Включить</button>
-        </div>
-
-        <div class="section-label">Зикр недели</div>
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:24px;">
-          <div style="font-size:14px;color:var(--ivory);">Уведомлять о начале</div>
-          <label style="position:relative;display:inline-block;width:40px;height:24px;flex-shrink:0;">
-            <input type="checkbox" id="weeklyNotifToggle" style="opacity:0;width:0;height:0;" checked>
-            <span class="slider" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:var(--fill-3);transition:.4s;border-radius:24px;border:1px solid var(--line);"></span>
-            <span class="slider-knob" style="position:absolute;content:'';height:18px;width:18px;left:2px;bottom:2px;background-color:var(--ivory);transition:.4s;border-radius:50%;"></span>
-          </label>
-        </div>
-
-        <button id="logoutBtn" class="btn btn-ghost" style="width:100%;color:var(--rose);border-color:var(--rose);margin-bottom:16px;">Выход</button>
       </div>
     </section>
 
@@ -6052,6 +6132,18 @@ function updateSettingsGearVisibility(){
   const dock = document.querySelector('.tabbar');
   if(dock) dock.style.display = (state.screen === 'quran' || state.screen === 'chat') ? 'none' : '';
 }
+
+// Settings screen collapsible groups — closed by default so the screen
+// shows just titles + one-line summaries instead of every control at once.
+// Groups toggle independently (opening one doesn't close the others).
+document.querySelectorAll('.settings-group-header').forEach(header => {
+  header.addEventListener('click', () => {
+    const body = header.nextElementSibling;
+    const opening = !header.classList.contains('open');
+    header.classList.toggle('open', opening);
+    if(body) body.classList.toggle('open', opening);
+  });
+});
 
 /* =====================================================
    SIDE DRAWER — left-side nav menu (☰ in the topbar), with a
