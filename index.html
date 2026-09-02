@@ -2177,6 +2177,22 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
           </div>
         </div>
 
+        <div class="update-banner" id="whatsNewBanner">
+          <div class="update-banner-main">
+            <div class="update-banner-icon">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 2l2 7h7l-5.5 4.5L17.5 21 12 16.5 6.5 21l2-7.5L3 9h7z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="update-banner-text">
+              <div class="update-banner-title">Новое в приложении</div>
+              <div class="update-banner-sub">Слушать Коран офлайн с подсветкой текста, время намаза на главном экране и виджет для рабочего стола</div>
+            </div>
+            <button class="update-banner-action" id="whatsNewBannerActionBtn">Смотреть</button>
+            <button class="update-banner-close" id="whatsNewBannerCloseBtn" title="Закрыть" aria-label="Закрыть">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+        </div>
+
         <div class="update-banner" id="zikrSyncBanner">
           <div class="update-banner-main">
             <div class="update-banner-icon">
@@ -3135,6 +3151,37 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
                       <button class="btn btn-ghost" id="accountAdminDeleteCancelBtn" style="flex:1;">Отмена</button>
                     </div>
                     <p id="accountAdminDeleteStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;"></p>
+                  </div>
+                </div>
+
+                <!-- Same admin-only gate as accountAdminDeleteSection above —
+                     sends one push notification to EVERY registered account's
+                     FCM tokens via /api/admin/broadcast-push. This is a real,
+                     irreversible send once confirmed, so it's a deliberate
+                     compose-and-confirm flow rather than a canned one-tap button. -->
+                <div id="accountBroadcastSection" style="display:none;">
+                  <div id="accountBroadcastView" style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-top:1px solid var(--line);margin-bottom:24px;">
+                    <div style="font-size:14px;color:var(--ivory);">Push всем пользователям (админ)</div>
+                    <button class="btn btn-ghost" id="accountBroadcastBtn" style="padding:10px 16px;flex:none;">Написать</button>
+                  </div>
+                  <div id="accountBroadcastForm" style="display:none;padding:14px 0;border-top:1px solid var(--line);margin-bottom:24px;">
+                    <div class="profile-name-field">
+                      <label>Заголовок</label>
+                      <input type="text" id="accountBroadcastTitleInput" placeholder="Например: Новое в приложении" maxlength="80">
+                    </div>
+                    <div class="profile-name-field">
+                      <label>Текст</label>
+                      <input type="text" id="accountBroadcastBodyInput" placeholder="Что нового рассказать" maxlength="180">
+                    </div>
+                    <div class="profile-name-field">
+                      <label>Ваш пароль (для подтверждения)</label>
+                      <input type="password" id="accountBroadcastPasswordInput" placeholder="Ваш пароль" maxlength="20">
+                    </div>
+                    <div style="display:flex;gap:10px;">
+                      <button class="btn btn-primary" id="accountBroadcastConfirmBtn" style="flex:1;">Отправить всем</button>
+                      <button class="btn btn-ghost" id="accountBroadcastCancelBtn" style="flex:1;">Отмена</button>
+                    </div>
+                    <p id="accountBroadcastStatus" style="text-align:center;color:var(--ivory-dim);font-size:12px;margin:10px 0 0;"></p>
                   </div>
                 </div>
               </div>
@@ -5395,6 +5442,31 @@ document.getElementById('zikrSyncBannerSubmitBtn').addEventListener('click', sub
 document.getElementById('zikrSyncBannerPassword').addEventListener('keydown', (e)=>{
   if(e.key === 'Enter') submitZikrSyncBannerPassword();
 });
+
+// "What's new" announcement banner — shown once per announcement (keyed by
+// WHATS_NEW_VERSION, a plain label bumped whenever there's something new to
+// announce, not an app version number) and never again after being seen or
+// dismissed. Same show/hide mechanics as updateBanner/zikrSyncBanner above.
+const WHATS_NEW_VERSION = '2026-09-listen-prayer-widget';
+function updateWhatsNewBannerVisibility(){
+  const banner = document.getElementById('whatsNewBanner');
+  if(!banner) return;
+  let seen = null;
+  try{ seen = localStorage.getItem('whatsNewSeen'); }catch(e){}
+  banner.classList.toggle('show', seen !== WHATS_NEW_VERSION);
+}
+function dismissWhatsNewBanner(){
+  try{ localStorage.setItem('whatsNewSeen', WHATS_NEW_VERSION); }catch(e){}
+  const banner = document.getElementById('whatsNewBanner');
+  if(banner) banner.classList.remove('show');
+}
+document.getElementById('whatsNewBannerCloseBtn').addEventListener('click', dismissWhatsNewBanner);
+document.getElementById('whatsNewBannerActionBtn').addEventListener('click', ()=>{
+  dismissWhatsNewBanner();
+  go('listen');
+  if(typeof openListenScreen === 'function') openListenScreen();
+});
+updateWhatsNewBannerVisibility();
 
 // One-time baseline for users who already had counts before this tally
 // existed — best-effort from whatever's still in localStorage (per-item
@@ -8172,10 +8244,11 @@ function updateAccountSettingsUI(info){
   // Client-side check only, purely to avoid showing a useless admin box to
   // everyone else — the endpoint itself re-checks this against the single
   // hardcoded admin account regardless of what the client sends.
+  const isAdmin = (state.profile.username || '').trim().toLowerCase() === 'abu yusuf';
   const adminSection = document.getElementById('accountAdminDeleteSection');
-  if(adminSection){
-    adminSection.style.display = (state.profile.username || '').trim().toLowerCase() === 'abu yusuf' ? 'block' : 'none';
-  }
+  if(adminSection) adminSection.style.display = isAdmin ? 'block' : 'none';
+  const broadcastSection = document.getElementById('accountBroadcastSection');
+  if(broadcastSection) broadcastSection.style.display = isAdmin ? 'block' : 'none';
 }
 
 document.getElementById('accountChangeUsernameBtn').addEventListener('click', ()=>{
@@ -8309,6 +8382,43 @@ document.getElementById('accountAdminDeleteConfirmBtn').addEventListener('click'
   document.getElementById('accountAdminDeleteForm').style.display = 'none';
   document.getElementById('accountAdminDeleteView').style.display = 'flex';
   showToast(`Аккаунт «${target}» удалён`);
+});
+
+document.getElementById('accountBroadcastBtn').addEventListener('click', ()=>{
+  document.getElementById('accountBroadcastView').style.display = 'none';
+  document.getElementById('accountBroadcastForm').style.display = 'block';
+});
+
+document.getElementById('accountBroadcastCancelBtn').addEventListener('click', ()=>{
+  document.getElementById('accountBroadcastForm').style.display = 'none';
+  document.getElementById('accountBroadcastView').style.display = 'flex';
+  document.getElementById('accountBroadcastStatus').textContent = '';
+  document.getElementById('accountBroadcastPasswordInput').value = '';
+});
+
+document.getElementById('accountBroadcastConfirmBtn').addEventListener('click', async ()=>{
+  const title = document.getElementById('accountBroadcastTitleInput').value.trim();
+  const bodyText = document.getElementById('accountBroadcastBodyInput').value.trim();
+  const password = document.getElementById('accountBroadcastPasswordInput').value.trim();
+  const status = document.getElementById('accountBroadcastStatus');
+  if(!title){ status.textContent = 'Введите заголовок'; return; }
+  if(!password){ status.textContent = 'Введите ваш пароль'; return; }
+  // A mass push to every real user's phone can't be undone once sent — a
+  // second explicit confirm here, on top of the confirm-password field
+  // already required, is the deliberate friction for that.
+  if(!confirm(`Отправить это уведомление ВСЕМ пользователям?\n\n${title}${bodyText ? '\n' + bodyText : ''}`)) return;
+  status.textContent = 'Отправка...';
+  const result = await apiAdminBroadcastPush(password, title, bodyText, 'https://99ism.ru/');
+  if(result.error){
+    status.textContent = result.error === 'invalid auth' ? 'Неверный пароль' : (API_ERRORS[result.error] || result.error);
+    return;
+  }
+  document.getElementById('accountBroadcastTitleInput').value = '';
+  document.getElementById('accountBroadcastBodyInput').value = '';
+  document.getElementById('accountBroadcastPasswordInput').value = '';
+  document.getElementById('accountBroadcastForm').style.display = 'none';
+  document.getElementById('accountBroadcastView').style.display = 'flex';
+  showToast(`Отправлено: ${result.usersSent} пользователям (${result.tokensSent} устройств)`);
 });
 
 document.getElementById('linkEmailBtn').addEventListener('click', async ()=>{

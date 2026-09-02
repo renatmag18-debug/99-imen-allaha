@@ -22,6 +22,9 @@
  *   GET /api/leaderboard     — Get leaderboard (optional ?metric=quranPagesRead
  *                               to rank/slice by that stat instead of zikr count)
  *   POST /api/admin/user-count — Total registered users (single admin account only)
+ *   POST /api/admin/broadcast-push — Send one push notification to every
+ *                               registered account's FCM tokens (single
+ *                               admin account only) — app-wide announcements
  *   POST /push                — Send a push notification (used by notifyFriend()
  *                               in index.html for duel invites, challenges,
  *                               friend requests; accepts an optional `link`
@@ -347,6 +350,11 @@ async function handleAPI(request, env, url) {
   // POST /api/admin/delete-account
   if (request.method === 'POST' && path === 'admin/delete-account') {
     return handleAdminDeleteAccount(body, env);
+  }
+
+  // POST /api/admin/broadcast-push — app-wide "what's new" announcements
+  if (request.method === 'POST' && path === 'admin/broadcast-push') {
+    return handleAdminBroadcastPush(body, env);
   }
 
   return corsResponse(jsonResponse({ error: 'not found' }, 404));
@@ -1073,6 +1081,70 @@ async function handleAdminDeleteAccount(body, env) {
   }
 
   return corsResponse(jsonResponse({ ok: true }));
+}
+
+/**
+ * POST /api/admin/broadcast-push
+ * Body: { username, password, title, body, link }
+ * Sends one push notification to every registered account's FCM tokens —
+ * for app-wide "what's new" announcements. Same gate as
+ * handleAdminUserCount/handleAdminDeleteAccount, and reuses handlePush's
+ * per-token FCM send + dead-token cleanup, just fanned out across every
+ * user in /users.json instead of a single targetUid.
+ */
+async function handleAdminBroadcastPush(body, env) {
+  const { username, password, title, body: msgBody, link } = body || {};
+  if (!username || !password) return corsResponse(jsonResponse({ error: 'missing auth' }, 401));
+  if (userKey(username) !== userKey(ADMIN_USERNAME)) return corsResponse(jsonResponse({ error: 'forbidden' }, 403));
+
+  const admin = await rtdbGetJson(`/users/${encodeURIComponent(userKey(username))}.json`, env);
+  if (!admin || admin.password !== b64EncodeUtf8(password)) {
+    return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
+  }
+  if (!title) return corsResponse(jsonResponse({ error: 'missing title' }, 400));
+
+  const users = await rtdbGetJson('/users.json', env);
+  if (!users) return corsResponse(jsonResponse({ ok: true, usersSent: 0, tokensSent: 0 }));
+
+  const accessToken = await getAccessToken(env, 'https://www.googleapis.com/auth/firebase.messaging');
+  let usersSent = 0, tokensSent = 0, tokensRemoved = 0;
+
+  await Promise.all(Object.entries(users).map(async ([key, user]) => {
+    if (!user || !user.fcmTokens) return;
+    const tokens = Object.keys(user.fcmTokens);
+    if (!tokens.length) return;
+
+    const deadTokens = [];
+    const results = await Promise.all(tokens.map(async (token) => {
+      const res = await fetch(`https://fcm.googleapis.com/v1/projects/${env.FCM_PROJECT_ID}/messages:send`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: {
+            token,
+            data: { title, body: msgBody || '', tag: 'ism-whatsnew', link: link || 'https://99ism.ru/' },
+            android: { priority: 'high' },
+            webpush: { headers: { Urgency: 'high' } }
+          }
+        })
+      });
+      if (res.ok) return true;
+      const errText = await res.text();
+      if (res.status === 404 || errText.includes('UNREGISTERED') || errText.includes('NOT_FOUND')) deadTokens.push(token);
+      return false;
+    }));
+
+    tokensSent += results.filter(Boolean).length;
+    if (results.some(Boolean)) usersSent++;
+    if (deadTokens.length) {
+      tokensRemoved += deadTokens.length;
+      await Promise.all(deadTokens.map(t =>
+        rtdbFetch(`/users/${encodeURIComponent(key)}/fcmTokens/${encodeURIComponent(t)}.json`, env, { method: 'DELETE' })
+      ));
+    }
+  }));
+
+  return corsResponse(jsonResponse({ ok: true, usersSent, tokensSent, tokensRemoved }));
 }
 
 async function handleSyncProgress(body, env) {

@@ -646,3 +646,24 @@ async function apiAdminDeleteAccount(password, targetUsername) {
     return { error: 'Network error' };
   }
 }
+
+// Sends one push notification to every registered account's FCM tokens —
+// app-wide "what's new" announcements. Admin-gated server-side same as
+// apiAdminDeleteAccount; a real, irreversible send once it returns ok.
+async function apiAdminBroadcastPush(password, title, body, link) {
+  const auth = getAuthCredentials();
+  if (!auth) return { error: 'Not authenticated' };
+
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/broadcast-push`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: auth.username, password, title, body, link })
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Failed to send broadcast' };
+    return { ok: true, usersSent: data.usersSent, tokensSent: data.tokensSent };
+  } catch (e) {
+    return { error: 'Network error' };
+  }
+}
