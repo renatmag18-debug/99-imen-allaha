@@ -6072,14 +6072,13 @@ function setMiscHeaderCollapsed(collapsed){
     const scrollEl = e.target;
     if(!scrollEl.classList || !scrollEl.classList.contains('scroll')) return;
     const st = scrollEl.scrollTop;
-    const last = scrollEl._miscScrollLast || 0;
-    scrollEl._miscScrollLast = st;
+    // Only the very top brings the header back — scrolling up from
+    // partway down the list must NOT reveal it early, only reaching st<=4
+    // does. Any downward movement past the top still collapses it.
     if(st <= 4){
       setMiscHeaderCollapsed(false);
-    } else if(st - last > 4){
+    } else if(st > 4){
       setMiscHeaderCollapsed(true);
-    } else if(st - last < -4){
-      setMiscHeaderCollapsed(false);
     }
   }, { capture: true, passive: true });
 })();
