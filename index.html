@@ -7754,6 +7754,7 @@ document.getElementById('registerBtn').addEventListener('click', async ()=>{
   if(username.length < 3){ registerStatus.textContent = 'Никнейм минимум 3 символа'; return; }
   if(password.length < 3){ registerStatus.textContent = 'Пароль минимум 3 символа'; return; }
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ registerStatus.textContent = 'Некорректный email'; return; }
+  if(isGmailAddress(email)){ registerStatus.textContent = 'Регистрация с почтой Gmail недоступна — используйте другой email'; return; }
   if(!securityQuestionType){ registerStatus.textContent = 'Выберите контрольный вопрос'; return; }
   if(!securityAnswer){ registerStatus.textContent = 'Введите ответ на контрольный вопрос'; return; }
 
@@ -7893,6 +7894,7 @@ document.getElementById('verifyEmailChangeSaveBtn').addEventListener('click', as
   const email = document.getElementById('verifyEmailChangeInput').value.trim();
   const status = document.getElementById('verifyEmailStatus');
   if(!email){ status.textContent = 'Введите email'; return; }
+  if(isGmailAddress(email)){ status.textContent = 'Почта Gmail не поддерживается — используйте другой email'; return; }
   status.textContent = 'Отправка...';
   const result = await apiLinkEmail(email);
   if(result.error){ status.textContent = API_ERRORS[result.error] || result.error; return; }
@@ -7903,12 +7905,21 @@ document.getElementById('verifyEmailChangeSaveBtn').addEventListener('click', as
   status.textContent = result.emailSent ? '' : 'Не удалось отправить письмо — попробуйте отправить код ещё раз позже.';
 });
 
+// Gmail addresses are no longer accepted (registration, linking, or as a
+// still-valid recovery email) — treated everywhere as if no valid email
+// were linked at all, so accounts that linked one before this rule existed
+// are pushed to replace it rather than quietly grandfathered in.
+function isGmailAddress(email){
+  return !!email && /@(gmail\.com|googlemail\.com)$/i.test(email.trim());
+}
+
 // Shared Russian translations for the email-recovery endpoints' error codes
 // (link/verify/resend/reset-method/reset-with-code/reset-with-security-answer).
 const API_ERRORS = {
   'missing username, password or email': 'Введите никнейм, email и пароль',
   'username and password must be at least 3 chars': 'Никнейм и пароль минимум 3 символа',
   'invalid email': 'Некорректный email',
+  'gmail not allowed': 'Регистрация/привязка с почтой Gmail недоступна — используйте другой email',
   'email already in use': 'Этот email уже привязан к другому аккаунту',
   'invalid auth': 'Сессия истекла, войдите заново',
   'no pending verification': 'Нет ожидающего подтверждения',
@@ -7950,6 +7961,15 @@ async function updateLinkEmailBanner(){
     intro.textContent = 'Привяжите почту, чтобы не потерять доступ к аккаунту, если забудете пароль.';
     form.style.display = 'block';
     verifyForm.style.display = 'none';
+  } else if(isGmailAddress(info.email)){
+    // Gmail is no longer accepted — even an already-verified Gmail address
+    // must be replaced, so this branch is checked before emailVerified and
+    // never falls through to the "all good, hide the card" case below.
+    card.style.display = 'block';
+    intro.textContent = `Почта на Gmail (${info.email}) больше не поддерживается. Привяжите другой email, чтобы восстановление доступа продолжало работать.`;
+    form.style.display = 'block';
+    verifyForm.style.display = 'none';
+    document.getElementById('linkEmailInput').value = '';
   } else if(!info.emailVerified){
     card.style.display = 'block';
     intro.textContent = `Подтвердите почту ${info.email}, чтобы восстановление пароля по ней заработало.`;
@@ -7984,20 +8004,26 @@ function updateAccountSettingsUI(info){
 
   const emailValueEl = document.getElementById('accountEmailValue');
   if(info && !info.error && info.email){
-    emailValueEl.textContent = info.email + (info.emailVerified ? ' ✓' : ' (не подтверждена)');
+    emailValueEl.textContent = info.email + (isGmailAddress(info.email) ? ' (Gmail не поддерживается)' : (info.emailVerified ? ' ✓' : ' (не подтверждена)'));
   } else if(info && !info.error){
     emailValueEl.textContent = 'Не привязан';
   } else {
     emailValueEl.textContent = '—';
   }
 
+  // A Gmail address counts as not-really-verified here too — it's the same
+  // "one typo from lockout" risk the verified-email gate exists to avoid,
+  // since Gmail no longer works as an actual recovery path going forward.
   const locked = document.getElementById('accountLockedNotice');
   const controls = document.getElementById('accountControls');
-  if(info && !info.error && info.emailVerified){
+  if(info && !info.error && info.emailVerified && !isGmailAddress(info.email)){
     locked.style.display = 'none';
     controls.style.display = 'block';
     document.getElementById('accountUsernameCurrent').textContent = state.profile.username;
   } else {
+    locked.textContent = (info && !info.error && isGmailAddress(info.email))
+      ? 'Почта на Gmail больше не поддерживается. Привяжите другой email (раздел «Друзья» → профиль), чтобы разблокировать смену никнейма и пароля.'
+      : 'Смена никнейма и пароля станет доступна, как только вы привяжете и подтвердите почту (раздел «Друзья» → профиль) — так вы не рискуете потерять доступ к аккаунту.';
     locked.style.display = 'block';
     controls.style.display = 'none';
   }
@@ -8148,6 +8174,7 @@ document.getElementById('linkEmailBtn').addEventListener('click', async ()=>{
   const email = document.getElementById('linkEmailInput').value.trim();
   const status = document.getElementById('linkEmailStatus');
   if(!email){ status.textContent = 'Введите email'; return; }
+  if(isGmailAddress(email)){ status.textContent = 'Почта Gmail не поддерживается — используйте другой email'; return; }
   status.textContent = 'Отправка...';
   const result = await apiLinkEmail(email);
   if(result.error){ status.textContent = API_ERRORS[result.error] || result.error; return; }

@@ -392,6 +392,9 @@ async function handleRegister(body, env) {
   if (!isValidEmail(normalizedEmail)) {
     return corsResponse(jsonResponse({ error: 'invalid email' }, 400));
   }
+  if (isGmailAddress(normalizedEmail)) {
+    return corsResponse(jsonResponse({ error: 'gmail not allowed' }, 400));
+  }
 
   const key = userKey(username);
 
@@ -502,6 +505,13 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+// Gmail addresses are no longer accepted (registration or linking), and an
+// already-linked one stops counting as a working recovery path — see
+// handleRegister/handleLinkEmail/handleResetMethod/handleRequestPasswordReset.
+function isGmailAddress(email) {
+  return !!email && /@(gmail\.com|googlemail\.com)$/i.test(email.trim());
+}
+
 function emailKey(email) {
   return b64url(email);
 }
@@ -600,6 +610,7 @@ async function handleLinkEmail(body, env) {
 
   const normalizedEmail = email.trim().toLowerCase();
   if (!isValidEmail(normalizedEmail)) return corsResponse(jsonResponse({ error: 'invalid email' }, 400));
+  if (isGmailAddress(normalizedEmail)) return corsResponse(jsonResponse({ error: 'gmail not allowed' }, 400));
 
   const key = userKey(username);
   const user = await rtdbGetJson(`/users/${encodeURIComponent(key)}.json`, env);
@@ -733,7 +744,7 @@ async function handleResetMethod(body, env) {
   const key = await resolveIdentifierToKey(identifier, env);
   const user = key ? await rtdbGetJson(`/users/${encodeURIComponent(key)}.json`, env) : null;
 
-  if (user && user.email && user.emailVerified) {
+  if (user && user.email && user.emailVerified && !isGmailAddress(user.email)) {
     return corsResponse(jsonResponse({ method: 'email', maskedEmail: maskEmail(user.email) }));
   }
   if (user && user.securityQuestion && user.securityQuestion !== 'default') {
@@ -765,7 +776,7 @@ async function handleRequestPasswordReset(body, env) {
   const key = await resolveIdentifierToKey(identifier, env);
   if (key) {
     const user = await rtdbGetJson(`/users/${encodeURIComponent(key)}.json`, env);
-    if (user && user.email && user.emailVerified) {
+    if (user && user.email && user.emailVerified && !isGmailAddress(user.email)) {
       const code = generateCode();
       await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env, {
         method: 'PATCH',
