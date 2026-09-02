@@ -766,6 +766,21 @@ body{
 }
 .side-drawer-item:active{ background:var(--fill-1); }
 .side-drawer-item svg{ width:21px; height:21px; flex-shrink:0; color:var(--gold); }
+.side-drawer-prayer-preview{
+  display:block; text-align:left; width:calc(100% - 32px); margin:0 16px 12px; padding:12px 14px;
+  border-radius:var(--r-card); background:var(--glass); border:1px solid var(--line); cursor:pointer;
+  font-family:var(--font-body); flex-shrink:0;
+}
+.side-drawer-prayer-preview:active{ background:var(--fill-1); }
+.drawer-prayer-top{ display:flex; align-items:center; gap:8px; margin-bottom:10px; font-size:12.5px; color:var(--gold-soft); }
+.drawer-prayer-top svg{ width:15px; height:15px; color:var(--gold); flex-shrink:0; }
+.drawer-prayer-row{ display:flex; justify-content:space-between; gap:4px; }
+.drawer-prayer-col{ display:flex; flex-direction:column; align-items:center; gap:3px; flex:1; min-width:0; }
+.drawer-prayer-col .v{ font-family:var(--font-num); font-size:10.5px; color:var(--ivory-dim); }
+.drawer-prayer-col.active .v{ color:var(--gold); }
+.drawer-prayer-col .bar{ width:100%; height:3px; border-radius:2px; background:var(--fill-3); }
+.drawer-prayer-col.active .bar{ background:var(--gold); }
+.drawer-prayer-col .l{ font-size:9px; color:var(--ivory-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
 .drawer-cfg-row{ display:flex; align-items:center; gap:8px; padding:11px 0; border-bottom:1px solid var(--line); }
 .drawer-cfg-row:last-child{ border-bottom:none; }
 .drawer-cfg-name{ flex:1; font-size:14px; color:var(--ivory); }
@@ -3242,6 +3257,7 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
         <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
       </button>
     </div>
+    <button type="button" class="side-drawer-prayer-preview" id="sideDrawerPrayerPreview"></button>
     <div class="side-drawer-list" id="sideDrawerList"></div>
   </div>
 
@@ -5937,6 +5953,7 @@ function renderSideDrawer(){
 }
 function openSideDrawer(){
   renderSideDrawer();
+  if(typeof renderSideDrawerPrayerPreview === 'function') renderSideDrawerPrayerPreview();
   document.getElementById('sideDrawerBackdrop').classList.add('show');
   document.getElementById('sideDrawer').classList.add('show');
 }
@@ -11759,6 +11776,14 @@ window.onOpenChatFromNotification = function(username){
   if(friend){ openChatThread(friend.uid, friend.name, friend.avatar); return; }
   state.pendingChatUsername = username;
 };
+// Tapping the home-screen prayer-times widget lands here (see
+// PrayerWidgetProvider's own PendingIntent).
+window.onOpenScreenFromWidget = function(screen){
+  if(screen === 'prayer'){
+    go('prayer');
+    if(typeof openPrayerScreen === 'function') openPrayerScreen();
+  }
+};
 
 /* ---------------- avatar picker ---------------- */
 let avatarPickerState = { emoji: AVATAR_EMOJIS[0], color: Object.keys(AVATAR_COLORS)[0] };
@@ -14046,6 +14071,44 @@ function wirePrayerScreenOnce(){
     savePrayerSettings();
   });
 }
+
+// Compact "widget" preview at the top of the side drawer, so opening the
+// menu shows today's prayer times right away without a separate tap into
+// the full screen — reuses the exact same calculation the screen itself
+// uses (see computeTodayPrayerTimes/computeNextPrayer above), just laid
+// out smaller. Rendered fresh on every drawer open (see openSideDrawer)
+// since it's cheap and the "next" prayer can have changed since last time.
+function renderSideDrawerPrayerPreview(){
+  const el = document.getElementById('sideDrawerPrayerPreview');
+  if(!el) return;
+  prayerSettings = loadPrayerSettings();
+  const times = computeTodayPrayerTimes();
+  const next = computeNextPrayer();
+  const isToday = next && new Date().toDateString() === next.at.toDateString();
+  const nextLabel = next ? `${PRAYER_NAMES[next.key]} через ${formatPrayerCountdownShort(next.at)}` : 'Время намаза';
+  const cols = ['fajr','dhuhr','asr','maghrib','isha'].map(key => {
+    const active = isToday && next.key === key;
+    return `<div class="drawer-prayer-col${active?' active':''}"><span class="v">${times[key]}</span><span class="bar"></span><span class="l">${PRAYER_NAMES[key]}</span></div>`;
+  }).join('');
+  el.innerHTML = `
+    <div class="drawer-prayer-top">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M20.5 14.2A8.5 8.5 0 019.8 3.5a8.5 8.5 0 108.5 8.5c0 .74-.09 1.46-.26 2.15z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+      <span>${nextLabel}</span>
+    </div>
+    <div class="drawer-prayer-row">${cols}</div>
+  `;
+}
+function formatPrayerCountdownShort(at){
+  const totalMin = Math.max(0, Math.round((at.getTime() - Date.now()) / 60000));
+  const h = Math.floor(totalMin/60), m = totalMin % 60;
+  return h > 0 ? `${h} ч ${m} мин` : `${m} мин`;
+}
+document.getElementById('sideDrawerPrayerPreview').addEventListener('click', ()=>{
+  closeSideDrawer();
+  go('prayer');
+  if(typeof openPrayerScreen === 'function') openPrayerScreen();
+});
+
 function openPrayerScreen(){
   // Captured before loadPrayerSettings()/savePrayerSettings() below, which
   // would otherwise write this same key and make "is this the first visit"
