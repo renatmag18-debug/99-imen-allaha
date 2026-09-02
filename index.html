@@ -506,10 +506,9 @@ body{
 }
 .hero h1{
   font-family:var(--font-display); font-weight:200; font-size:clamp(30px,7.6vw,46px);
-  line-height:1.18; margin:0 0 10px; color:var(--ivory); letter-spacing:-.01em;
+  line-height:1.18; margin:0 0 26px; color:var(--ivory); letter-spacing:-.01em;
 }
 .hero h1 em{ font-style:normal; font-weight:400; color:var(--gold); }
-.hero p.lead{ color:var(--ivory-dim); font-size:14.5px; font-weight:300; line-height:1.65; max-width:360px; margin:0 auto 22px;}
 .cta-row{ display:flex; gap:10px; width:100%; max-width:420px; margin:0 auto; }
 .btn{
   font-family:var(--font-body); font-weight:700; font-size:14px; letter-spacing:.01em;
@@ -683,12 +682,36 @@ body{
 .empty-hint{ text-align:center; color:var(--ivory-dim); font-size:13px; padding:30px 10px;}
 .names-source-note{ text-align:center; color:var(--ivory-dim); font-size:11px; line-height:1.5; padding:18px 24px 28px; opacity:.75; }
 
-.home-more-link{
-  display:block; text-align:center; margin-top:24px; padding-top:16px;
-  border-top:1px solid var(--line); font-size:12.5px; color:var(--ivory-dim);
-  text-decoration:none; transition:color .2s var(--ease);
+/* Time-namaz "mention" card on the home screen — same underlying render
+   (buildPrayerPreviewHTML) and .drawer-prayer-* inner classes as the side
+   drawer's compact preview, just framed like the other gold-bordered home
+   cards since it's meant to stand out here rather than stay subtle. */
+.home-prayer-card{
+  display:block; width:100%; margin:22px 0 0; padding:16px 18px; border-radius:var(--r-card);
+  border:1px solid var(--gold); background:linear-gradient(160deg, var(--accent-tint), var(--accent-tint-soft));
+  cursor:pointer; text-align:left; font-family:var(--font-body);
 }
-.home-more-link:hover{ color:var(--gold-soft); }
+.home-prayer-card:active{ transform:scale(.96); }
+
+.home-tile-grid{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; }
+.home-tile{
+  position:relative; display:flex; flex-direction:column; gap:10px; padding:16px 14px 15px;
+  border-radius:var(--r-card); border:1px solid var(--gold); text-align:left; cursor:pointer;
+  background:linear-gradient(160deg, var(--accent-tint), var(--accent-tint-soft)); font-family:var(--font-body);
+}
+.home-tile:active{ transform:scale(.97); }
+.home-tile-icon{
+  width:36px; height:36px; border-radius:50%; background:var(--gold); color:var(--on-accent);
+  display:flex; align-items:center; justify-content:center;
+}
+.home-tile-icon svg{ width:17px; height:17px; }
+.home-tile-title{ display:block; font-family:var(--font-display); font-size:14px; color:var(--ivory); }
+.home-tile-sub{ display:block; font-size:10.5px; color:var(--ivory-dim); line-height:1.35; margin-top:2px; }
+.home-tile-badge{
+  position:absolute; top:14px; right:14px; min-width:18px; height:18px; padding:0 5px; border-radius:9px;
+  background:var(--jade); color:var(--on-accent); font-size:10px; font-weight:700;
+  display:flex; align-items:center; justify-content:center;
+}
 
 /* ---------- detail sheet ---------- */
 .sheet-backdrop{
@@ -2178,7 +2201,6 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
           <div class="hero-star">٩٩</div>
           <div class="eyebrow">Асма-уль-Хусна</div>
           <h1>99 <em>прекрасных</em><br>имён Аллаха</h1>
-          <p class="lead">Изучайте значения и толкования имён Всевышнего, а затем проверьте знания в викторине — соло или на пару с другом по ссылке.</p>
           <div class="cta-row">
             <button class="btn btn-primary" data-nav="study">
               <svg viewBox="0 0 24 24" fill="none"><path d="M12 6.2c-1.5-1.1-3.4-1.7-5.3-1.7-.9 0-1.8.1-2.7.4v13c.9-.3 1.8-.4 2.7-.4 1.9 0 3.8.6 5.3 1.7 1.5-1.1 3.4-1.7 5.3-1.7.9 0 1.8.1 2.7.4v-13c-.9-.3-1.8-.4-2.7-.4-1.9 0-3.8.6-5.3 1.7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/><path d="M12 6.2v13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -2200,6 +2222,8 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
           </div>
         </div>
 
+        <button type="button" class="home-prayer-card" id="homePrayerPreview"></button>
+
         <div class="hadith-card">
           <p class="hadith-quote">У Аллаха <em>девяносто девять имён</em>, сто без одного, и всякий, кто сосчитает их <em>[запомнит их наизусть, осознает их смысл]</em>, войдёт в рай. Поистине, Аллах — Единственный и любит нечётное.</p>
           <div class="hadith-source">
@@ -2210,7 +2234,7 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 
         <div class="divider"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2l2 7h7l-5.5 4.5L17.5 21 12 16.5 6.5 21l2-7.5L3 9h7z" stroke="currentColor"/></svg></div>
 
-        <div class="section-title" style="margin-top:6px;">Также в приложении</div>
+        <div class="section-title" style="margin-top:6px;">Разделы приложения</div>
 
         <button class="quran-entry-card" id="homeQuranLink">
           <span class="quran-entry-icon">
@@ -2223,29 +2247,39 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
           <svg class="quran-entry-chevron" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
 
-        <button class="quran-entry-card" id="homeProphetsLink">
-          <span class="quran-entry-icon">
-            <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.6"/><path d="M5 20c.7-3.8 3.4-6.2 7-6.2s6.3 2.4 7 6.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-          </span>
-          <span class="quran-entry-text">
-            <span class="quran-entry-title">Имена Пророков</span>
-            <span class="quran-entry-sub">Изучайте и запоминайте</span>
-          </span>
-          <svg class="quran-entry-chevron" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-
-        <button class="quran-entry-card" id="homeMiscLink" data-nav="misc">
-          <span class="quran-entry-icon">
-            <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="4" r="1.3" fill="currentColor"/><circle cx="18.9" cy="8" r="1.3" fill="currentColor"/><circle cx="18.9" cy="16" r="1.3" fill="currentColor"/><circle cx="12" cy="20" r="1.3" fill="currentColor"/><circle cx="5.1" cy="16" r="1.3" fill="currentColor"/><circle cx="5.1" cy="8" r="1.3" fill="currentColor"/></svg>
-          </span>
-          <span class="quran-entry-text">
-            <span class="quran-entry-title">Зикры, дуа и намаз</span>
-            <span class="quran-entry-sub">Поминания Аллаха на каждый день</span>
-          </span>
-          <svg class="quran-entry-chevron" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-
-        <a href="https://99ism.ru/advantages.html" class="home-more-link">Чем это приложение отличается от других →</a>
+        <div class="home-tile-grid">
+          <button type="button" class="home-tile" id="homeListenLink" data-nav="listen">
+            <span class="home-tile-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M4 15v-3a8 8 0 0116 0v3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M4 15a2 2 0 012-2h1a1 1 0 011 1v4a1 1 0 01-1 1H6a2 2 0 01-2-2v-2zM20 15a2 2 0 00-2-2h-1a1 1 0 00-1 1v4a1 1 0 001 1h1a2 2 0 002-2v-2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span>
+            <span class="home-tile-title">Слушать Коран</span>
+            <span class="home-tile-sub">Чтецы, офлайн</span>
+          </button>
+          <button type="button" class="home-tile" id="homeProphetsLink">
+            <span class="home-tile-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.6"/><path d="M5 20c.7-3.8 3.4-6.2 7-6.2s6.3 2.4 7 6.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+            <span class="home-tile-title">Имена Пророков</span>
+            <span class="home-tile-sub">Изучайте и запоминайте</span>
+          </button>
+          <button type="button" class="home-tile" id="homeMiscLink" data-nav="misc">
+            <span class="home-tile-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="4" r="1.3" fill="currentColor"/><circle cx="18.9" cy="8" r="1.3" fill="currentColor"/><circle cx="18.9" cy="16" r="1.3" fill="currentColor"/><circle cx="12" cy="20" r="1.3" fill="currentColor"/><circle cx="5.1" cy="16" r="1.3" fill="currentColor"/><circle cx="5.1" cy="8" r="1.3" fill="currentColor"/></svg></span>
+            <span class="home-tile-title">Зикры, дуа и намаз</span>
+            <span class="home-tile-sub">На каждый день</span>
+          </button>
+          <button type="button" class="home-tile" id="homeChatsLink">
+            <span class="home-tile-badge" id="homeChatsBadge" style="display:none;"></span>
+            <span class="home-tile-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg></span>
+            <span class="home-tile-title">Сообщения</span>
+            <span class="home-tile-sub">Переписка с друзьями</span>
+          </button>
+          <button type="button" class="home-tile" data-nav="friends">
+            <span class="home-tile-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M9 12a3.5 3.5 0 100-7 3.5 3.5 0 000 7z" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 20c.6-3.3 3-5.4 5.5-5.4s4.9 2.1 5.5 5.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M16 8a2.6 2.6 0 100-5.2A2.6 2.6 0 0016 8z" stroke="currentColor" stroke-width="1.5"/><path d="M15 9.6c2 .3 3.6 1.9 4 4.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+            <span class="home-tile-title">Друзья</span>
+            <span class="home-tile-sub">Рейтинг и дуэли</span>
+          </button>
+          <button type="button" class="home-tile" id="homeFavoritesLink">
+            <span class="home-tile-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M6 3h12a1 1 0 011 1v17l-7-4-7 4V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span>
+            <span class="home-tile-title">Избранное</span>
+            <span class="home-tile-sub">Сохранённые имена и дуа</span>
+          </button>
+        </div>
 
       </div>
     </section>
@@ -4326,6 +4360,7 @@ function go(name, replace = false){
     // push notifications for that friend forever.
     if(prevScreen === 'chat' && name !== 'chat' && typeof closeChatThread === 'function') closeChatThread();
     if(prevScreen === 'quran' && name !== 'quran' && typeof quranPauseAudio === 'function') quranPauseAudio();
+    if(name === 'home' && typeof renderSideDrawerPrayerPreview === 'function') renderSideDrawerPrayerPreview();
   };
   
   if(!isPopping) {
@@ -5523,6 +5558,17 @@ document.getElementById('homeQuranLink').addEventListener('click', ()=>{
 });
 document.getElementById('homeProphetsLink').addEventListener('click', ()=>{
   go('study'); enterStudyMode('prophets');
+});
+// Reuse the exact same navigation their own existing entry points already
+// do (chatsFloatBtn, the misc screen's ★ segment button) rather than
+// reimplementing what "open chats"/"open favorites" means a second time.
+document.getElementById('homeChatsLink').addEventListener('click', ()=>{
+  go('chats'); renderChatsList();
+});
+document.getElementById('homeFavoritesLink').addEventListener('click', ()=>{
+  go('misc');
+  const favBtn = document.querySelector('#miscSegment .seg-btn[data-misc="favorites"]');
+  if(favBtn) favBtn.click();
 });
 
 /* --- поиск по зикрам/азкарам/дуа/намазу --- */
@@ -9074,9 +9120,14 @@ function notifyFriend(targetUid, title, body, tag, link){
 }
 
 function updateFriendsBadge(){
-  const hasUnreadChat = Object.values(state.chatPreviews).some(p => p.unread);
-  const has = state.incomingRequests.length>0 || state.duelInvites.length>0 || state.challengeInvites.length>0 || state.dhikrInvites.length>0 || hasUnreadChat;
+  const unreadChats = Object.values(state.chatPreviews).filter(p => p.unread).length;
+  const has = state.incomingRequests.length>0 || state.duelInvites.length>0 || state.challengeInvites.length>0 || state.dhikrInvites.length>0 || unreadChats>0;
   document.getElementById('friendsBadge').style.display = has ? 'block' : 'none';
+  const homeChatsBadge = document.getElementById('homeChatsBadge');
+  if(homeChatsBadge){
+    homeChatsBadge.style.display = unreadChats>0 ? 'flex' : 'none';
+    homeChatsBadge.textContent = unreadChats>0 ? String(unreadChats) : '';
+  }
 }
 
 /* =====================================================
@@ -15006,10 +15057,7 @@ function wirePrayerScreenOnce(){
 // uses (see computeTodayPrayerTimes/computeNextPrayer above), just laid
 // out smaller. Rendered fresh on every drawer open (see openSideDrawer)
 // since it's cheap and the "next" prayer can have changed since last time.
-function renderSideDrawerPrayerPreview(){
-  const el = document.getElementById('sideDrawerPrayerPreview');
-  if(!el) return;
-  prayerSettings = loadPrayerSettings();
+function buildPrayerPreviewHTML(){
   const times = computeTodayPrayerTimes();
   const next = computeNextPrayer();
   const isToday = next && new Date().toDateString() === next.at.toDateString();
@@ -15018,13 +15066,25 @@ function renderSideDrawerPrayerPreview(){
     const active = isToday && next.key === key;
     return `<div class="drawer-prayer-col${active?' active':''}"><span class="v">${times[key]}</span><span class="bar"></span><span class="l">${PRAYER_NAMES[key]}</span></div>`;
   }).join('');
-  el.innerHTML = `
+  return `
     <div class="drawer-prayer-top">
       <svg viewBox="0 0 24 24" fill="none"><path d="M20.5 14.2A8.5 8.5 0 019.8 3.5a8.5 8.5 0 108.5 8.5c0 .74-.09 1.46-.26 2.15z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
       <span>${nextLabel}</span>
     </div>
     <div class="drawer-prayer-row">${cols}</div>
   `;
+}
+// Renders into both the side drawer's compact preview and the home
+// screen's "mention" card — same underlying prayer-time calculation, just
+// two places it's shown, so both get built from the same markup here.
+function renderSideDrawerPrayerPreview(){
+  const el = document.getElementById('sideDrawerPrayerPreview');
+  const homeEl = document.getElementById('homePrayerPreview');
+  if(!el && !homeEl) return;
+  prayerSettings = loadPrayerSettings();
+  const html = buildPrayerPreviewHTML();
+  if(el) el.innerHTML = html;
+  if(homeEl) homeEl.innerHTML = html;
 }
 function formatPrayerCountdownShort(at){
   const totalMin = Math.max(0, Math.round((at.getTime() - Date.now()) / 60000));
@@ -15036,6 +15096,15 @@ document.getElementById('sideDrawerPrayerPreview').addEventListener('click', ()=
   go('prayer');
   if(typeof openPrayerScreen === 'function') openPrayerScreen();
 });
+document.getElementById('homePrayerPreview').addEventListener('click', ()=>{
+  go('prayer');
+  if(typeof openPrayerScreen === 'function') openPrayerScreen();
+});
+// Populates the home screen's card right away on first load — everything
+// this depends on (PRAYER_DEFAULT_LAT etc.) is declared above this point,
+// unlike the top-of-file initial-render calls (updateHomeStats() and co.)
+// which run before these prayer consts exist.
+renderSideDrawerPrayerPreview();
 
 function openPrayerScreen(){
   // Captured before loadPrayerSettings()/savePrayerSettings() below, which
