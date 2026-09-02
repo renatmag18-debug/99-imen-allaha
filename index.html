@@ -1766,6 +1766,10 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
   position:absolute; inset:0; z-index:7; background:var(--bg);
   display:flex; flex-direction:column;
 }
+.listen-karaoke-disclaimer{
+  flex-shrink:0; margin:0 20px 4px; padding:9px 12px; border-radius:var(--r-card);
+  background:var(--accent-tint); color:var(--gold-soft); font-size:11.5px; text-align:center;
+}
 .listen-karaoke-scroll{ flex:1; padding:8px 20px calc(96px + var(--safe-bottom)); }
 .listen-karaoke-ayah{
   display:flex; align-items:flex-start; gap:12px; padding:16px 10px; border-radius:var(--r-card);
@@ -3158,6 +3162,7 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
           </div>
           <button type="button" class="listen-player-play" id="listenKaraokePlayBtn" style="width:38px;height:38px;flex-shrink:0;" aria-label="Пауза"></button>
         </div>
+        <div class="listen-karaoke-disclaimer" id="listenKaraokeDisclaimer" style="display:none;">Текст подстраивается приблизительно и может не совпадать со чтением</div>
         <div class="scroll listen-karaoke-scroll" id="listenKaraokeScroll"></div>
       </div>
     </section>
@@ -12977,16 +12982,22 @@ const listenAudioEl = new Audio();
 let listenCurrentObjectUrl = null;
 let listenDbPromise = null;
 
-// "Show text" is only offered for reciters whose recitation is ALSO hosted
-// on api.qurancdn.com under one of its small set of legacy recitation ids
-// — see the file header comment above.
+// Exact per-ayah timing (millisecond-accurate, from the reciter's own
+// audio provider) is only available for reciters ALSO hosted on
+// api.qurancdn.com under one of its small set of legacy recitation ids.
+// Every other reciter still gets "Показать текст", just with timings
+// ESTIMATED by treating recitation speed as roughly proportional to each
+// ayah's text length — close enough to follow along, but not frame-exact,
+// which is why listenOpenKaraoke shows a standing disclaimer for them.
 const LISTEN_KARAOKE_RECITATION_IDS = { afs:7, sds:3, shatri:4, hani:5, husr:6, minsh:9, shur:10, basit:2, yasser:97 };
-function listenHasKaraoke(reciterId){ return !!LISTEN_KARAOKE_RECITATION_IDS[reciterId]; }
-// Per-ayah timing for the currently loaded track (karaoke-capable reciters
-// only) — `active` once verse_timings has loaded; `currentIndex` is kept
-// live off listenAudioEl.currentTime via the 'timeupdate' listener below,
-// independent of whether the text overlay is actually open.
-const listenAyah = { active:false, timings:[], currentIndex:-1 };
+function listenHasExactKaraoke(reciterId){ return !!LISTEN_KARAOKE_RECITATION_IDS[reciterId]; }
+// Per-ayah timing for the currently loaded track — `active` once timings
+// (exact or estimated) are ready; `approximate` flags the estimated case;
+// `currentIndex` is kept live off listenAudioEl.currentTime via the
+// 'timeupdate' listener below, independent of whether the text overlay is
+// actually open. `pendingApproxVerses` holds verse texts waiting on the
+// audio element's duration to become known, for the estimate to run off of.
+const listenAyah = { active:false, approximate:false, timings:[], currentIndex:-1, pendingApproxVerses:null };
 let listenKaraokeOverlayOpen = false;
 
 function listenPad3(n){ return String(n).padStart(3,'0'); }
@@ -13007,6 +13018,31 @@ async function listenFetchVerseTexts(chapterNum){
     return data.verses || [];
   }catch(e){ return []; }
 }
+// No provider gives us real per-ayah timing for these reciters' recordings,
+// so this divides up the track's real duration proportionally to each
+// ayah's Arabic text length instead — a reasonable stand-in for recitation
+// speed, run once the audio element's duration is actually known.
+function listenComputeApproxTimings(){
+  const verses = listenAyah.pendingApproxVerses;
+  listenAyah.pendingApproxVerses = null;
+  const duration = listenAudioEl.duration;
+  if(!verses || !verses.length || !duration || !isFinite(duration)) return;
+  const lengths = verses.map(v => (v.text_uthmani || '').length || 1);
+  const total = lengths.reduce((s, n) => s + n, 0);
+  let acc = 0;
+  const timings = verses.map((v, i) => {
+    const fromSec = (acc / total) * duration;
+    acc += lengths[i];
+    return { fromSec, toSec: (acc / total) * duration, text: v.text_uthmani };
+  });
+  listenAyah.timings = timings;
+  listenAyah.active = true;
+  listenAyah.approximate = true;
+  if(listenKaraokeOverlayOpen) renderListenKaraokeAyahs();
+}
+listenAudioEl.addEventListener('loadedmetadata', ()=>{
+  if(listenAyah.pendingApproxVerses) listenComputeApproxTimings();
+});
 
 function listenOpenDb(){
   if(listenDbPromise) return listenDbPromise;
@@ -13134,14 +13170,14 @@ function listenUpdatePlayButtons(){
 function listenUpdatePlayerLabel(){
   const chapter = quranChapterFor(listenState.currentSurah);
   let label = (chapter ? quranSurahDisplayName(chapter) : '') + ' — ' + (listenState.reciter ? listenState.reciter.name : '');
-  if(listenAyah.active && listenAyah.currentIndex >= 0) label += ` (аят ${listenAyah.currentIndex + 1}/${listenAyah.timings.length})`;
+  if(listenAyah.active && listenAyah.currentIndex >= 0) label += ` (${listenAyah.approximate ? '≈ ' : ''}аят ${listenAyah.currentIndex + 1}/${listenAyah.timings.length})`;
   const nameEl = document.getElementById('listenPlayerName');
   if(nameEl) nameEl.textContent = label;
 }
 function showListenPlayerBar(surahNum){
   document.getElementById('listenPlayerBar').style.display = 'flex';
   document.getElementById('listenSurahListWrap').classList.add('has-player');
-  document.getElementById('listenPlayerTextBtn').style.display = listenHasKaraoke(listenState.reciter.id) ? 'flex' : 'none';
+  document.getElementById('listenPlayerTextBtn').style.display = 'flex';
   listenUpdatePlayerLabel();
 }
 async function listenPlaySurah(surahNum){
@@ -13154,8 +13190,10 @@ async function listenPlaySurah(surahNum){
   listenState.currentSurah = surahNum;
   listenState.loadedReciterId = reciter.id;
   listenAyah.active = false;
+  listenAyah.approximate = false;
   listenAyah.timings = [];
   listenAyah.currentIndex = -1;
+  listenAyah.pendingApproxVerses = null;
   showListenPlayerBar(surahNum);
   renderListenSurahList();
   if(listenCurrentObjectUrl){ URL.revokeObjectURL(listenCurrentObjectUrl); listenCurrentObjectUrl = null; }
@@ -13165,7 +13203,7 @@ async function listenPlaySurah(surahNum){
   // as no cache rather than letting it crash playback.
   const cachedBlob = (rawCachedBlob && !Array.isArray(rawCachedBlob)) ? rawCachedBlob : null;
   if(listenState.currentSurah !== surahNum || listenState.loadedReciterId !== reciter.id) return;
-  if(listenHasKaraoke(reciter.id)){
+  if(listenHasExactKaraoke(reciter.id)){
     let audioUrl = null, verseTimings = [];
     try{
       const track = await listenFetchContinuousTrack(reciter, surahNum);
@@ -13184,11 +13222,24 @@ async function listenPlaySurah(surahNum){
       if(listenKaraokeOverlayOpen) renderListenKaraokeAyahs();
     }
     listenAudioEl.src = cachedBlob ? (listenCurrentObjectUrl = URL.createObjectURL(cachedBlob)) : audioUrl;
-  } else if(cachedBlob){
-    listenCurrentObjectUrl = URL.createObjectURL(cachedBlob);
-    listenAudioEl.src = listenCurrentObjectUrl;
   } else {
-    listenAudioEl.src = listenTrackUrl(reciter, surahNum);
+    // No exact timing source for this reciter — queue up the estimate to
+    // run as soon as the audio element reports a real duration (either
+    // right away below, if it's already known, or via 'loadedmetadata').
+    listenFetchVerseTexts(surahNum).then(verses => {
+      if(listenState.currentSurah !== surahNum || listenState.loadedReciterId !== reciter.id) return;
+      listenAyah.pendingApproxVerses = verses;
+      if(listenAudioEl.readyState >= 1) listenComputeApproxTimings();
+      else if(listenKaraokeOverlayOpen && !verses.length){
+        document.getElementById('listenKaraokeScroll').innerHTML = '<div class="listen-status">Не удалось загрузить текст.</div>';
+      }
+    });
+    if(cachedBlob){
+      listenCurrentObjectUrl = URL.createObjectURL(cachedBlob);
+      listenAudioEl.src = listenCurrentObjectUrl;
+    } else {
+      listenAudioEl.src = listenTrackUrl(reciter, surahNum);
+    }
   }
   listenAudioEl.play().catch(()=>{ showToast('Не удалось воспроизвести запись'); });
 }
@@ -13208,7 +13259,7 @@ async function listenToggleDownload(surahNum, btnEl){
   }
   if(btnEl) btnEl.classList.add('loading');
   try{
-    const url = listenHasKaraoke(reciter.id) ? (await listenFetchContinuousTrack(reciter, surahNum)).audioUrl : listenTrackUrl(reciter, surahNum);
+    const url = listenHasExactKaraoke(reciter.id) ? (await listenFetchContinuousTrack(reciter, surahNum)).audioUrl : listenTrackUrl(reciter, surahNum);
     const resp = await fetch(url);
     if(!resp.ok) throw new Error('http ' + resp.status);
     const blob = await resp.blob();
@@ -13239,9 +13290,9 @@ function listenSeekToAyah(i){
 }
 function listenOpenKaraoke(){
   if(!listenState.reciter || !listenState.currentSurah){ showToast('Сначала включите суру'); return; }
-  if(!listenHasKaraoke(listenState.reciter.id)){ showToast('Текст с подсветкой недоступен для этого чтеца'); return; }
   listenKaraokeOverlayOpen = true;
   document.getElementById('listenKaraokeOverlay').style.display = 'flex';
+  document.getElementById('listenKaraokeDisclaimer').style.display = listenHasExactKaraoke(listenState.reciter.id) ? 'none' : 'block';
   const chapter = quranChapterFor(listenState.currentSurah);
   document.getElementById('listenKaraokeTitle').textContent = chapter ? quranSurahDisplayName(chapter) : ('Сура ' + listenState.currentSurah);
   if(listenAyah.active && listenAyah.timings.length){
