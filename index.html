@@ -781,6 +781,20 @@ body{
 .drawer-prayer-col .bar{ width:100%; height:3px; border-radius:2px; background:var(--fill-3); }
 .drawer-prayer-col.active .bar{ background:var(--gold); }
 .drawer-prayer-col .l{ font-size:9px; color:var(--ivory-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.side-drawer-listen-preview{
+  display:flex; align-items:center; gap:12px; text-align:left; width:calc(100% - 32px); margin:0 16px 12px; padding:10px 14px;
+  border-radius:var(--r-card); background:var(--glass); border:1px solid var(--line); cursor:pointer;
+  font-family:var(--font-body); flex-shrink:0;
+}
+.side-drawer-listen-preview:active{ background:var(--fill-1); }
+.drawer-listen-play{
+  flex-shrink:0; width:32px; height:32px; border-radius:50%; background:var(--gold); color:var(--on-accent);
+  display:flex; align-items:center; justify-content:center;
+}
+.drawer-listen-play svg{ width:14px; height:14px; }
+.drawer-listen-info{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.drawer-listen-name{ font-size:13px; color:var(--ivory); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.drawer-listen-sub{ font-size:11px; color:var(--gold-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .drawer-cfg-row{ display:flex; align-items:center; gap:8px; padding:11px 0; border-bottom:1px solid var(--line); }
 .drawer-cfg-row:last-child{ border-bottom:none; }
 .drawer-cfg-name{ flex:1; font-size:14px; color:var(--ivory); }
@@ -3162,7 +3176,7 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
           </div>
           <button type="button" class="listen-player-play" id="listenKaraokePlayBtn" style="width:38px;height:38px;flex-shrink:0;" aria-label="Пауза"></button>
         </div>
-        <div class="listen-karaoke-disclaimer" id="listenKaraokeDisclaimer" style="display:none;">Текст подстраивается приблизительно и может не совпадать со чтением</div>
+        <div class="listen-karaoke-disclaimer" id="listenKaraokeDisclaimer" style="display:none;"></div>
         <div class="scroll listen-karaoke-scroll" id="listenKaraokeScroll"></div>
       </div>
     </section>
@@ -3378,6 +3392,13 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
       </button>
     </div>
     <button type="button" class="side-drawer-prayer-preview" id="sideDrawerPrayerPreview"></button>
+    <button type="button" class="side-drawer-listen-preview" id="sideDrawerListenPreview" style="display:none;">
+      <span class="drawer-listen-play" id="sideDrawerListenPlayIcon"></span>
+      <span class="drawer-listen-info">
+        <span class="drawer-listen-name" id="sideDrawerListenName"></span>
+        <span class="drawer-listen-sub" id="sideDrawerListenSub"></span>
+      </span>
+    </button>
     <div class="side-drawer-list" id="sideDrawerList"></div>
   </div>
 
@@ -6078,6 +6099,7 @@ function renderSideDrawer(){
 function openSideDrawer(){
   renderSideDrawer();
   if(typeof renderSideDrawerPrayerPreview === 'function') renderSideDrawerPrayerPreview();
+  if(typeof renderSideDrawerListenPreview === 'function') renderSideDrawerListenPreview();
   document.getElementById('sideDrawerBackdrop').classList.add('show');
   document.getElementById('sideDrawer').classList.add('show');
 }
@@ -13275,7 +13297,31 @@ function showListenPlayerBar(surahNum){
   document.getElementById('listenSurahListWrap').classList.add('has-player');
   document.getElementById('listenPlayerTextBtn').style.display = 'flex';
   listenUpdatePlayerLabel();
+  renderSideDrawerListenPreview();
 }
+// Compact "now playing" widget at the top of the side drawer, same idea as
+// the prayer-times preview above it — only shown once something has
+// actually been played this session (unlike prayer times, there's no
+// meaningful "nothing playing yet" state to preview).
+function renderSideDrawerListenPreview(){
+  const el = document.getElementById('sideDrawerListenPreview');
+  if(!el) return;
+  if(!listenState.currentSurah || !listenState.reciter){ el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  const chapter = quranChapterFor(listenState.currentSurah);
+  document.getElementById('sideDrawerListenName').textContent = chapter ? quranSurahDisplayName(chapter) : ('Сура ' + listenState.currentSurah);
+  document.getElementById('sideDrawerListenSub').textContent = listenState.reciter.name;
+  document.getElementById('sideDrawerListenPlayIcon').innerHTML = listenAudioEl.paused ? LISTEN_ICON_PLAY : LISTEN_ICON_PAUSE;
+}
+document.getElementById('sideDrawerListenPreview').addEventListener('click', e=>{
+  if(e.target.closest('#sideDrawerListenPlayIcon')){
+    if(listenAudioEl.paused) listenAudioEl.play().catch(()=>{});
+    else listenAudioEl.pause();
+    return;
+  }
+  closeSideDrawer();
+  go('listenReciter');
+});
 async function listenPlaySurah(surahNum){
   const reciter = listenState.reciter;
   if(listenState.currentSurah === surahNum && listenState.loadedReciterId === reciter.id){
@@ -13386,17 +13432,31 @@ function listenSeekToAyah(i){
   listenAudioEl.currentTime = listenAyah.timings[i].fromSec;
   if(listenAudioEl.paused) listenAudioEl.play().catch(()=>{});
 }
+function listenExactKaraokeReciterNames(){
+  return LISTEN_RECITERS.filter(r => listenHasExactKaraoke(r.id)).map(r => r.name).join(', ');
+}
 function listenOpenKaraoke(){
   if(!listenState.reciter || !listenState.currentSurah){ showToast('Сначала включите суру'); return; }
   listenKaraokeOverlayOpen = true;
   document.getElementById('listenKaraokeOverlay').style.display = 'flex';
-  document.getElementById('listenKaraokeDisclaimer').style.display = listenHasExactKaraoke(listenState.reciter.id) ? 'none' : 'block';
+  const disclaimerEl = document.getElementById('listenKaraokeDisclaimer');
+  if(listenHasExactKaraoke(listenState.reciter.id)){
+    disclaimerEl.style.display = 'none';
+  } else {
+    disclaimerEl.style.display = 'block';
+    disclaimerEl.textContent = `У чтеца «${listenState.reciter.name}» текст подстраивается приблизительно и может не совпадать с чтением. Точный текст без расхождений — у чтецов: ${listenExactKaraokeReciterNames()}.`;
+  }
   const chapter = quranChapterFor(listenState.currentSurah);
   document.getElementById('listenKaraokeTitle').textContent = chapter ? quranSurahDisplayName(chapter) : ('Сура ' + listenState.currentSurah);
   if(listenAyah.active && listenAyah.timings.length){
     renderListenKaraokeAyahs();
-    const el = document.querySelector(`.listen-karaoke-ayah[data-index="${listenAyah.currentIndex}"]`);
-    if(el) el.scrollIntoView({ block:'center' });
+    // Only jump to the marked ayah on open for exact-timing reciters —
+    // for an estimate, auto-scrolling the screen around to chase a mark
+    // that can itself be off is more distracting than useful.
+    if(listenHasExactKaraoke(listenState.reciter.id)){
+      const el = document.querySelector(`.listen-karaoke-ayah[data-index="${listenAyah.currentIndex}"]`);
+      if(el) el.scrollIntoView({ block:'center' });
+    }
   } else {
     document.getElementById('listenKaraokeScroll').innerHTML = '<div class="listen-status">Загрузка текста…</div>';
   }
@@ -13418,8 +13478,8 @@ document.getElementById('listenKaraokeScroll').addEventListener('click', e=>{
   listenSeekToAyah(Number(row.dataset.index));
 });
 
-listenAudioEl.addEventListener('play', ()=>{ listenState.playing = true; renderListenSurahList(); listenUpdatePlayButtons(); });
-listenAudioEl.addEventListener('pause', ()=>{ listenState.playing = false; renderListenSurahList(); listenUpdatePlayButtons(); });
+listenAudioEl.addEventListener('play', ()=>{ listenState.playing = true; renderListenSurahList(); listenUpdatePlayButtons(); renderSideDrawerListenPreview(); });
+listenAudioEl.addEventListener('pause', ()=>{ listenState.playing = false; renderListenSurahList(); listenUpdatePlayButtons(); renderSideDrawerListenPreview(); });
 listenAudioEl.addEventListener('ended', ()=>{ listenPlayAdjacentSurah(1); });
 listenAudioEl.addEventListener('timeupdate', ()=>{
   if(!listenAudioEl.duration) return;
@@ -13435,8 +13495,13 @@ listenAudioEl.addEventListener('timeupdate', ()=>{
       listenUpdatePlayerLabel();
       if(listenKaraokeOverlayOpen){
         renderListenKaraokeAyahs();
-        const el = document.querySelector(`.listen-karaoke-ayah[data-index="${newIndex}"]`);
-        if(el) el.scrollIntoView({ block:'center', behavior:'smooth' });
+        // Exact-timing reciters follow the mark down the screen as it
+        // advances; an estimate only highlights in place (see the same
+        // check in listenOpenKaraoke for why).
+        if(listenHasExactKaraoke(listenState.reciter.id)){
+          const el = document.querySelector(`.listen-karaoke-ayah[data-index="${newIndex}"]`);
+          if(el) el.scrollIntoView({ block:'center', behavior:'smooth' });
+        }
       }
     }
   }
