@@ -954,6 +954,15 @@ body{
 .tajweed-lesson-body-inner p b{ color:var(--ivory); font-weight:600; }
 .tajweed-lesson-body-inner .ar{ font-family:var(--font-ar); font-size:19px; color:var(--gold-soft); direction:rtl; unicode-bidi:isolate; }
 .tajweed-empty{ text-align:center; color:var(--ivory-dim); font-size:13px; padding:40px 20px; }
+.tajweed-table-wrap{ overflow-x:auto; margin:16px 0 0; border-radius:12px; border:1px solid var(--line); }
+.tajweed-table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+.tajweed-table th{
+  background:var(--fill-2); color:var(--gold-soft); font-family:var(--font-display); font-weight:500;
+  text-align:left; padding:8px 7px; white-space:nowrap; border-bottom:1px solid var(--line);
+}
+.tajweed-table td{ padding:8px 7px; color:var(--ivory-dim); border-bottom:1px solid var(--line); vertical-align:top; line-height:1.5; }
+.tajweed-table tr:last-child td{ border-bottom:none; }
+.tajweed-table td.ar-cell{ font-family:var(--font-ar); font-size:17px; color:var(--gold-soft); direction:rtl; unicode-bidi:isolate; white-space:nowrap; }
 
 .quran-head{ display:flex; align-items:center; gap:10px; padding:16px 20px 12px; flex-shrink:0; }
 .quran-surah-btn{
@@ -4826,15 +4835,73 @@ document.getElementById('browseTrainBtn').addEventListener('click', ()=>enterStu
 const TAJWEED_LESSONS = {
   phonetics: [
     {
+      title: 'Арабский алфавит',
+      body: [
+        'Прежде чем разбирать, где и как рождается каждый звук, нужно знать сами буквы — их 28. Арабский пишется и читается справа налево, и большинство букв меняют начертание в зависимости от места в слове: в начале, в середине или в конце — а сама по себе, отдельно, буква выглядит ещё иначе. Шесть букв (<span class="ar">ا د ذ ر ز و</span>) не соединяются со следующей буквой — после них внутри слова всегда виден «разрыв», это не ошибка письма, а особенность этих букв.',
+        `<div class="tajweed-table-wrap"><table class="tajweed-table">
+          <thead><tr><th>Буква</th><th>Название</th><th>Начальная</th><th>Средняя</th><th>Конечная</th></tr></thead>
+          <tbody>
+            <tr><td class="ar-cell">ا</td><td>Алиф</td><td class="ar-cell">ا</td><td class="ar-cell">ـا</td><td class="ar-cell">ـا</td></tr>
+            <tr><td class="ar-cell">ب</td><td>Ба</td><td class="ar-cell">بـ</td><td class="ar-cell">ـبـ</td><td class="ar-cell">ـب</td></tr>
+            <tr><td class="ar-cell">ت</td><td>Та</td><td class="ar-cell">تـ</td><td class="ar-cell">ـتـ</td><td class="ar-cell">ـت</td></tr>
+            <tr><td class="ar-cell">ث</td><td>Са</td><td class="ar-cell">ثـ</td><td class="ar-cell">ـثـ</td><td class="ar-cell">ـث</td></tr>
+            <tr><td class="ar-cell">ج</td><td>Джим</td><td class="ar-cell">جـ</td><td class="ar-cell">ـجـ</td><td class="ar-cell">ـج</td></tr>
+            <tr><td class="ar-cell">ح</td><td>Ха</td><td class="ar-cell">حـ</td><td class="ar-cell">ـحـ</td><td class="ar-cell">ـح</td></tr>
+            <tr><td class="ar-cell">خ</td><td>Хъа</td><td class="ar-cell">خـ</td><td class="ar-cell">ـخـ</td><td class="ar-cell">ـخ</td></tr>
+            <tr><td class="ar-cell">د</td><td>Даль</td><td class="ar-cell">د</td><td class="ar-cell">ـد</td><td class="ar-cell">ـد</td></tr>
+            <tr><td class="ar-cell">ذ</td><td>Заль</td><td class="ar-cell">ذ</td><td class="ar-cell">ـذ</td><td class="ar-cell">ـذ</td></tr>
+            <tr><td class="ar-cell">ر</td><td>Ра</td><td class="ar-cell">ر</td><td class="ar-cell">ـر</td><td class="ar-cell">ـر</td></tr>
+            <tr><td class="ar-cell">ز</td><td>За</td><td class="ar-cell">ز</td><td class="ar-cell">ـز</td><td class="ar-cell">ـز</td></tr>
+            <tr><td class="ar-cell">س</td><td>Син</td><td class="ar-cell">سـ</td><td class="ar-cell">ـسـ</td><td class="ar-cell">ـس</td></tr>
+            <tr><td class="ar-cell">ش</td><td>Шин</td><td class="ar-cell">شـ</td><td class="ar-cell">ـشـ</td><td class="ar-cell">ـش</td></tr>
+            <tr><td class="ar-cell">ص</td><td>Сад</td><td class="ar-cell">صـ</td><td class="ar-cell">ـصـ</td><td class="ar-cell">ـص</td></tr>
+            <tr><td class="ar-cell">ض</td><td>Дад</td><td class="ar-cell">ضـ</td><td class="ar-cell">ـضـ</td><td class="ar-cell">ـض</td></tr>
+            <tr><td class="ar-cell">ط</td><td>Та (тяж.)</td><td class="ar-cell">طـ</td><td class="ar-cell">ـطـ</td><td class="ar-cell">ـط</td></tr>
+            <tr><td class="ar-cell">ظ</td><td>За (тяж.)</td><td class="ar-cell">ظـ</td><td class="ar-cell">ـظـ</td><td class="ar-cell">ـظ</td></tr>
+            <tr><td class="ar-cell">ع</td><td>Айн</td><td class="ar-cell">عـ</td><td class="ar-cell">ـعـ</td><td class="ar-cell">ـع</td></tr>
+            <tr><td class="ar-cell">غ</td><td>Гайн</td><td class="ar-cell">غـ</td><td class="ar-cell">ـغـ</td><td class="ar-cell">ـغ</td></tr>
+            <tr><td class="ar-cell">ف</td><td>Фа</td><td class="ar-cell">فـ</td><td class="ar-cell">ـفـ</td><td class="ar-cell">ـف</td></tr>
+            <tr><td class="ar-cell">ق</td><td>Къаф</td><td class="ar-cell">قـ</td><td class="ar-cell">ـقـ</td><td class="ar-cell">ـق</td></tr>
+            <tr><td class="ar-cell">ك</td><td>Каф</td><td class="ar-cell">كـ</td><td class="ar-cell">ـكـ</td><td class="ar-cell">ـك</td></tr>
+            <tr><td class="ar-cell">ل</td><td>Лям</td><td class="ar-cell">لـ</td><td class="ar-cell">ـلـ</td><td class="ar-cell">ـل</td></tr>
+            <tr><td class="ar-cell">م</td><td>Мим</td><td class="ar-cell">مـ</td><td class="ar-cell">ـمـ</td><td class="ar-cell">ـم</td></tr>
+            <tr><td class="ar-cell">ن</td><td>Нун</td><td class="ar-cell">نـ</td><td class="ar-cell">ـنـ</td><td class="ar-cell">ـن</td></tr>
+            <tr><td class="ar-cell">ه</td><td>Ха (лёгк.)</td><td class="ar-cell">هـ</td><td class="ar-cell">ـهـ</td><td class="ar-cell">ـه</td></tr>
+            <tr><td class="ar-cell">و</td><td>Вав</td><td class="ar-cell">و</td><td class="ar-cell">ـو</td><td class="ar-cell">ـو</td></tr>
+            <tr><td class="ar-cell">ي</td><td>Я</td><td class="ar-cell">يـ</td><td class="ar-cell">ـيـ</td><td class="ar-cell">ـي</td></tr>
+          </tbody>
+        </table></div>`,
+        'Отдельно от букв стоит хамза <span class="ar">ء</span> — не входит в 28 букв алфавита, но обозначает самостоятельный звук (гортанная смычка) и часто пишется на «подставке» из алиф, вав или я (<span class="ar">أ إ ؤ ئ</span>) в зависимости от огласовки. С неё, кстати, начинается перечисление мест выхода в следующем уроке.',
+        'Ещё один слой — огласовки (харакат): фатха ( َ , короткое «а»), кясра ( ِ , короткое «и»), дамма ( ُ , короткое «у»), сукун ( ْ , отсутствие гласного), танвин (удвоенная огласовка на конце слова, ً ٍ ٌ — добавляет «н») и шадда ( ّ , удвоение согласного). Без них согласные буквы не читаются вообще — огласовка определяет, какой гласный звук идёт следом.'
+      ]
+    },
+    {
       title: 'Места выхода букв (Махариj аль-хуруф)',
       body: [
-        'Аль-Джазария начинается словами «Махариджуль хуруфи сабъата ашр» — «Мест выхода букв — семнадцать». Махрадж — это точка в речевом аппарате, где для конкретной буквы перекрывается или сужается поток воздуха. Не зная, где рождается буква, невозможно произнести её правильно — а неверное произношение буквы в Коране может исказить смысл слова.',
-        '<b>1. Аль-Джауф (الجوف) — полость рта и горла.</b> Одна точка на все три буквы долготы: <span class="ar">ا</span> (после фатхи), <span class="ar">و</span> (после дамма-сукун) и <span class="ar">ي</span> (после касра-сукун). Воздух проходит совершенно свободно, без касания языком или губами какой-либо точки — поэтому у этой группы нет фиксированного места, только направление потока воздуха.',
-        '<b>2. Аль-Халькъ (الحلق) — горло.</b> Три точки: дальняя, у самого основания горла — <span class="ar">ء</span> и <span class="ar">ه</span>; средняя — <span class="ar">ع</span> и <span class="ar">ح</span>; ближняя к полости рта — <span class="ar">غ</span> и <span class="ar">خ</span>. Эти шесть букв часто произносят слишком слабо или, наоборот, слишком резко, «выталкивая» звук — и то и другое искажает букву.',
-        '<b>3. Аль-Лисан (اللسان) — язык.</b> Самая большая группа, десять точек, от корня языка до кончика: <span class="ar">ق</span> (корень языка и мягкое нёбо), <span class="ar">ك</span> (чуть ближе, у твёрдого нёба), <span class="ar">ج ش ي</span> (середина языка и нёбо), <span class="ar">ض</span> (край языка и коренные зубы — самая сложная буква арабского языка для не-арабов), <span class="ar">ل</span> (край языка ближе к кончику и дёсны верхних резцов), <span class="ar">ن</span> (кончик языка, чуть ниже места ляма), <span class="ar">ر</span> (кончик языка, с лёгкой вибрацией), <span class="ar">ط د ت</span> (кончик языка и основания верхних резцов), <span class="ar">ص س ز</span> (кончик языка и края резцов — свистящие), <span class="ar">ظ ذ ث</span> (кончик языка между зубами).',
-        '<b>4. Аш-Шафатан (الشفتان) — губы.</b> Две точки: <span class="ar">ف</span> (внутренняя часть нижней губы и кончики верхних резцов) и <span class="ar">ب م و</span> (обе губы вместе, с разной степенью смыкания — <span class="ar">ب</span> полностью смыкаются, <span class="ar">م</span> смыкаются с носовым призвуком, <span class="ar">و</span> лишь округляются).',
-        '<b>5. Аль-Хайшум (الخيشوم) — носовая полость.</b> Одна точка — гунна, носовой призвук, который добавляется к нуну и миму в ряде правил (при ташдиде, идгаме с гунной, ихфа, икляб — эти правила разбираются в разделе «Правила чтения Корана»).',
-        'Итого 1 + 3 + 10 + 2 + 1 = 17 точек — ровно то число, с которого начинается поэма.'
+        'Аль-Джазария начинается словами «Махариджуль хуруфи сабъата ашр» — «Мест выхода букв — семнадцать». Махрадж — это точка в речевом аппарате, где для конкретной буквы перекрывается или сужается поток воздуха. Не зная, где рождается буква, невозможно произнести её правильно — а неверное произношение буквы в Коране может исказить смысл слова. Все 17 точек делятся на пять областей — от полости рта и горла до языка, губ и носа.',
+        `<div class="tajweed-table-wrap"><table class="tajweed-table">
+          <thead><tr><th>Область</th><th>Место выхода</th><th>Буквы</th></tr></thead>
+          <tbody>
+            <tr><td>Аль-джауф</td><td>Полость рта и горла (долгие гласные)</td><td class="ar-cell">ا و ي</td></tr>
+            <tr><td rowspan="3">Аль-халькъ<br>(горло)</td><td>Дальняя часть горла</td><td class="ar-cell">ء ه</td></tr>
+            <tr><td>Средняя часть горла</td><td class="ar-cell">ع ح</td></tr>
+            <tr><td>Ближняя часть горла</td><td class="ar-cell">غ خ</td></tr>
+            <tr><td rowspan="10">Аль-лисан<br>(язык)</td><td>Корень языка + мягкое нёбо</td><td class="ar-cell">ق</td></tr>
+            <tr><td>Корень языка (ближе) + твёрдое нёбо</td><td class="ar-cell">ك</td></tr>
+            <tr><td>Середина языка + нёбо</td><td class="ar-cell">ج ش ي</td></tr>
+            <tr><td>Край языка + коренные зубы</td><td class="ar-cell">ض</td></tr>
+            <tr><td>Край языка + дёсны резцов</td><td class="ar-cell">ل</td></tr>
+            <tr><td>Кончик языка (ниже ляма)</td><td class="ar-cell">ن</td></tr>
+            <tr><td>Кончик языка (с вибрацией)</td><td class="ar-cell">ر</td></tr>
+            <tr><td>Кончик языка + основания резцов</td><td class="ar-cell">ط د ت</td></tr>
+            <tr><td>Кончик языка + края резцов</td><td class="ar-cell">ص س ز</td></tr>
+            <tr><td>Кончик языка + кончики резцов</td><td class="ar-cell">ظ ذ ث</td></tr>
+            <tr><td rowspan="2">Аш-шафатан<br>(губы)</td><td>Нижняя губа (внутр.) + верхние резцы</td><td class="ar-cell">ف</td></tr>
+            <tr><td>Обе губы</td><td class="ar-cell">ب م و</td></tr>
+            <tr><td>Аль-хайшум</td><td>Носовая полость (гунна)</td><td>—</td></tr>
+          </tbody>
+        </table></div>`,
+        'Итого 1 + 3 + 10 + 2 + 1 = 17 точек — ровно то число, с которого начинается поэма. Обратите внимание: <span class="ar">ب م و</span> делят одно место (обе губы), но звучат по-разному — <span class="ar">ب</span> губы полностью смыкаются, <span class="ar">م</span> смыкаются с носовым призвуком, <span class="ar">و</span> лишь округляются. Различает такие буквы уже не место, а свойства — тема следующего урока.'
       ]
     },
     {
@@ -4842,19 +4909,29 @@ const TAJWEED_LESSONS = {
       body: [
         'Место выхода — это «где» рождается буква, а свойства (сифат) — это «как» именно она звучит в этой точке: с голосом или без, с задержкой воздуха или свободно, тяжело или легко. Одну и ту же точку выхода могут делить несколько букв (например, <span class="ar">ط د ت</span>) — различает их именно набор свойств.',
         '<b>Парные (противоположные) свойства — пять пар:</b>',
-        '<b>Хамс ↔ Джахр</b> (شخص هفت... шёпотность ↔ звонкость). При хамсе воздух свободно проходит вместе со звуком (буква звучит почти как выдох): <span class="ar">ف ح ث ه ش خ ص س ك ت</span> (мнемоника «فحثه شخص سكت»). Остальные 18 букв — джахр: воздух задерживается, звук идёт с голосом.',
-        '<b>Шидда ↔ Тавассут ↔ Рахава</b> (взрывной звук ↔ средний ↔ протяжный). Шидда — полная закупорка потока с резким «взрывом» звука: <span class="ar">أ ج د ق ط ب ك ت</span> («أجد قط بكت»). Тавассут — среднее между полной закупоркой и свободным течением: <span class="ar">ل ن ع م ر</span> («لن عمر»). Остальные 15 букв — рахава: воздух течёт свободно на всём протяжении звука.',
-        '<b>Истиля ↔ Истифаль</b> (утяжеление ↔ облегчение). При истиля корень языка поднимается к нёбу, и звук становится «тяжёлым», гулким: <span class="ar">خ ص ض غ ط ق ظ</span> («خص ضغط قظ»). Остальные 21 буква — истифаль, звучат легче.',
-        '<b>Итбак ↔ Инфитах</b> (прилегание ↔ раскрытие). При итбак язык плотно прижимается к нёбу по всей длине: <span class="ar">ص ض ط ظ</span> — это самые тяжёлые буквы арабского языка (все четыре входят и в истиля). Остальные 24 буквы — инфитах.',
-        '<b>Изляк ↔ Исмат</b> (лёгкость ↔ тяжесть в сочетаниях). Изляк — буквы, которые легко подряд сочетаются друг с другом в корне слова (произносятся кончиком языка или губами): <span class="ar">ف ر م ن ل ب</span> («فر من لب»). Остальные 22 — исмат.',
+        `<div class="tajweed-table-wrap"><table class="tajweed-table">
+          <thead><tr><th>Свойство</th><th>Буквы</th><th>Смысл</th></tr></thead>
+          <tbody>
+            <tr><td>Хамс</td><td class="ar-cell">ف ح ث ه ش خ ص س ك ت</td><td>Шёпотность, воздух идёт вместе со звуком (у остальных 18 букв — джахр, звонкость)</td></tr>
+            <tr><td>Шидда</td><td class="ar-cell">أ ج د ق ط ب ك ت</td><td>Полная закупорка, взрывной звук (среднее — тавассут: <span class="ar">ل ن ع م ر</span>; у остальных 15 — рахава, воздух течёт свободно)</td></tr>
+            <tr><td>Истиля</td><td class="ar-cell">خ ص ض غ ط ق ظ</td><td>Утяжеление, корень языка поднят к нёбу (у остальных 21 — истифаль, легче)</td></tr>
+            <tr><td>Итбак</td><td class="ar-cell">ص ض ط ظ</td><td>Полное прилегание языка к нёбу — самые тяжёлые буквы (у остальных 24 — инфитах)</td></tr>
+            <tr><td>Изляк</td><td class="ar-cell">ف ر م ن ل ب</td><td>Легко сочетаются подряд в корне слова (у остальных 22 — исмат)</td></tr>
+          </tbody>
+        </table></div>`,
         '<b>Непарные (одиночные) свойства:</b>',
-        '<b>Сафир</b> (свист) — <span class="ar">ص س ز</span>: при произнесении слышен характерный свистящий призвук.',
-        '<b>Калькаля</b> (отскок, эхо) — <span class="ar">ق ط ب ج د</span> («قطب جد»): когда любая из этих букв стоит с сукуном, в момент её произнесения слышен лёгкий отскок звука — особенно заметно на конце слова при остановке.',
-        '<b>Лин</b> (мягкость) — <span class="ar">و</span> и <span class="ar">ي</span> с сукуном, перед которыми стоит фатха (как в словах <span class="ar">بَيْت</span> или <span class="ar">قَوْل</span>): произносятся мягко, без напряжения.',
-        '<b>Инхираф</b> (отклонение звука в сторону другого места выхода) — <span class="ar">ل</span> и <span class="ar">ر</span>.',
-        '<b>Такрир</b> (вибрация кончика языка) — только <span class="ar">ر</span>: это свойство буквы нужно знать, чтобы НЕ утрировать его при чтении — раскатистое, «рычащее» ро искажает букву не меньше, чем его полное отсутствие.',
-        '<b>Тафашши</b> (распространение воздуха во рту) — только <span class="ar">ش</span>.',
-        '<b>Иститала</b> (протяжённость звука вдоль края языка) — только <span class="ar">ض</span>: это же свойство и делает её самой сложной буквой для точного произношения.'
+        `<div class="tajweed-table-wrap"><table class="tajweed-table">
+          <thead><tr><th>Свойство</th><th>Буквы</th><th>Смысл</th></tr></thead>
+          <tbody>
+            <tr><td>Сафир</td><td class="ar-cell">ص س ز</td><td>Свист</td></tr>
+            <tr><td>Калькаля</td><td class="ar-cell">ق ط ب ج د</td><td>Отскок звука, когда буква стоит с сукуном</td></tr>
+            <tr><td>Лин</td><td class="ar-cell">و ي</td><td>Мягкость — с сукуном, если перед ними фатха (<span class="ar">بَيْت</span>, <span class="ar">قَوْل</span>)</td></tr>
+            <tr><td>Инхираф</td><td class="ar-cell">ل ر</td><td>Отклонение звука в сторону другого места выхода</td></tr>
+            <tr><td>Такрир</td><td class="ar-cell">ر</td><td>Вибрация кончика языка — не утрировать при чтении!</td></tr>
+            <tr><td>Тафашши</td><td class="ar-cell">ش</td><td>Распространение воздуха во рту</td></tr>
+            <tr><td>Иститала</td><td class="ar-cell">ض</td><td>Протяжённость звука по краю языка — самая сложная буква для точного произношения</td></tr>
+          </tbody>
+        </table></div>`
       ]
     }
   ],
@@ -4878,7 +4955,7 @@ function renderTajweedLessonList(){
         <svg class="tajweed-lesson-chevron" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
       <div class="tajweed-lesson-body">
-        <div class="tajweed-lesson-body-inner">${lesson.body.map(p => `<p>${p}</p>`).join('')}</div>
+        <div class="tajweed-lesson-body-inner">${lesson.body.map(p => /^<div class="tajweed-table-wrap"/.test(p) ? p : `<p>${p}</p>`).join('')}</div>
       </div>
     </div>
   `).join('');
