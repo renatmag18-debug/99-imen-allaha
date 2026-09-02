@@ -1664,6 +1664,45 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
   font-size:10px; letter-spacing:.3em; text-transform:uppercase; color:var(--gold); font-weight:500;
   margin:24px 0 12px;
 }
+
+/* --- "Время намаза" screen --- */
+.prayer-location-row{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:12px 14px; border-radius:var(--r-card); background:var(--glass); border:1px solid var(--line);
+  font-size:13px; color:var(--ivory-dim); margin-bottom:14px;
+}
+.prayer-locate-btn{ padding:8px 14px; font-size:12.5px; flex-shrink:0; }
+.prayer-next-card{
+  text-align:center; padding:22px 16px; border-radius:var(--r-card); margin-bottom:16px;
+  background:linear-gradient(160deg, var(--accent-tint), var(--accent-tint-soft)); border:1px solid var(--gold);
+}
+.prayer-next-date{ font-size:11.5px; color:var(--ivory-dim); margin-bottom:6px; }
+.prayer-next-name{ font-size:14px; color:var(--gold-soft); letter-spacing:.05em; }
+.prayer-next-time{ font-family:var(--font-num); font-size:40px; color:var(--ivory); line-height:1.2; }
+.prayer-next-countdown{ font-size:12.5px; color:var(--ivory-dim); }
+.prayer-times-list{ border-radius:var(--r-card); background:var(--glass); border:1px solid var(--line); overflow:hidden; margin-bottom:8px; }
+.prayer-time-row{
+  display:flex; align-items:center; justify-content:space-between; padding:12px 16px;
+  font-size:14px; color:var(--ivory);
+}
+.prayer-time-row + .prayer-time-row{ border-top:1px solid var(--fill-2); }
+.prayer-time-row.active{ background:var(--accent-tint); color:var(--gold-soft); }
+.prayer-time-row .prayer-time-name{ display:flex; align-items:center; gap:10px; }
+.prayer-time-row .prayer-time-value{ font-family:var(--font-num); }
+.prayer-notif-row{
+  display:flex; align-items:center; justify-content:space-between; padding:11px 0;
+}
+.prayer-notif-row + .prayer-notif-row{ border-top:1px solid var(--fill-2); }
+.prayer-pill-row{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+.prayer-pill-btn{
+  flex:1; min-width:110px; padding:11px 10px; border-radius:var(--r-pill); border:1px solid var(--line);
+  background:var(--glass); color:var(--ivory); font-family:var(--font-body); font-size:13px; cursor:pointer; transition:all .2s;
+}
+.prayer-pill-btn.active{ background:var(--gold); border-color:var(--gold); color:var(--on-accent); }
+.prayer-select{
+  width:100%; padding:12px 14px; border-radius:var(--r-card); border:1px solid var(--line);
+  background:var(--glass); color:var(--ivory); font-family:var(--font-body); font-size:13.5px; margin-bottom:8px;
+}
 .friend-empty-hint{ font-size:12.5px; color:var(--ivory-dim); text-align:center; padding:18px 10px; opacity:.75; }
 
 .friend-row{
@@ -2935,6 +2974,61 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
         </div>
 
         <button id="logoutBtn" class="btn btn-ghost" style="width:100%;color:var(--rose);border-color:var(--rose);margin-bottom:16px;">Выход</button>
+      </div>
+    </section>
+
+    <section class="screen" data-screen="prayer">
+      <div class="scroll">
+        <div class="settings-head">
+          <button class="nav-arrow" data-nav="home" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <div class="section-title" style="padding:0;">Время намаза</div>
+        </div>
+
+        <div class="prayer-location-row">
+          <span id="prayerCityLabel">Местоположение не определено</span>
+          <button type="button" id="prayerLocateBtn" class="btn btn-ghost prayer-locate-btn">Определить</button>
+        </div>
+
+        <div class="prayer-next-card" id="prayerNextCard">
+          <div class="prayer-next-date" id="prayerDateLabel">—</div>
+          <div class="prayer-next-name" id="prayerNextName">—</div>
+          <div class="prayer-next-time" id="prayerNextTime">--:--</div>
+          <div class="prayer-next-countdown" id="prayerNextCountdown">—</div>
+        </div>
+
+        <div class="prayer-times-list" id="prayerTimesList"></div>
+
+        <div class="section-label">Уведомления</div>
+        <p class="section-desc" style="margin-top:0;">Включите молитвы, о которых нужно напомнить — уведомление придёт точно ко времени.</p>
+        <div id="prayerNotifList"></div>
+
+        <div class="section-label">Звук уведомления</div>
+        <div class="prayer-pill-row" id="prayerSoundRow">
+          <button type="button" class="prayer-pill-btn" data-sound="0">Обычный</button>
+          <button type="button" class="prayer-pill-btn" data-sound="2">Без звука</button>
+        </div>
+
+        <div class="section-label">Метод расчёта</div>
+        <p class="section-desc" style="margin-top:0;">Разные организации используют разные углы солнца для Фаджр и Иша — выберите тот, что принят в вашем регионе.</p>
+        <select id="prayerMethodSelect" class="prayer-select">
+          <option value="0">Muslim World League (MWL)</option>
+          <option value="1">ISNA (Северная Америка)</option>
+          <option value="2">Египетское управление</option>
+          <option value="3">Умм-аль-Кура (Мекка)</option>
+          <option value="4">Карачи (Пакистан)</option>
+          <option value="5">Кувейт</option>
+          <option value="6">Катар</option>
+          <option value="7">Сингапур</option>
+          <option value="8">Турция (Diyanet)</option>
+          <option value="9">Россия (ДУМ РФ)</option>
+          <option value="10">Moonsighting Committee</option>
+        </select>
+
+        <div class="section-label">Мазхаб (для времени Аср)</div>
+        <div class="prayer-pill-row" id="prayerMadhabRow">
+          <button type="button" class="prayer-pill-btn" data-madhab="0">Шафии/Малики/Ханбали</button>
+          <button type="button" class="prayer-pill-btn" data-madhab="1">Ханафи</button>
+        </div>
       </div>
     </section>
 
@@ -5802,9 +5896,13 @@ const SIDE_DRAWER_ITEMS_META = {
   settings: {
     label: 'Настройки',
     icon: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="1.5"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  },
+  prayer: {
+    label: 'Время намаза',
+    icon: '<svg viewBox="0 0 24 24" fill="none"><path d="M20.5 14.2A8.5 8.5 0 019.8 3.5a8.5 8.5 0 108.5 8.5c0 .74-.09 1.46-.26 2.15z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>'
   }
 };
-const SIDE_DRAWER_DEFAULT_ORDER = ['favorites', 'quran', 'chats', 'settings'];
+const SIDE_DRAWER_DEFAULT_ORDER = ['favorites', 'quran', 'chats', 'prayer', 'settings'];
 
 function loadSideDrawerOrder(){
   try{
@@ -5870,6 +5968,9 @@ document.getElementById('sideDrawerList').addEventListener('click', e=>{
     if(typeof renderChatsList === 'function') renderChatsList();
   } else if(key === 'settings'){
     go('settings');
+  } else if(key === 'prayer'){
+    go('prayer');
+    if(typeof openPrayerScreen === 'function') openPrayerScreen();
   }
 });
 
@@ -13691,6 +13792,280 @@ function installAPKUpdate(){
 // is unchanged from before, so if that specific step still has issues,
 // this only affects how the offer is *shown*, not whether install works.
 setTimeout(checkForAppUpdate, 2000);
+
+/* =====================================================
+   ВРЕМЯ НАМАЗА — local sun-position calculation, matching
+   PrayerTimeCalculator.kt on the native side exactly (same formulas,
+   same method angles) so what's shown here always agrees with what
+   the notification scheduler and the home-screen widget use — those
+   two run without the WebView necessarily being loaded, so they can't
+   just ask this page for the numbers.
+===================================================== */
+const PRAYER_METHOD_ANGLES = {
+  0: [18.0, 17.0],   // MWL
+  1: [15.0, 15.0],   // ISNA
+  2: [19.5, 17.5],   // Egyptian
+  3: [18.5, 17.0],   // Umm al-Qura (Isha is a fixed 90min-after-Maghrib override below)
+  4: [18.0, 18.0],   // Karachi
+  5: [18.0, 17.5],   // Kuwait
+  6: [18.0, 17.0],   // Qatar (fixed-interval override below)
+  7: [20.0, 18.0],   // Singapore
+  8: [18.0, 17.0],   // Turkey
+  9: [16.0, 15.0],   // Russia
+  10: [18.0, 18.0],  // Moonsighting Worldwide
+};
+const PRAYER_METHOD_ISHA_FIXED_MINUTES = { 3: 90, 6: 90 };
+const PRAYER_ASR_SHAFI = 1, PRAYER_ASR_HANAFI = 2;
+
+function prayerHourAngle(sunElevationDeg, latRad, declination){
+  const elevRad = sunElevationDeg * Math.PI / 180;
+  const cosH = (Math.sin(elevRad) - Math.sin(latRad) * Math.sin(declination)) / (Math.cos(latRad) * Math.cos(declination));
+  if(cosH < -1 || cosH > 1) return NaN;
+  return (Math.acos(cosH) * 180 / Math.PI) / 15;
+}
+function calculatePrayerTimes(date, latitude, longitude, fajrAngle, ishaAngle, asrFactor){
+  const utcOffsetHours = -date.getTimezoneOffset() / 60;
+  const start = new Date(date.getFullYear(), 0, 0);
+  const dayOfYear = Math.floor((date - start) / 86400000);
+  const gamma = 2 * Math.PI / 365 * (dayOfYear - 1 + 12 / 24);
+
+  const eqTimeMinutes = 229.18 * (0.000075
+    + 0.001868 * Math.cos(gamma) - 0.032077 * Math.sin(gamma)
+    - 0.014615 * Math.cos(2*gamma) - 0.040849 * Math.sin(2*gamma));
+  const declination = 0.006918
+    - 0.399912 * Math.cos(gamma) + 0.070257 * Math.sin(gamma)
+    - 0.006758 * Math.cos(2*gamma) + 0.000907 * Math.sin(2*gamma)
+    - 0.002697 * Math.cos(3*gamma) + 0.00148 * Math.sin(3*gamma);
+
+  const timeOffsetMinutes = 4 * (longitude - utcOffsetHours * 15) + eqTimeMinutes;
+  const solarNoon = 12 - timeOffsetMinutes / 60;
+  const latRad = latitude * Math.PI / 180;
+
+  const t = { dhuhr: solarNoon };
+  const sunriseH = prayerHourAngle(-0.833, latRad, declination);
+  t.sunrise = solarNoon - sunriseH;
+  t.maghrib = solarNoon + sunriseH;
+  const nightLength = 24 - 2 * sunriseH;
+
+  const fajrH = prayerHourAngle(-fajrAngle, latRad, declination);
+  t.fajr = isNaN(fajrH) ? t.sunrise - (fajrAngle/60)*nightLength : solarNoon - fajrH;
+  const ishaH = prayerHourAngle(-ishaAngle, latRad, declination);
+  t.isha = isNaN(ishaH) ? t.maghrib + (ishaAngle/60)*nightLength : solarNoon + ishaH;
+
+  const asrShadowAngle = Math.atan(1 / (asrFactor + Math.tan(Math.abs(latRad - declination)))) * 180 / Math.PI;
+  const asrH = prayerHourAngle(asrShadowAngle, latRad, declination);
+  t.asr = isNaN(asrH) ? solarNoon + nightLength/4 : solarNoon + asrH;
+
+  return t;
+}
+function formatPrayerHours(hoursIn){
+  let hours = hoursIn;
+  while(hours < 0) hours += 24;
+  while(hours >= 24) hours -= 24;
+  let h = Math.floor(hours);
+  let m = Math.round((hours - h) * 60);
+  if(m === 60){ m = 0; h = (h+1) % 24; }
+  return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+}
+
+const PRAYER_NAMES = { fajr:'Фаджр', sunrise:'Восход', dhuhr:'Зухр', asr:'Аср', maghrib:'Магриб', isha:'Иша' };
+const PRAYER_NOTIFIABLE = ['fajr','dhuhr','asr','maghrib','isha'];
+const PRAYER_DEFAULT_LAT = 21.4225, PRAYER_DEFAULT_LON = 39.8262; // Mecca — matches PrayerTimesSettings.kt's own default
+
+function loadPrayerSettings(){
+  let s = {};
+  try{ s = JSON.parse(localStorage.getItem('prayerSettings') || '{}'); }catch(e){}
+  return Object.assign({
+    lat: PRAYER_DEFAULT_LAT, lon: PRAYER_DEFAULT_LON, cityLabel: '',
+    method: 0, madhab: 0, soundMode: 0,
+    enabled: { fajr:false, dhuhr:false, asr:false, maghrib:false, isha:false },
+    offsets: { fajr:0, sunrise:0, dhuhr:0, asr:0, maghrib:0, isha:0 },
+  }, s, { enabled: Object.assign({fajr:false,dhuhr:false,asr:false,maghrib:false,isha:false}, s.enabled), offsets: Object.assign({fajr:0,sunrise:0,dhuhr:0,asr:0,maghrib:0,isha:0}, s.offsets) });
+}
+let prayerSettings = loadPrayerSettings();
+function savePrayerSettings(){
+  try{ localStorage.setItem('prayerSettings', JSON.stringify(prayerSettings)); }catch(e){}
+  if(window.AndroidApp && window.AndroidApp.updatePrayerSettings){
+    window.AndroidApp.updatePrayerSettings(JSON.stringify(prayerSettings));
+  }
+}
+
+function computeTodayPrayerTimes(){
+  const angles = PRAYER_METHOD_ANGLES[prayerSettings.method] || PRAYER_METHOD_ANGLES[0];
+  const asrFactor = prayerSettings.madhab === 1 ? PRAYER_ASR_HANAFI : PRAYER_ASR_SHAFI;
+  const t = calculatePrayerTimes(new Date(), prayerSettings.lat, prayerSettings.lon, angles[0], angles[1], asrFactor);
+  const ishaFixed = PRAYER_METHOD_ISHA_FIXED_MINUTES[prayerSettings.method];
+  if(ishaFixed) t.isha = t.maghrib + ishaFixed/60;
+  const out = {};
+  for(const key of ['fajr','sunrise','dhuhr','asr','maghrib','isha']){
+    out[key] = formatPrayerHours(t[key] + (prayerSettings.offsets[key]||0)/60);
+  }
+  return out;
+}
+// Walks forward day-by-day (today, then tomorrow) until it finds a prayer
+// whose time is still ahead of now — mirrors PrayerTimeCalculator.nextPrayer.
+function computeNextPrayer(){
+  const angles = PRAYER_METHOD_ANGLES[prayerSettings.method] || PRAYER_METHOD_ANGLES[0];
+  const asrFactor = prayerSettings.madhab === 1 ? PRAYER_ASR_HANAFI : PRAYER_ASR_SHAFI;
+  const ishaFixed = PRAYER_METHOD_ISHA_FIXED_MINUTES[prayerSettings.method];
+  const now = Date.now();
+  for(let dayOffset=0; dayOffset<=1; dayOffset++){
+    const day = new Date();
+    day.setDate(day.getDate() + dayOffset);
+    const t = calculatePrayerTimes(day, prayerSettings.lat, prayerSettings.lon, angles[0], angles[1], asrFactor);
+    if(ishaFixed) t.isha = t.maghrib + ishaFixed/60;
+    const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+    for(const key of PRAYER_NOTIFIABLE){
+      const hours = t[key] + (prayerSettings.offsets[key]||0)/60;
+      const at = new Date(dayStart.getTime() + Math.round(hours*3600000));
+      if(at.getTime() > now) return { key, at };
+    }
+  }
+  return null;
+}
+
+function renderPrayerTimesList(){
+  const times = computeTodayPrayerTimes();
+  const next = computeNextPrayer();
+  const list = document.getElementById('prayerTimesList');
+  if(!list) return;
+  list.innerHTML = ['fajr','sunrise','dhuhr','asr','maghrib','isha'].map(key => {
+    const active = next && next.key === key && new Date().toDateString() === next.at.toDateString();
+    return `<div class="prayer-time-row${active?' active':''}"><span class="prayer-time-name">${PRAYER_NAMES[key]}</span><span class="prayer-time-value">${times[key]}</span></div>`;
+  }).join('');
+  document.getElementById('prayerDateLabel').textContent = new Date().toLocaleDateString('ru-RU', { day:'numeric', month:'long' });
+  if(next){
+    document.getElementById('prayerNextName').textContent = PRAYER_NAMES[next.key];
+    document.getElementById('prayerNextTime').textContent = formatPrayerHours(next.at.getHours() + next.at.getMinutes()/60);
+  }
+}
+let prayerCountdownHandle = null;
+function tickPrayerCountdown(){
+  const next = computeNextPrayer();
+  const el = document.getElementById('prayerNextCountdown');
+  if(!el) return;
+  if(!next){ el.textContent = ''; return; }
+  const ms = Math.max(0, next.at.getTime() - Date.now());
+  if(ms <= 0){ renderPrayerTimesList(); return; }
+  const totalMin = Math.floor(ms/60000);
+  const h = Math.floor(totalMin/60), m = totalMin % 60, s = Math.floor((ms%60000)/1000);
+  el.textContent = h > 0 ? `через ${h} ч ${m} мин` : `через ${m} мин ${s} с`;
+}
+
+function setPrayerCityLabel(){
+  const el = document.getElementById('prayerCityLabel');
+  if(!el) return;
+  el.textContent = prayerSettings.cityLabel || `${prayerSettings.lat.toFixed(2)}, ${prayerSettings.lon.toFixed(2)}`;
+}
+
+function locatePrayerCity(){
+  const btn = document.getElementById('prayerLocateBtn');
+  if(!navigator.geolocation){ showToast('Геолокация не поддерживается'); return; }
+  if(btn){ btn.disabled = true; btn.textContent = 'Определяем…'; }
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    prayerSettings.lat = pos.coords.latitude;
+    prayerSettings.lon = pos.coords.longitude;
+    prayerSettings.cityLabel = '';
+    setPrayerCityLabel();
+    renderPrayerTimesList();
+    savePrayerSettings();
+    // Best-effort reverse geocode for a human-readable label — a free,
+    // keyless client-side endpoint; the coordinates above already work
+    // fully without this, so a failure here just leaves the raw numbers
+    // showing instead of a city name.
+    try{
+      const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&localityLanguage=ru`);
+      const data = await res.json();
+      const label = data.city || data.locality || data.principalSubdivision;
+      if(label){
+        prayerSettings.cityLabel = label;
+        setPrayerCityLabel();
+        savePrayerSettings();
+      }
+    }catch(e){ /* coordinates alone are still fully usable */ }
+    if(btn){ btn.disabled = false; btn.textContent = 'Обновить'; }
+  }, (err) => {
+    console.warn('geolocation failed:', err);
+    showToast('Не удалось определить местоположение: ' + (err.message||err));
+    if(btn){ btn.disabled = false; btn.textContent = 'Определить'; }
+  }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 3600000 });
+}
+
+function renderPrayerNotifList(){
+  const wrap = document.getElementById('prayerNotifList');
+  if(!wrap) return;
+  wrap.innerHTML = PRAYER_NOTIFIABLE.map(key => `
+    <div class="prayer-notif-row" data-prayer="${key}">
+      <span>${PRAYER_NAMES[key]}</span>
+      <label style="position:relative;display:inline-block;width:40px;height:24px;flex-shrink:0;">
+        <input type="checkbox" class="prayer-notif-toggle" style="opacity:0;width:0;height:0;"${prayerSettings.enabled[key] ? ' checked' : ''}>
+        <span class="slider" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:var(--fill-3);transition:.4s;border-radius:24px;border:1px solid var(--line);"></span>
+        <span class="slider-knob" style="position:absolute;content:'';height:18px;width:18px;left:2px;bottom:2px;background-color:var(--ivory);transition:.4s;border-radius:50%;"></span>
+      </label>
+    </div>
+  `).join('');
+  wrap.querySelectorAll('.prayer-notif-toggle').forEach(applyDrawerToggleStyle);
+}
+
+function renderPrayerPillStates(){
+  document.querySelectorAll('#prayerSoundRow .prayer-pill-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.sound) === prayerSettings.soundMode));
+  document.querySelectorAll('#prayerMadhabRow .prayer-pill-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.madhab) === prayerSettings.madhab));
+}
+
+let prayerScreenWired = false;
+function wirePrayerScreenOnce(){
+  if(prayerScreenWired) return;
+  prayerScreenWired = true;
+  document.getElementById('prayerLocateBtn').addEventListener('click', locatePrayerCity);
+  document.getElementById('prayerMethodSelect').addEventListener('change', e => {
+    prayerSettings.method = parseInt(e.target.value) || 0;
+    renderPrayerTimesList();
+    savePrayerSettings();
+  });
+  document.getElementById('prayerNotifList').addEventListener('change', e => {
+    const toggle = e.target.closest('.prayer-notif-toggle');
+    if(!toggle) return;
+    const key = toggle.closest('.prayer-notif-row').dataset.prayer;
+    prayerSettings.enabled[key] = toggle.checked;
+    applyDrawerToggleStyle(toggle);
+    savePrayerSettings();
+  });
+  document.getElementById('prayerSoundRow').addEventListener('click', e => {
+    const btn = e.target.closest('.prayer-pill-btn');
+    if(!btn) return;
+    prayerSettings.soundMode = parseInt(btn.dataset.sound);
+    renderPrayerPillStates();
+    savePrayerSettings();
+  });
+  document.getElementById('prayerMadhabRow').addEventListener('click', e => {
+    const btn = e.target.closest('.prayer-pill-btn');
+    if(!btn) return;
+    prayerSettings.madhab = parseInt(btn.dataset.madhab);
+    renderPrayerPillStates();
+    renderPrayerTimesList();
+    savePrayerSettings();
+  });
+}
+function openPrayerScreen(){
+  // Captured before loadPrayerSettings()/savePrayerSettings() below, which
+  // would otherwise write this same key and make "is this the first visit"
+  // always false by the time it's checked.
+  const isFirstVisit = !localStorage.getItem('prayerSettings');
+  prayerSettings = loadPrayerSettings();
+  wirePrayerScreenOnce();
+  document.getElementById('prayerMethodSelect').value = String(prayerSettings.method);
+  setPrayerCityLabel();
+  renderPrayerTimesList();
+  renderPrayerNotifList();
+  renderPrayerPillStates();
+  savePrayerSettings(); // mirrors current state into native even if nothing changes this visit
+  if(prayerCountdownHandle) clearInterval(prayerCountdownHandle);
+  prayerCountdownHandle = setInterval(tickPrayerCountdown, 1000);
+  tickPrayerCountdown();
+  // First-ever visit with no location saved yet — ask right away instead of
+  // showing Mecca's times with no explanation why.
+  if(isFirstVisit) locatePrayerCity();
+}
 
 </script>
 </body>
