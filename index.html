@@ -13196,12 +13196,34 @@ function listenKaraokePlayIndex(i){
   const el = document.querySelector(`.listen-karaoke-ayah[data-index="${i}"]`);
   if(el) el.scrollIntoView({ block:'center', behavior:'smooth' });
 }
+// The full-track file (mp3quran.net) and the per-ayah clips (api.quran.com)
+// are two different recordings, so there's no shared timestamp to jump to
+// — this estimates which ayah the listener was at by treating recitation
+// speed as roughly proportional to each ayah's text length, which lands
+// close enough that karaoke picks up near where playback actually was
+// instead of always restarting at ayah 1.
+function listenEstimateAyahIndexForFraction(fraction){
+  const ayahs = listenKaraokeState.ayahs;
+  if(!ayahs.length || fraction <= 0) return 0;
+  const lengths = ayahs.map(a => (a.text || '').length || 1);
+  const total = lengths.reduce((s, n) => s + n, 0);
+  const targetPos = fraction * total;
+  let acc = 0;
+  for(let i = 0; i < lengths.length; i++){
+    acc += lengths[i];
+    if(acc >= targetPos) return i;
+  }
+  return ayahs.length - 1;
+}
 async function listenOpenKaraoke(){
   if(!listenState.reciter || !listenState.currentSurah){ showToast('Сначала включите суру'); return; }
   const reciter = listenState.reciter;
   const recitationId = LISTEN_KARAOKE_RECITATION_IDS[reciter.id];
   if(!recitationId){ showToast('Текст с подсветкой недоступен для этого чтеца'); return; }
   const chapterNum = listenState.currentSurah;
+  // Capture how far into the currently-playing full track we are BEFORE
+  // switching the audio element over to per-ayah clips.
+  const resumeFraction = (listenState.audioIsFullTrack && listenAudioEl.duration) ? (listenAudioEl.currentTime / listenAudioEl.duration) : 0;
   const overlay = document.getElementById('listenKaraokeOverlay');
   overlay.style.display = 'flex';
   document.getElementById('listenKaraokeScroll').innerHTML = '<div class="listen-status">Загрузка текста…</div>';
@@ -13220,7 +13242,7 @@ async function listenOpenKaraoke(){
     listenKaraokeState.ayahs = (versesData.verses || []).map(v => ({ key:v.verse_key, text:v.text_uthmani, audioUrl:audioByKey[v.verse_key] }));
     listenKaraokeState.currentIndex = -1;
     renderListenKaraokeAyahs();
-    listenKaraokePlayIndex(0);
+    listenKaraokePlayIndex(listenEstimateAyahIndexForFraction(resumeFraction));
   }catch(e){
     document.getElementById('listenKaraokeScroll').innerHTML = '<div class="listen-status">Не удалось загрузить текст. Проверьте подключение к интернету.</div>';
   }
