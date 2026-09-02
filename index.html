@@ -9628,6 +9628,17 @@ let chatThreadUnsub = null;
 let chatThreadKey = null;
 let chatThreadPresenceUnsub = null;
 let chatThreadTypingUnsub = null;
+// Header status line under the thread name — typing overrides online/
+// last-seen while it's happening, then falls back once it stops.
+let chatThreadIsOnline = false;
+let chatThreadIsTyping = false;
+let chatThreadLastActiveText = null;
+function updateChatThreadStatusText(){
+  const el = document.getElementById('chatThreadStatus');
+  if(!el) return;
+  if(chatThreadIsTyping){ el.textContent = 'печатает…'; return; }
+  el.textContent = chatThreadIsOnline ? 'в сети' : (chatThreadLastActiveText ? `был(а) ${chatThreadLastActiveText}` : '');
+}
 // Read receipts: the friend's own lastRead timestamp for this thread, kept
 // live so "sent" vs "read" checkmarks on my own messages update in real
 // time without needing per-message read state.
@@ -10020,16 +10031,32 @@ function openChatThread(username, name, avatar){
   updateChatComposerButtons();
   const dot = document.getElementById('chatThreadPresence');
   dot.classList.remove('online');
-  chatThreadPresenceUnsub = watchPresence(username, online => dot.classList.toggle('online', online));
+  chatThreadIsOnline = false;
+  chatThreadIsTyping = false;
+  chatThreadLastActiveText = null;
+  chatThreadPresenceUnsub = watchPresence(username, online => {
+    dot.classList.toggle('online', online);
+    chatThreadIsOnline = online;
+    updateChatThreadStatusText();
+  });
 
   const path = chatPairPath(username);
   chatThreadKey = path;
   document.getElementById('chatThreadStatus').textContent = '';
+  // Presence (above) only says online/offline right now — the last-seen
+  // time for when they're not shows up here, fetched the same way the
+  // friend profile sheet already does (apiGetProfile's stats.lastActive).
+  apiGetProfile(username).then(result => {
+    if(chatThreadKey !== path) return;
+    chatThreadLastActiveText = formatLastActive(result?.stats?.lastActive);
+    updateChatThreadStatusText();
+  }).catch(()=>{});
   fbAuthReady.then(()=>{
     if(!fbDb || chatThreadKey !== path) return;
     const typingRef = fbDb.ref(path+'/typing/'+fbKey(username));
     const typingListener = snap => {
-      document.getElementById('chatThreadStatus').textContent = snap.val() ? 'печатает…' : '';
+      chatThreadIsTyping = !!snap.val();
+      updateChatThreadStatusText();
     };
     typingRef.on('value', typingListener);
     chatThreadTypingUnsub = () => typingRef.off('value', typingListener);
