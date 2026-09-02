@@ -3039,6 +3039,13 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
           <option value="10">Moonsighting Committee</option>
         </select>
 
+        <div class="section-label">Крупная цифра в виджете</div>
+        <p class="section-desc" style="margin-top:0;">Что показывать крупно на виджете рабочего стола — время ближайшего намаза или обычные часы.</p>
+        <div class="prayer-pill-row" id="prayerWidgetDisplayRow">
+          <button type="button" class="prayer-pill-btn" data-widget-display="0">Время намаза</button>
+          <button type="button" class="prayer-pill-btn" data-widget-display="1">Часы</button>
+        </div>
+
         <div class="section-label">Мазхаб (для времени Аср)</div>
         <div class="prayer-pill-row" id="prayerMadhabRow">
           <button type="button" class="prayer-pill-btn" data-madhab="0">Шафии/Малики/Ханбали</button>
@@ -13902,7 +13909,7 @@ function loadPrayerSettings(){
   try{ s = JSON.parse(localStorage.getItem('prayerSettings') || '{}'); }catch(e){}
   return Object.assign({
     lat: PRAYER_DEFAULT_LAT, lon: PRAYER_DEFAULT_LON, cityLabel: '',
-    method: 0, madhab: 0, soundMode: 0,
+    method: 0, madhab: 0, soundMode: 0, widgetBigDisplay: 0, // 0 = время намаза, 1 = часы
     enabled: { fajr:false, dhuhr:false, asr:false, maghrib:false, isha:false },
     offsets: { fajr:0, sunrise:0, dhuhr:0, asr:0, maghrib:0, isha:0 },
   }, s, { enabled: Object.assign({fajr:false,dhuhr:false,asr:false,maghrib:false,isha:false}, s.enabled), offsets: Object.assign({fajr:0,sunrise:0,dhuhr:0,asr:0,maghrib:0,isha:0}, s.offsets) });
@@ -14035,6 +14042,7 @@ function renderPrayerNotifList(){
 function renderPrayerPillStates(){
   document.querySelectorAll('#prayerSoundRow .prayer-pill-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.sound) === prayerSettings.soundMode));
   document.querySelectorAll('#prayerMadhabRow .prayer-pill-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.madhab) === prayerSettings.madhab));
+  document.querySelectorAll('#prayerWidgetDisplayRow .prayer-pill-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.widgetDisplay) === prayerSettings.widgetBigDisplay));
 }
 
 let prayerScreenWired = false;
@@ -14068,6 +14076,13 @@ function wirePrayerScreenOnce(){
     prayerSettings.madhab = parseInt(btn.dataset.madhab);
     renderPrayerPillStates();
     renderPrayerTimesList();
+    savePrayerSettings();
+  });
+  document.getElementById('prayerWidgetDisplayRow').addEventListener('click', e => {
+    const btn = e.target.closest('.prayer-pill-btn');
+    if(!btn) return;
+    prayerSettings.widgetBigDisplay = parseInt(btn.dataset.widgetDisplay);
+    renderPrayerPillStates();
     savePrayerSettings();
   });
 }
