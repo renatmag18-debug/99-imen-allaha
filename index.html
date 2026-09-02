@@ -1732,9 +1732,15 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 .listen-surah-row .listen-dl-btn.loading{ opacity:.5; pointer-events:none; }
 .listen-surah-row .name{ flex:1; min-width:0; }
 .listen-player-bar{
-  display:flex; align-items:center; gap:10px; padding:10px 16px; flex-shrink:0;
+  /* Floats above the pill-shaped .tabbar (which is position:absolute over
+     the whole screen) instead of sitting in normal flow, where it would
+     end up hidden underneath it at the very bottom of the screen. */
+  position:absolute; left:0; right:0; bottom:calc(96px + var(--safe-bottom)); z-index:5;
+  display:flex; align-items:center; gap:10px; padding:10px 16px;
   background:var(--panel); border-top:1px solid var(--line);
+  box-shadow:0 -10px 24px -14px rgba(0,0,0,0.4);
 }
+#listenSurahListWrap.has-player{ padding-bottom:calc(96px + 70px + var(--safe-bottom)); }
 .listen-player-play{
   flex-shrink:0; width:38px; height:38px; border-radius:50%; border:none; background:var(--gold);
   color:var(--on-accent); display:flex; align-items:center; justify-content:center; cursor:pointer;
@@ -12918,7 +12924,7 @@ const LISTEN_ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="none"><rect x="5" y="4
 const LISTEN_ICON_DOWNLOAD = '<svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 19h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
 const LISTEN_ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-8 0l1 13a1 1 0 001 1h6a1 1 0 001-1l1-13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
-const listenState = { reciter:null, chapters:null, downloaded:new Set(), currentSurah:null, playing:false };
+const listenState = { reciter:null, chapters:null, downloaded:new Set(), currentSurah:null, loadedReciterId:null, playing:false };
 const listenAudioEl = new Audio();
 let listenCurrentObjectUrl = null;
 let listenDbPromise = null;
@@ -13024,7 +13030,7 @@ function renderListenSurahList(){
   if(!list) return;
   list.innerHTML = chapters.map(c => {
     const downloaded = listenState.downloaded.has(String(c.id));
-    const active = listenState.currentSurah === c.id;
+    const active = listenState.currentSurah === c.id && listenState.loadedReciterId === listenState.reciter.id;
     return `
     <div class="quran-surah-row listen-surah-row ${active ? 'active' : ''}" data-surah="${c.id}">
       <span class="n">${c.id}</span>
@@ -13050,25 +13056,32 @@ function updateListenPlayerPlayBtn(){
 function showListenPlayerBar(surahNum){
   const chapter = quranChapterFor(surahNum);
   document.getElementById('listenPlayerBar').style.display = 'flex';
+  document.getElementById('listenSurahListWrap').classList.add('has-player');
   document.getElementById('listenPlayerName').textContent = (chapter ? quranSurahDisplayName(chapter) : '') + ' — ' + listenState.reciter.name;
 }
 async function listenPlaySurah(surahNum){
-  if(listenState.currentSurah === surahNum){
+  // Same surah number can mean a totally different track once the reciter
+  // has changed, so "already loaded" must check reciter+surah together —
+  // otherwise pressing play for surah N under a new reciter just resumed
+  // whatever the previous reciter's audio element still had loaded.
+  if(listenState.currentSurah === surahNum && listenState.loadedReciterId === listenState.reciter.id){
     if(listenAudioEl.paused) listenAudioEl.play().catch(()=>{});
     else listenAudioEl.pause();
     return;
   }
+  const reciter = listenState.reciter;
   listenState.currentSurah = surahNum;
+  listenState.loadedReciterId = reciter.id;
   showListenPlayerBar(surahNum);
   renderListenSurahList();
   if(listenCurrentObjectUrl){ URL.revokeObjectURL(listenCurrentObjectUrl); listenCurrentObjectUrl = null; }
-  const cachedBlob = await listenGetCachedBlob(listenState.reciter.id, surahNum);
-  if(listenState.currentSurah !== surahNum) return;
+  const cachedBlob = await listenGetCachedBlob(reciter.id, surahNum);
+  if(listenState.currentSurah !== surahNum || listenState.loadedReciterId !== reciter.id) return;
   if(cachedBlob){
     listenCurrentObjectUrl = URL.createObjectURL(cachedBlob);
     listenAudioEl.src = listenCurrentObjectUrl;
   } else {
-    listenAudioEl.src = listenTrackUrl(listenState.reciter, surahNum);
+    listenAudioEl.src = listenTrackUrl(reciter, surahNum);
   }
   listenAudioEl.play().catch(()=>{ showToast('Не удалось воспроизвести запись'); });
 }
