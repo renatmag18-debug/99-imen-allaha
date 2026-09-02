@@ -12978,7 +12978,103 @@ const LISTEN_ICON_DOWNLOAD = '<svg viewBox="0 0 24 24" fill="none"><path d="M12 
 const LISTEN_ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-8 0l1 13a1 1 0 001 1h6a1 1 0 001-1l1-13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 const listenState = { reciter:null, chapters:null, downloaded:new Set(), currentSurah:null, loadedReciterId:null, playing:false };
-const listenAudioEl = new Audio();
+
+// Bridges to ListenAudioService (see its own header comment) when running
+// inside the app, so playback shows up as a real Android media
+// notification with lock-screen controls and survives backgrounding —
+// none of which a plain WebView <audio> element gets for free. Falls back
+// to that plain <audio> element (a real one, further down) when the
+// bridge isn't there — a desktop/browser preview of this same page, for
+// instance — so every listen* function below works unchanged either way.
+const listenNativeBridge = (typeof AndroidApp !== 'undefined' && typeof AndroidApp.listenPlayUrl === 'function') ? AndroidApp : null;
+function listenBlobToBase64(blob){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(String(reader.result).split(',')[1] || '');
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+// Mimics just the slice of HTMLMediaElement every listen* function already
+// relies on (play/pause, currentTime/duration/paused getters, a src
+// setter, and 'play'/'pause'/'ended'/'timeupdate'/'loadedmetadata' via
+// addEventListener) so none of that code needs to know or care whether
+// it's driving a real <audio> tag or this. State is pushed in from native
+// via window.onListenNativeEvent below, not read live from anywhere —
+// native is the actual source of truth for what's playing.
+class NativeAudioShim extends EventTarget {
+  constructor(){
+    super();
+    this._src = '';
+    this._currentTime = 0;
+    this._duration = NaN;
+    this._paused = true;
+    this._title = ''; this._subtitle = ''; this._key = '';
+    // True once a native play call has actually been issued for the
+    // CURRENT _src — mirrors real <audio>, where a first .play() after
+    // setting .src starts loading it, but a later .play() (after a
+    // .pause()) just resumes instead of reloading from the top.
+    this._started = false;
+  }
+  setTrackMeta(title, subtitle, key){ this._title = title; this._subtitle = subtitle; this._key = key; }
+  get src(){ return this._src; }
+  set src(value){ this._src = value; this._currentTime = 0; this._duration = NaN; this._paused = true; this._started = false; }
+  get currentTime(){ return this._currentTime; }
+  set currentTime(sec){ this._currentTime = sec; listenNativeBridge.listenSeek(sec); }
+  get duration(){ return this._duration; }
+  get paused(){ return this._paused; }
+  play(){
+    return (async () => {
+      if(this._started){ listenNativeBridge.listenResume(); return; }
+      this._started = true;
+      if(this._src.indexOf('blob:') === 0){
+        const blob = await fetch(this._src).then(r => r.blob());
+        const base64 = await listenBlobToBase64(blob);
+        listenNativeBridge.listenPlayBytes(base64, this._title, this._subtitle, this._key);
+      } else {
+        listenNativeBridge.listenPlayUrl(this._src, this._title, this._subtitle, this._key);
+      }
+    })();
+  }
+  pause(){ this._paused = true; listenNativeBridge.listenPause(); }
+}
+window.onListenNativeEvent = function(data){
+  if(!(listenAudioEl instanceof NativeAudioShim)) return;
+  switch(data.event){
+    case 'playing':
+      if(typeof data.duration === 'number'){ listenAudioEl._duration = data.duration; listenAudioEl.dispatchEvent(new Event('loadedmetadata')); }
+      listenAudioEl._paused = false;
+      listenAudioEl.dispatchEvent(new Event('play'));
+      break;
+    case 'paused':
+      listenAudioEl._paused = true;
+      listenAudioEl.dispatchEvent(new Event('pause'));
+      break;
+    case 'timeupdate':
+      if(typeof data.currentTime === 'number') listenAudioEl._currentTime = data.currentTime;
+      if(typeof data.duration === 'number' && isFinite(data.duration)) listenAudioEl._duration = data.duration;
+      listenAudioEl.dispatchEvent(new Event('timeupdate'));
+      break;
+    case 'ended':
+      listenAudioEl._paused = true;
+      listenAudioEl.dispatchEvent(new Event('ended'));
+      break;
+    case 'error':
+      listenAudioEl._paused = true;
+      showToast('Не удалось воспроизвести запись');
+      break;
+    case 'skip':
+      listenPlayAdjacentSurah(data.dir === 'prev' ? -1 : 1);
+      break;
+  }
+};
+const listenAudioEl = listenNativeBridge ? new NativeAudioShim() : new Audio();
+function listenSetTrackMeta(reciter, surahNum){
+  if(typeof listenAudioEl.setTrackMeta !== 'function') return;
+  const chapter = quranChapterFor(surahNum);
+  const title = chapter ? quranSurahDisplayName(chapter) : ('Сура ' + surahNum);
+  listenAudioEl.setTrackMeta(title, reciter.name, listenTrackKey(reciter.id, surahNum));
+}
 let listenCurrentObjectUrl = null;
 let listenDbPromise = null;
 
@@ -13221,6 +13317,7 @@ async function listenPlaySurah(surahNum){
       listenAyah.active = true;
       if(listenKaraokeOverlayOpen) renderListenKaraokeAyahs();
     }
+    listenSetTrackMeta(reciter, surahNum);
     listenAudioEl.src = cachedBlob ? (listenCurrentObjectUrl = URL.createObjectURL(cachedBlob)) : audioUrl;
   } else {
     // No exact timing source for this reciter — queue up the estimate to
@@ -13234,6 +13331,7 @@ async function listenPlaySurah(surahNum){
         document.getElementById('listenKaraokeScroll').innerHTML = '<div class="listen-status">Не удалось загрузить текст.</div>';
       }
     });
+    listenSetTrackMeta(reciter, surahNum);
     if(cachedBlob){
       listenCurrentObjectUrl = URL.createObjectURL(cachedBlob);
       listenAudioEl.src = listenCurrentObjectUrl;
