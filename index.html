@@ -1128,18 +1128,15 @@ body{
 .chat-bubble-row.mine .chat-voice-play{ background:rgba(0,0,0,.16); }
 .chat-voice-play svg{ width:15px; height:15px; }
 .chat-voice-body{ flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; }
-/* Telegram-style two-tone waveform, seekable by dragging — bg/fg render the
-   exact same bars (see the shared markup in renderChatMessage), with fg
-   clipped to the played fraction rather than resized, so its bars land
-   pixel-for-pixel over bg's regardless of bubble width (see the JS side's
-   own comment on why clip-path beats a width percentage here). */
-.chat-voice-waveform{ position:relative; height:22px; cursor:pointer; touch-action:none; }
-.chat-voice-wave-bg, .chat-voice-wave-fg{
-  position:absolute; inset:0; display:flex; align-items:center; justify-content:space-between;
-}
-.chat-voice-wave-bg{ opacity:.32; }
-.chat-voice-wave-fg{ clip-path:inset(0 100% 0 0); }
-.chat-voice-wave-bar{ flex:0 0 2px; width:2px; min-height:3px; border-radius:1px; background:currentColor; }
+/* Telegram-style two-tone waveform, seekable by dragging — one set of bars,
+   each individually toggled to the "played" look by setVoiceWaveformProgress
+   (see its own comment for why: a clip-path-based two-layer version turned
+   out unreliable on at least one real WebView, always freezing partway
+   through regardless of how correct the underlying playback position was —
+   per-bar opacity has no such repaint-timing dependency to get wrong). */
+.chat-voice-waveform{ position:relative; height:22px; cursor:pointer; touch-action:none; display:flex; align-items:center; justify-content:space-between; }
+.chat-voice-wave-bar{ flex:0 0 2px; width:2px; min-height:3px; border-radius:1px; background:currentColor; opacity:.32; }
+.chat-voice-wave-bar.played{ opacity:1; }
 .chat-voice-duration{ font-size:11px; opacity:.75; font-family:var(--font-num); }
 
 .chat-video-record-bar{
@@ -9570,10 +9567,7 @@ function renderChatThreadMessages(messagesObj, isLiveSnapshot){
            <svg class="icon-pause" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
          </button>
          <div class="chat-voice-body">
-           <div class="chat-voice-waveform" data-voice-id="${escapeHtml(id)}" data-total="${m.duration||0}" data-wf-len="${(m.waveform||[]).length}">
-             <div class="chat-voice-wave-bg">${voiceWaveformBarsHtml(m.waveform)}</div>
-             <div class="chat-voice-wave-fg">${voiceWaveformBarsHtml(m.waveform)}</div>
-           </div>
+           <div class="chat-voice-waveform" data-voice-id="${escapeHtml(id)}" data-total="${m.duration||0}">${voiceWaveformBarsHtml(m.waveform)}</div>
            <span class="chat-voice-duration" data-total="${m.duration||0}">${formatVoiceDuration(m.duration||0)}</span>
          </div>`;
     } else if(m.type === 'video'){
@@ -10400,10 +10394,10 @@ function downsampleWaveform(samples, buckets){
   }
   return out;
 }
-// Renders the bar markup shared by a voice bubble's bg (dim) and fg (played,
-// clipped by CSS to the current fraction — see .chat-voice-wave-fg) layers.
-// Falls back to a flat low waveform for messages sent before this existed
-// (no m.waveform saved), so old messages still render sensibly.
+// Renders a voice bubble's waveform bars — one set, individually toggled
+// "played" by setVoiceWaveformProgress as playback advances. Falls back to a
+// flat low waveform for messages sent before this existed (no m.waveform
+// saved), so old messages still render sensibly.
 function voiceWaveformBarsHtml(waveform){
   const values = (waveform && waveform.length) ? waveform : new Array(VOICE_WAVEFORM_BUCKETS).fill(0.15);
   return values.map(v => `<span class="chat-voice-wave-bar" style="height:${3 + Math.max(0,Math.min(1,v))*16}px"></span>`).join('');
@@ -11125,13 +11119,24 @@ const chatVoiceAudioEl = new Audio();
 let chatVoicePlayingBtn = null;
 let chatVoicePlayingId = null;
 let chatMediaDataById = {};
-// Shared by the bg/fg waveform layers' own comment (see the CSS) — `scope`
-// is any ancestor of a bubble's .chat-voice-wave-fg (the bubble, the body,
-// or the waveform element itself all work, since querySelector searches
-// every descendant).
+// `scope` is either the .chat-voice-waveform itself or any ancestor of it
+// (the bubble, the body — querySelector searches every descendant either
+// way). Toggles each bar individually rather than clipping a second overlay
+// layer — see the CSS comment on .chat-voice-waveform for why: a clip-path
+// version of this kept freezing partway through playback on at least one
+// real WebView despite the underlying currentTime being correct the whole
+// time, and plain opacity on the actual bars has no such repaint-timing
+// trap to fall into.
 function setVoiceWaveformProgress(scope, fraction){
-  const fg = scope.querySelector('.chat-voice-wave-fg');
-  if(fg) fg.style.clipPath = `inset(0 ${(1-Math.max(0,Math.min(1,fraction)))*100}% 0 0)`;
+  const wave = scope.classList && scope.classList.contains('chat-voice-waveform') ? scope : scope.querySelector('.chat-voice-waveform');
+  if(!wave) return;
+  const bars = wave.querySelectorAll('.chat-voice-wave-bar');
+  const n = bars.length;
+  const f = Math.max(0, Math.min(1, fraction));
+  bars.forEach((bar, i) => {
+    const barFraction = n > 1 ? i / (n - 1) : 0;
+    bar.classList.toggle('played', barFraction <= f);
+  });
 }
 function resetVoiceButtonUI(btn){
   const playIcon = btn.querySelector('.icon-play'), pauseIcon = btn.querySelector('.icon-pause');
