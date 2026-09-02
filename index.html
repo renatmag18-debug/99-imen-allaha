@@ -1750,6 +1750,36 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 .listen-player-name{ font-size:12.5px; color:var(--ivory); margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .listen-player-seek{ width:100%; accent-color:var(--gold); }
 .listen-player-time{ flex-shrink:0; font-family:var(--font-num); font-size:11.5px; color:var(--ivory-dim); }
+.listen-player-text-btn{
+  flex-shrink:0; width:30px; height:30px; border-radius:50%; border:none; background:var(--glass);
+  color:var(--gold-soft); display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+.listen-player-text-btn svg{ width:15px; height:15px; }
+
+/* Karaoke ("show text") overlay — covers the reciter screen while a
+   surah's ayahs are read, only offered for reciters whose recording is
+   also hosted on api.quran.com (the only source that gives us per-ayah
+   timing/audio, via LISTEN_KARAOKE_RECITATION_IDS) since sentence-level
+   sync against an arbitrary continuous mp3quran.net file isn't possible
+   without that per-ayah breakdown. */
+.listen-karaoke-overlay{
+  position:absolute; inset:0; z-index:7; background:var(--bg);
+  display:flex; flex-direction:column;
+}
+.listen-karaoke-scroll{ flex:1; padding:8px 20px calc(96px + var(--safe-bottom)); }
+.listen-karaoke-ayah{
+  display:flex; align-items:flex-start; gap:12px; padding:16px 10px; border-radius:var(--r-card);
+  transition:background .25s;
+}
+.listen-karaoke-ayah.active{ background:var(--accent-tint); }
+.listen-karaoke-ayah-num{
+  flex-shrink:0; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  background:var(--glass); color:var(--gold-soft); font-family:var(--font-num); font-size:11px; margin-top:2px;
+}
+.listen-karaoke-ayah-text{
+  flex:1; font-family:var(--font-ar); font-size:23px; line-height:2; color:var(--ivory); direction:rtl; text-align:right;
+}
+.listen-karaoke-ayah.active .listen-karaoke-ayah-text{ color:var(--gold-soft); }
 .friend-empty-hint{ font-size:12.5px; color:var(--ivory-dim); text-align:center; padding:18px 10px; opacity:.75; }
 
 .friend-row{
@@ -3116,6 +3146,19 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
           <input type="range" class="listen-player-seek" id="listenPlayerSeek" min="0" max="1000" value="0">
         </div>
         <div class="listen-player-time" id="listenPlayerTime">0:00</div>
+        <button type="button" class="listen-player-text-btn" id="listenPlayerTextBtn" aria-label="Показать текст" title="Показать текст" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h10M4 18h13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="listen-karaoke-overlay" id="listenKaraokeOverlay" style="display:none;">
+        <div class="quran-head">
+          <button type="button" class="nav-arrow" id="listenKaraokeCloseBtn" aria-label="Закрыть"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+          <div style="flex:1;text-align:center;padding:0;">
+            <div class="section-title" style="padding:0;" id="listenKaraokeTitle">Сура</div>
+          </div>
+          <button type="button" class="listen-player-play" id="listenKaraokePlayBtn" style="width:38px;height:38px;flex-shrink:0;" aria-label="Пауза"></button>
+        </div>
+        <div class="scroll listen-karaoke-scroll" id="listenKaraokeScroll"></div>
       </div>
     </section>
 
@@ -12924,10 +12967,19 @@ const LISTEN_ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="none"><rect x="5" y="4
 const LISTEN_ICON_DOWNLOAD = '<svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 19h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
 const LISTEN_ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-8 0l1 13a1 1 0 001 1h6a1 1 0 001-1l1-13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
-const listenState = { reciter:null, chapters:null, downloaded:new Set(), currentSurah:null, loadedReciterId:null, playing:false };
+const listenState = { reciter:null, chapters:null, downloaded:new Set(), currentSurah:null, loadedReciterId:null, audioIsFullTrack:false, playing:false };
 const listenAudioEl = new Audio();
 let listenCurrentObjectUrl = null;
 let listenDbPromise = null;
+
+// "Show text" (karaoke) is only offered for reciters whose recitation is
+// ALSO hosted on api.quran.com under one of its small set of legacy
+// recitation ids — that's the only source giving us the file split into
+// separate per-ayah clips, which is what makes exact-sync highlighting
+// possible without parsing timestamps out of a single continuous file.
+const LISTEN_KARAOKE_RECITATION_IDS = { afs:7, sds:3, shatri:4, hani:5, husr:6, minsh:9, shur:10, basit:2 };
+const listenKaraokeState = { active:false, ayahs:[], currentIndex:-1, chapterNum:null };
+function listenHasKaraoke(reciterId){ return !!LISTEN_KARAOKE_RECITATION_IDS[reciterId]; }
 
 function listenPad3(n){ return String(n).padStart(3,'0'); }
 function listenTrackUrl(reciter, surahNum){ return reciter.server + listenPad3(surahNum) + '.mp3'; }
@@ -13058,13 +13110,15 @@ function showListenPlayerBar(surahNum){
   document.getElementById('listenPlayerBar').style.display = 'flex';
   document.getElementById('listenSurahListWrap').classList.add('has-player');
   document.getElementById('listenPlayerName').textContent = (chapter ? quranSurahDisplayName(chapter) : '') + ' — ' + listenState.reciter.name;
+  document.getElementById('listenPlayerTextBtn').style.display = listenHasKaraoke(listenState.reciter.id) ? 'flex' : 'none';
 }
 async function listenPlaySurah(surahNum){
   // Same surah number can mean a totally different track once the reciter
-  // has changed, so "already loaded" must check reciter+surah together —
-  // otherwise pressing play for surah N under a new reciter just resumed
-  // whatever the previous reciter's audio element still had loaded.
-  if(listenState.currentSurah === surahNum && listenState.loadedReciterId === listenState.reciter.id){
+  // has changed (or once karaoke mode swapped the element to a per-ayah
+  // clip), so "already loaded" must check reciter+surah+full-track together
+  // — otherwise pressing play just resumed whatever the audio element
+  // still had loaded rather than this track.
+  if(listenState.currentSurah === surahNum && listenState.loadedReciterId === listenState.reciter.id && listenState.audioIsFullTrack){
     if(listenAudioEl.paused) listenAudioEl.play().catch(()=>{});
     else listenAudioEl.pause();
     return;
@@ -13072,6 +13126,7 @@ async function listenPlaySurah(surahNum){
   const reciter = listenState.reciter;
   listenState.currentSurah = surahNum;
   listenState.loadedReciterId = reciter.id;
+  listenState.audioIsFullTrack = true;
   showListenPlayerBar(surahNum);
   renderListenSurahList();
   if(listenCurrentObjectUrl){ URL.revokeObjectURL(listenCurrentObjectUrl); listenCurrentObjectUrl = null; }
@@ -13112,11 +13167,102 @@ async function listenToggleDownload(surahNum, btnEl){
   renderListenSurahList();
 }
 
-listenAudioEl.addEventListener('play', ()=>{ listenState.playing = true; renderListenSurahList(); updateListenPlayerPlayBtn(); });
-listenAudioEl.addEventListener('pause', ()=>{ listenState.playing = false; renderListenSurahList(); updateListenPlayerPlayBtn(); });
-listenAudioEl.addEventListener('ended', ()=>{ listenState.playing = false; listenPlayAdjacentSurah(1); });
+/* ---- karaoke ("show text") — one ayah clip at a time, from api.quran.com,
+   advancing on 'ended' the same way the dhikr audio queue advances through
+   its list; see LISTEN_KARAOKE_RECITATION_IDS above for why only some
+   reciters offer this. ---- */
+function updateListenKaraokePlayBtn(){
+  const btn = document.getElementById('listenKaraokePlayBtn');
+  if(btn) btn.innerHTML = (listenKaraokeState.active && !listenAudioEl.paused) ? LISTEN_ICON_PAUSE : LISTEN_ICON_PLAY;
+}
+function renderListenKaraokeAyahs(){
+  const wrap = document.getElementById('listenKaraokeScroll');
+  wrap.innerHTML = listenKaraokeState.ayahs.map((a, i) => `
+    <div class="listen-karaoke-ayah${i === listenKaraokeState.currentIndex ? ' active' : ''}" data-index="${i}">
+      <div class="listen-karaoke-ayah-num">${i + 1}</div>
+      <div class="listen-karaoke-ayah-text">${a.text}</div>
+    </div>
+  `).join('');
+}
+function listenKaraokePlayIndex(i){
+  if(i < 0 || i >= listenKaraokeState.ayahs.length){
+    updateListenKaraokePlayBtn();
+    return;
+  }
+  listenKaraokeState.currentIndex = i;
+  listenAudioEl.src = listenKaraokeState.ayahs[i].audioUrl;
+  listenAudioEl.play().catch(()=>{ showToast('Не удалось воспроизвести запись'); });
+  renderListenKaraokeAyahs();
+  const el = document.querySelector(`.listen-karaoke-ayah[data-index="${i}"]`);
+  if(el) el.scrollIntoView({ block:'center', behavior:'smooth' });
+}
+async function listenOpenKaraoke(){
+  if(!listenState.reciter || !listenState.currentSurah){ showToast('Сначала включите суру'); return; }
+  const reciter = listenState.reciter;
+  const recitationId = LISTEN_KARAOKE_RECITATION_IDS[reciter.id];
+  if(!recitationId){ showToast('Текст с подсветкой недоступен для этого чтеца'); return; }
+  const chapterNum = listenState.currentSurah;
+  const overlay = document.getElementById('listenKaraokeOverlay');
+  overlay.style.display = 'flex';
+  document.getElementById('listenKaraokeScroll').innerHTML = '<div class="listen-status">Загрузка текста…</div>';
+  const chapter = quranChapterFor(chapterNum);
+  document.getElementById('listenKaraokeTitle').textContent = chapter ? quranSurahDisplayName(chapter) : ('Сура ' + chapterNum);
+  listenKaraokeState.active = true;
+  listenKaraokeState.chapterNum = chapterNum;
+  try{
+    const [versesData, audioData] = await Promise.all([
+      fetch(`https://api.quran.com/api/v4/quran/verses/uthmani?chapter_number=${chapterNum}`).then(r => r.json()),
+      fetch(`https://api.quran.com/api/v4/quran/recitations/${recitationId}?chapter_number=${chapterNum}`).then(r => r.json()),
+    ]);
+    if(!listenKaraokeState.active || listenKaraokeState.chapterNum !== chapterNum) return;
+    const audioByKey = {};
+    (audioData.audio_files || []).forEach(a => { audioByKey[a.verse_key] = QURAN_AUDIO_BASE + a.url; });
+    listenKaraokeState.ayahs = (versesData.verses || []).map(v => ({ key:v.verse_key, text:v.text_uthmani, audioUrl:audioByKey[v.verse_key] }));
+    listenKaraokeState.currentIndex = -1;
+    renderListenKaraokeAyahs();
+    listenKaraokePlayIndex(0);
+  }catch(e){
+    document.getElementById('listenKaraokeScroll').innerHTML = '<div class="listen-status">Не удалось загрузить текст. Проверьте подключение к интернету.</div>';
+  }
+}
+function listenExitKaraoke(){
+  listenKaraokeState.active = false;
+  listenAudioEl.pause();
+  // The audio element now holds a single-ayah clip URL, not the reciter's
+  // full-surah file — clearing this flag forces the next play tap to
+  // reload the real track instead of "resuming" this leftover clip.
+  listenState.audioIsFullTrack = false;
+  document.getElementById('listenKaraokeOverlay').style.display = 'none';
+  renderListenSurahList();
+  updateListenPlayerPlayBtn();
+}
+document.getElementById('listenPlayerTextBtn').addEventListener('click', listenOpenKaraoke);
+document.getElementById('listenKaraokeCloseBtn').addEventListener('click', listenExitKaraoke);
+document.getElementById('listenKaraokePlayBtn').addEventListener('click', ()=>{
+  if(!listenKaraokeState.active) return;
+  if(listenAudioEl.paused) listenAudioEl.play().catch(()=>{});
+  else listenAudioEl.pause();
+});
+document.getElementById('listenKaraokeScroll').addEventListener('click', e=>{
+  const row = e.target.closest('.listen-karaoke-ayah');
+  if(!row) return;
+  listenKaraokePlayIndex(Number(row.dataset.index));
+});
+
+listenAudioEl.addEventListener('play', ()=>{
+  if(listenKaraokeState.active){ updateListenKaraokePlayBtn(); return; }
+  listenState.playing = true; renderListenSurahList(); updateListenPlayerPlayBtn();
+});
+listenAudioEl.addEventListener('pause', ()=>{
+  if(listenKaraokeState.active){ updateListenKaraokePlayBtn(); return; }
+  listenState.playing = false; renderListenSurahList(); updateListenPlayerPlayBtn();
+});
+listenAudioEl.addEventListener('ended', ()=>{
+  if(listenKaraokeState.active){ listenKaraokePlayIndex(listenKaraokeState.currentIndex + 1); return; }
+  listenState.playing = false; listenPlayAdjacentSurah(1);
+});
 listenAudioEl.addEventListener('timeupdate', ()=>{
-  if(!listenAudioEl.duration) return;
+  if(listenKaraokeState.active || !listenAudioEl.duration) return;
   const seek = document.getElementById('listenPlayerSeek');
   if(seek && !seek.dataset.dragging) seek.value = String(Math.round((listenAudioEl.currentTime / listenAudioEl.duration) * 1000));
   const timeEl = document.getElementById('listenPlayerTime');
@@ -13137,6 +13283,12 @@ document.getElementById('listenSurahList').addEventListener('click', e=>{
 });
 document.getElementById('listenPlayerPlayBtn').addEventListener('click', ()=>{
   if(!listenState.currentSurah) return;
+  // After exiting karaoke, listenAudioEl still holds a single-ayah clip —
+  // reload the real full-surah track instead of just resuming that clip.
+  if(!listenState.audioIsFullTrack){
+    listenPlaySurah(listenState.currentSurah);
+    return;
+  }
   if(listenAudioEl.paused) listenAudioEl.play().catch(()=>{});
   else listenAudioEl.pause();
 });
