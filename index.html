@@ -14244,7 +14244,17 @@ async function listenPlaySurah(surahNum){
   // A leftover value from an earlier, since-replaced storage format
   // (an array of per-ayah blobs) isn't a playable single file — treat it
   // as no cache rather than letting it crash playback.
-  const cachedBlob = (rawCachedBlob && !Array.isArray(rawCachedBlob)) ? rawCachedBlob : null;
+  let cachedBlob = (rawCachedBlob && !Array.isArray(rawCachedBlob)) ? rawCachedBlob : null;
+  // Repairs tracks downloaded while listenFetchWithProgress briefly built
+  // an untyped Blob (empty .type) — those bytes are perfectly fine, they
+  // just play as an empty-MIME blob: URL, which <audio> silently refuses.
+  // Re-wrapping with the right type here fixes them permanently the first
+  // time they're played again, without the user needing to delete and
+  // redownload anything.
+  if(cachedBlob && !cachedBlob.type.startsWith('audio')){
+    cachedBlob = new Blob([cachedBlob], { type: 'audio/mpeg' });
+    listenSaveBlob(reciter.id, surahNum, cachedBlob).catch(()=>{});
+  }
   if(listenState.currentSurah !== surahNum || listenState.loadedReciterId !== reciter.id) return;
   if(listenHasExactKaraoke(reciter.id)){
     let audioUrl = null, verseTimings = [];
@@ -14369,6 +14379,15 @@ async function listenFetchWithProgress(url, onProgress){
   const resp = await fetch(url);
   if(!resp.ok) throw new Error('http ' + resp.status);
   const total = Number(resp.headers.get('Content-Length')) || 0;
+  // Content-Type has to be carried over explicitly onto the reassembled
+  // Blob — resp.blob() does this automatically, but building one by hand
+  // from raw chunks (new Blob(chunks)) defaults to an EMPTY type, and an
+  // untyped blob: URL is exactly the kind of thing <audio> silently
+  // refuses to play. Downloads still "succeeded" (the bytes were fine and
+  // saved to IndexedDB) but every cached track became unplayable — this is
+  // what surfaced as "Не удалось воспроизвести запись" on already-
+  // downloaded surahs.
+  const mimeType = resp.headers.get('Content-Type') || 'audio/mpeg';
   if(!resp.body || !resp.body.getReader || !total){
     const blob = await resp.blob();
     onProgress(blob.size, blob.size || total);
@@ -14384,7 +14403,7 @@ async function listenFetchWithProgress(url, onProgress){
     received += value.length;
     onProgress(received, total);
   }
-  return new Blob(chunks);
+  return new Blob(chunks, { type: mimeType });
 }
 async function listenDownloadAllSurahs(){
   const btn = document.getElementById('listenDownloadAllBtn');
