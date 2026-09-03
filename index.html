@@ -6888,13 +6888,12 @@ document.getElementById('sideDrawerList').addEventListener('click', e=>{
   } else if(key === 'tajweed'){
     go('tajweed');
   } else if(key === 'mecca_live'){
-    // Prefer the native activity when available — see MeccaLiveActivity's
-    // own comment for why: the in-page <iframe> fallback below shows
-    // YouTube's "Error 153" inside the native app specifically, since that
-    // WebView's origin is file:// (this whole app being one page loaded via
-    // loadDataWithBaseURL). A real browser/PWA context (a genuine https://
-    // origin) doesn't have that problem, so the iframe sheet stays as the
-    // fallback there.
+    // Prefer the native activity when available — a dedicated Activity
+    // with its own full-page WebView, rather than an <iframe> inside this
+    // one; see MeccaLiveActivity's own comment for the full story of why
+    // (and what actually turned out to matter: which video id, not the
+    // page's origin). The in-page iframe sheet below stays as the fallback
+    // for a plain browser/PWA context.
     if(typeof AndroidApp !== 'undefined' && typeof AndroidApp.openMeccaLive === 'function'){
       AndroidApp.openMeccaLive();
     } else if(typeof openMeccaLiveSheet === 'function'){
@@ -14827,27 +14826,30 @@ document.getElementById('quranSurahBackdrop').addEventListener('click', closeQur
 
 /* =====================================================
    MECCA LIVE (web/PWA fallback) — embeds the official Saudi Quran TV
-   channel's live broadcast from Al-Masjid al-Haram (channel id verified
-   directly against youtube.com/user/SaudiQuranTv — the government-run
-   Saudi Broadcasting Authority channel, not a random re-stream) as an
-   in-page <iframe>. Uses YouTube's own live_stream embed endpoint, which
-   always resolves to whatever that channel is currently broadcasting
-   live — the channel streams 24/7, so there's no fixed video id to go
-   stale. The iframe's src is only ever set while the sheet is open (and
+   channel's live broadcast from Al-Masjid al-Haram as an in-page
+   <iframe>. The native app uses AndroidApp.openMeccaLive() instead (see
+   the sideDrawerList click handler above and MeccaLiveActivity's own
+   comment for the full story) — this stays as the fallback for a plain
+   browser tab or this page served as a PWA.
+   Uses a specific, verified video id rather than YouTube's "whatever
+   this channel is currently live-streaming" auto-resolve endpoint
+   (/embed/live_stream?channel=ID) — that endpoint turned out not to
+   reliably resolve to a real broadcast (see MeccaLiveActivity's comment
+   for how that was diagnosed). Confirmed via YouTube's oEmbed endpoint
+   that this id belongs to the right channel (author_url
+   youtube.com/@SaudiQuranTv) and is genuinely embeddable. 24/7
+   broadcasters like this one typically keep one persistent live video id
+   running for months, so this is normally the more reliable choice, not
+   less — if it does eventually go stale, the failure is a graceful
+   "stream ended" from the player instead of an opaque error.
+   The iframe's src is only ever set while the sheet is open (and
    cleared to blank on close) so the stream doesn't keep playing — with
    audio — once the user has left it.
-   The native app uses AndroidApp.openMeccaLive() instead (see the
-   sideDrawerList click handler above and MeccaLiveActivity's own
-   comment) — this exact iframe approach shows YouTube's "Error 153"
-   there, since that WebView's origin is file://, which the embed
-   player's origin/referrer check rejects. A real https:// origin
-   (an actual browser tab, or this page served as a PWA) doesn't hit
-   that problem, so this stays as the fallback for those contexts.
 ===================================================== */
-const MECCA_LIVE_CHANNEL_ID = 'UCos52azQNBgW63_9uDJoPDA';
+const MECCA_LIVE_VIDEO_ID = 'wawzF8i5yAo';
 function openMeccaLiveSheet(){
   pushSheetHistory();
-  document.getElementById('meccaLiveFrame').src = `https://www.youtube.com/embed/live_stream?channel=${MECCA_LIVE_CHANNEL_ID}&autoplay=1`;
+  document.getElementById('meccaLiveFrame').src = `https://www.youtube.com/embed/${MECCA_LIVE_VIDEO_ID}?autoplay=1`;
   document.getElementById('meccaLiveSheet').classList.add('show');
   document.getElementById('meccaLiveBackdrop').classList.add('show');
 }
