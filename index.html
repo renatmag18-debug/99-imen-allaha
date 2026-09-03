@@ -14303,16 +14303,42 @@ async function listenToggleDownload(surahNum, btnEl){
     return;
   }
   if(btnEl) btnEl.classList.add('loading');
+  // Reuses the same progress bar "download all" shows — same reason it was
+  // added there: a single long surah (Al-Baqarah especially) can take long
+  // enough on its own that the button's little spinner alone leaves no
+  // sense of whether it's stuck or genuinely still working. Skipped when a
+  // download-all run owns that bar already, rather than fighting it for
+  // the same DOM elements.
+  const progressWrap = document.getElementById('listenDlProgressWrap');
+  const progressFill = document.getElementById('listenDlProgressFill');
+  const progressLabel = document.getElementById('listenDlProgressLabel');
+  const showBar = !listenDownloadAllRunning;
+  const chapter = (listenState.chapters || []).find(c => c.id === surahNum);
+  const surahLabel = chapter ? quranSurahDisplayName(chapter) : `сура ${surahNum}`;
+  if(showBar){
+    progressWrap.style.display = '';
+    progressFill.style.width = '0%';
+    progressLabel.textContent = `Скачивание «${surahLabel}»…`;
+  }
+  const startedAt = Date.now();
   try{
     const url = listenHasExactKaraoke(reciter.id) ? (await listenFetchContinuousTrack(reciter, surahNum)).audioUrl : listenTrackUrl(reciter, surahNum);
-    const resp = await fetch(url);
-    if(!resp.ok) throw new Error('http ' + resp.status);
-    const blob = await resp.blob();
+    const blob = await listenFetchWithProgress(url, (received, total) => {
+      if(!showBar) return;
+      const frac = total ? received / total : 0;
+      progressFill.style.width = (frac * 100) + '%';
+      const elapsedSec = (Date.now() - startedAt) / 1000;
+      const bytesPerSec = elapsedSec > 0 ? received / elapsedSec : 0;
+      const etaSec = (bytesPerSec > 0 && total) ? (total - received) / bytesPerSec : 0;
+      const pct = total ? ` ${Math.round(frac * 100)}%` : '';
+      progressLabel.textContent = `Скачивание «${surahLabel}»…${pct}${total ? ` — осталось ~${listenFormatDuration(etaSec)}` : ''}`;
+    });
     await listenSaveBlob(reciter.id, surahNum, blob);
     listenState.downloaded.add(String(surahNum));
   }catch(e){
     showToast('Не удалось скачать запись');
   }
+  if(showBar) progressWrap.style.display = 'none';
   renderListenSurahList();
 }
 
