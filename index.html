@@ -14330,6 +14330,36 @@ function listenFormatDuration(sec){
   const m = Math.floor(sec / 60), s = sec % 60;
   return s ? `${m} мин ${s} с` : `${m} мин`;
 }
+// Streams the response instead of awaiting resp.blob() directly, reporting
+// bytes as they arrive via onProgress(receivedBytes, totalBytes|0). Surah
+// audio files vary hugely in size (a short surah is a few hundred KB, Al-
+// Baqarah alone can be tens of MB) — updating progress only *between*
+// files meant the bar froze solid for however long one big file took,
+// which read as broken rather than just slow. Falls back to a plain
+// resp.blob() when the browser can't stream a response body or the server
+// didn't send Content-Length (progress then just jumps once per file, same
+// as before, but the overall count/ETA logic still stays accurate).
+async function listenFetchWithProgress(url, onProgress){
+  const resp = await fetch(url);
+  if(!resp.ok) throw new Error('http ' + resp.status);
+  const total = Number(resp.headers.get('Content-Length')) || 0;
+  if(!resp.body || !resp.body.getReader || !total){
+    const blob = await resp.blob();
+    onProgress(blob.size, blob.size || total);
+    return blob;
+  }
+  const reader = resp.body.getReader();
+  const chunks = [];
+  let received = 0;
+  while(true){
+    const { done, value } = await reader.read();
+    if(done) break;
+    chunks.push(value);
+    received += value.length;
+    onProgress(received, total);
+  }
+  return new Blob(chunks);
+}
 async function listenDownloadAllSurahs(){
   const btn = document.getElementById('listenDownloadAllBtn');
   const progressWrap = document.getElementById('listenDlProgressWrap');
@@ -14352,34 +14382,48 @@ async function listenDownloadAllSurahs(){
   progressWrap.style.display = '';
   progressFill.style.width = '0%';
   progressLabel.textContent = `Скачивание… 0 из ${todo.length}`;
-  let done = 0, failed = 0;
+  let done = 0, failed = 0, bytesDoneTotal = 0;
   const total = todo.length;
   const startedAt = Date.now();
   for(const surahNum of todo){
     if(listenDownloadAllCancelled) break;
+    const finishedBefore = done + failed;
     try{
       const url = listenHasExactKaraoke(reciter.id) ? (await listenFetchContinuousTrack(reciter, surahNum)).audioUrl : listenTrackUrl(reciter, surahNum);
-      const resp = await fetch(url);
-      if(!resp.ok) throw new Error('http ' + resp.status);
-      const blob = await resp.blob();
+      const blob = await listenFetchWithProgress(url, (received, fileTotal) => {
+        // Bar reflects whole-files-done PLUS the current file's own
+        // fraction, so it visibly creeps forward even mid-file instead of
+        // sitting still until the file completes.
+        const fileFrac = fileTotal ? received / fileTotal : 0;
+        progressFill.style.width = ((finishedBefore + fileFrac) / total * 100) + '%';
+        // ETA uses actual throughput (bytes/sec so far) against an estimate
+        // of remaining data — the average size per file already downloaded
+        // stands in for the files not yet fetched, which is rougher than
+        // knowing their real sizes upfront but tracks reality far better
+        // than assuming every file takes the same TIME as the last one
+        // (exactly what broke this against a Quran's worth of wildly
+        // different surah lengths).
+        const elapsedSec = (Date.now() - startedAt) / 1000;
+        const bytesSoFar = bytesDoneTotal + received;
+        const bytesPerSec = elapsedSec > 0 ? bytesSoFar / elapsedSec : 0;
+        const avgFileBytes = finishedBefore > 0 ? (bytesDoneTotal / finishedBefore) : fileTotal;
+        const remainingFilesAfterThis = total - finishedBefore - 1;
+        const remainingBytes = Math.max(0, fileTotal - received) + remainingFilesAfterThis * avgFileBytes;
+        const etaSec = bytesPerSec > 0 ? remainingBytes / bytesPerSec : 0;
+        const pct = fileTotal ? ` (${Math.round(fileFrac * 100)}%)` : '';
+        progressLabel.textContent = `Скачивание… ${finishedBefore + 1} из ${total}${pct} — осталось ~${listenFormatDuration(etaSec)}`;
+      });
       await listenSaveBlob(reciter.id, surahNum, blob);
+      bytesDoneTotal += blob.size;
       listenState.downloaded.add(String(surahNum));
       done++;
       renderListenSurahList();
     }catch(e){
       failed++;
     }
-    // Time estimate is based on average time per track so far — the first
-    // couple of tracks make for a noisy estimate, but it settles quickly
-    // and matters far less than just showing *something* moving.
     const finished = done + failed;
-    const elapsedSec = (Date.now() - startedAt) / 1000;
-    const avgSec = elapsedSec / finished;
-    const etaSec = avgSec * (total - finished);
     progressFill.style.width = (finished / total * 100) + '%';
-    progressLabel.textContent = finished < total
-      ? `Скачивание… ${finished} из ${total} — осталось ~${listenFormatDuration(etaSec)}`
-      : `Скачивание… ${finished} из ${total}`;
+    if(finished >= total) progressLabel.textContent = `Скачивание… ${finished} из ${total}`;
   }
   listenDownloadAllRunning = false;
   btn.classList.remove('downloading');
