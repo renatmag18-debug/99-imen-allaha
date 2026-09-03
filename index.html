@@ -693,23 +693,31 @@ body{
 }
 .home-prayer-card:active{ transform:scale(.96); }
 
-.home-tile-grid{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; }
-.home-tile{
-  position:relative; display:flex; flex-direction:column; gap:10px; padding:16px 14px 15px;
-  border-radius:var(--r-card); border:1px solid var(--gold); text-align:left; cursor:pointer;
-  background:linear-gradient(160deg, var(--accent-tint), var(--accent-tint-soft)); font-family:var(--font-body);
+/* Compact section links — same pill shape as the hero's own .btn
+   (Изучать/Викторина) rather than the old two-column card grid, so ten
+   sections fit in the space six used to take. Text wraps (to at most two
+   lines) instead of truncating — a short label stays single-line and
+   compact, a long one just grows its own row a little instead of losing
+   words to an ellipsis. */
+.section-chip-grid{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:9px; }
+.section-chip{
+  position:relative; display:flex; align-items:flex-start; gap:9px; padding:11px 13px;
+  border-radius:var(--r-pill); border:1px solid var(--line); background:var(--fill-1);
+  text-align:left; cursor:pointer; font-family:var(--font-body);
 }
-.home-tile:active{ transform:scale(.97); }
-.home-tile-icon{
-  width:36px; height:36px; border-radius:50%; background:var(--gold); color:var(--on-accent);
-  display:flex; align-items:center; justify-content:center;
+.section-chip:active{ transform:scale(.96); }
+.section-chip-icon{
+  flex-shrink:0; width:26px; height:26px; border-radius:50%; background:var(--gold); color:var(--on-accent);
+  display:flex; align-items:center; justify-content:center; margin-top:1px;
 }
-.home-tile-icon svg{ width:17px; height:17px; }
-.home-tile-title{ display:block; font-family:var(--font-display); font-size:14px; color:var(--ivory); }
-.home-tile-sub{ display:block; font-size:10.5px; color:var(--ivory-dim); line-height:1.35; margin-top:2px; }
-.home-tile-badge{
-  position:absolute; top:14px; right:14px; min-width:18px; height:18px; padding:0 5px; border-radius:9px;
-  background:var(--jade); color:var(--on-accent); font-size:10px; font-weight:700;
+.section-chip-icon svg{ width:13px; height:13px; }
+.section-chip-title{
+  font-size:12.5px; line-height:1.3; color:var(--ivory);
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden;
+}
+.section-chip-badge{
+  position:absolute; top:6px; right:8px; min-width:16px; height:16px; padding:0 4px; border-radius:8px;
+  background:var(--jade); color:var(--on-accent); font-size:9.5px; font-weight:700;
   display:flex; align-items:center; justify-content:center;
 }
 
@@ -2315,48 +2323,47 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 
         <div class="section-title" style="margin-top:6px;">Разделы приложения</div>
 
-        <button class="quran-entry-card" id="homeQuranLink">
-          <span class="quran-entry-icon">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M4 5.8c2.2-1.2 4.8-1.2 7 0v13c-2.2-1.2-4.8-1.2-7 0v-13z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M20 5.8c-2.2-1.2-4.8-1.2-7 0v13c2.2-1.2 4.8-1.2 7 0v-13z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
-          </span>
-          <span class="quran-entry-text">
-            <span class="quran-entry-title">Коран</span>
-            <span class="quran-entry-sub">Читать постранично, с таджвидом</span>
-          </span>
-          <svg class="quran-entry-chevron" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-
-        <div class="home-tile-grid">
-          <button type="button" class="home-tile" id="homeListenLink">
-            <span class="home-tile-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M4 15v-3a8 8 0 0116 0v3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M4 15a2 2 0 012-2h1a1 1 0 011 1v4a1 1 0 01-1 1H6a2 2 0 01-2-2v-2zM20 15a2 2 0 00-2-2h-1a1 1 0 00-1 1v4a1 1 0 001 1h1a2 2 0 002-2v-2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span>
-            <span class="home-tile-title">Слушать Коран</span>
-            <span class="home-tile-sub">Чтецы, офлайн</span>
+        <div class="section-chip-grid">
+          <button type="button" class="section-chip" id="homeQuranLink">
+            <span class="section-chip-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M4 5.8c2.2-1.2 4.8-1.2 7 0v13c-2.2-1.2-4.8-1.2-7 0v-13z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M20 5.8c-2.2-1.2-4.8-1.2-7 0v13c2.2-1.2 4.8-1.2 7 0v-13z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span>
+            <span class="section-chip-title">Коран</span>
           </button>
-          <button type="button" class="home-tile" id="homeProphetsLink">
-            <span class="home-tile-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.6"/><path d="M5 20c.7-3.8 3.4-6.2 7-6.2s6.3 2.4 7 6.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
-            <span class="home-tile-title">Имена Пророков</span>
-            <span class="home-tile-sub">Изучайте и запоминайте</span>
+          <button type="button" class="section-chip" id="homeListenLink">
+            <span class="section-chip-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M4 15v-3a8 8 0 0116 0v3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M4 15a2 2 0 012-2h1a1 1 0 011 1v4a1 1 0 01-1 1H6a2 2 0 01-2-2v-2zM20 15a2 2 0 00-2-2h-1a1 1 0 00-1 1v4a1 1 0 001 1h1a2 2 0 002-2v-2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span>
+            <span class="section-chip-title">Слушать Коран</span>
           </button>
-          <button type="button" class="home-tile" id="homeMiscLink" data-nav="misc">
-            <span class="home-tile-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="4" r="1.3" fill="currentColor"/><circle cx="18.9" cy="8" r="1.3" fill="currentColor"/><circle cx="18.9" cy="16" r="1.3" fill="currentColor"/><circle cx="12" cy="20" r="1.3" fill="currentColor"/><circle cx="5.1" cy="16" r="1.3" fill="currentColor"/><circle cx="5.1" cy="8" r="1.3" fill="currentColor"/></svg></span>
-            <span class="home-tile-title">Зикры, дуа и намаз</span>
-            <span class="home-tile-sub">На каждый день</span>
+          <button type="button" class="section-chip" data-nav-section="tafsir">
+            <span class="section-chip-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M6 4h10a2 2 0 012 2v13a1 1 0 01-1.45.9L14 18.5l-2.55 1.4a1 1 0 01-.9 0L8 18.5l-2.55 1.4A1 1 0 014 19V7a3 3 0 012-3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8.5 9h7M8.5 12.5h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+            <span class="section-chip-title">Тафсир Корана</span>
           </button>
-          <button type="button" class="home-tile" id="homeChatsLink">
-            <span class="home-tile-badge" id="homeChatsBadge" style="display:none;"></span>
-            <span class="home-tile-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg></span>
-            <span class="home-tile-title">Сообщения</span>
-            <span class="home-tile-sub">Переписка с друзьями</span>
+          <button type="button" class="section-chip" data-nav-section="tajweed">
+            <span class="section-chip-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 4.5c-2.5-1.4-5.5-1.4-8 0v13.5c2.5-1.4 5.5-1.4 8 0 2.5-1.4 5.5-1.4 8 0V4.5c-2.5-1.4-5.5-1.4-8 0z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 4.5v13.5" stroke="currentColor" stroke-width="1.5"/></svg></span>
+            <span class="section-chip-title">Таджвид</span>
           </button>
-          <button type="button" class="home-tile" data-nav="friends">
-            <span class="home-tile-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M9 12a3.5 3.5 0 100-7 3.5 3.5 0 000 7z" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 20c.6-3.3 3-5.4 5.5-5.4s4.9 2.1 5.5 5.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M16 8a2.6 2.6 0 100-5.2A2.6 2.6 0 0016 8z" stroke="currentColor" stroke-width="1.5"/><path d="M15 9.6c2 .3 3.6 1.9 4 4.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
-            <span class="home-tile-title">Друзья</span>
-            <span class="home-tile-sub">Рейтинг и дуэли</span>
+          <button type="button" class="section-chip" data-nav-section="mecca_live">
+            <span class="section-chip-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" fill="currentColor"/><path d="M7.5 8.5a6.4 6.4 0 000 7M16.5 8.5a6.4 6.4 0 010 7M4.3 5.3a10.9 10.9 0 000 13.4M19.7 5.3a10.9 10.9 0 010 13.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+            <span class="section-chip-title">Мекка онлайн</span>
           </button>
-          <button type="button" class="home-tile" id="homeFavoritesLink">
-            <span class="home-tile-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M6 3h12a1 1 0 011 1v17l-7-4-7 4V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span>
-            <span class="home-tile-title">Избранное</span>
-            <span class="home-tile-sub">Сохранённые имена и дуа</span>
+          <button type="button" class="section-chip" id="homeProphetsLink">
+            <span class="section-chip-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.6"/><path d="M5 20c.7-3.8 3.4-6.2 7-6.2s6.3 2.4 7 6.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+            <span class="section-chip-title">Имена Пророков</span>
+          </button>
+          <button type="button" class="section-chip" id="homeMiscLink" data-nav="misc">
+            <span class="section-chip-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="4" r="1.3" fill="currentColor"/><circle cx="18.9" cy="8" r="1.3" fill="currentColor"/><circle cx="18.9" cy="16" r="1.3" fill="currentColor"/><circle cx="12" cy="20" r="1.3" fill="currentColor"/><circle cx="5.1" cy="16" r="1.3" fill="currentColor"/><circle cx="5.1" cy="8" r="1.3" fill="currentColor"/></svg></span>
+            <span class="section-chip-title">Зикры, дуа и намаз</span>
+          </button>
+          <button type="button" class="section-chip" id="homeChatsLink">
+            <span class="section-chip-badge" id="homeChatsBadge" style="display:none;"></span>
+            <span class="section-chip-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg></span>
+            <span class="section-chip-title">Сообщения</span>
+          </button>
+          <button type="button" class="section-chip" data-nav="friends">
+            <span class="section-chip-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M9 12a3.5 3.5 0 100-7 3.5 3.5 0 000 7z" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 20c.6-3.3 3-5.4 5.5-5.4s4.9 2.1 5.5 5.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M16 8a2.6 2.6 0 100-5.2A2.6 2.6 0 0016 8z" stroke="currentColor" stroke-width="1.5"/><path d="M15 9.6c2 .3 3.6 1.9 4 4.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+            <span class="section-chip-title">Друзья</span>
+          </button>
+          <button type="button" class="section-chip" id="homeFavoritesLink">
+            <span class="section-chip-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M6 3h12a1 1 0 011 1v17l-7-4-7 4V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span>
+            <span class="section-chip-title">Избранное</span>
           </button>
         </div>
 
@@ -4587,6 +4594,14 @@ window.addEventListener('popstate', (e) => {
 history.replaceState({screen: 'home'}, '', '#home');
 document.querySelectorAll('[data-nav]').forEach(el=>{
   el.addEventListener('click', ()=>go(el.dataset.nav));
+});
+// Sections whose "open X" is more than a plain screen switch (opening the
+// tafsir/tajweed screen at the right spot, handing mecca_live off to an
+// external player) — navigateToSection (defined with the side drawer,
+// which needs the exact same per-key behavior) is hoisted, so this can
+// call it before that point in the file.
+document.querySelectorAll('[data-nav-section]').forEach(el=>{
+  el.addEventListener('click', ()=> navigateToSection(el.dataset.navSection));
 });
 
 /* =====================================================
@@ -6923,12 +6938,15 @@ document.querySelector('.side-drawer-footer .side-drawer-item')?.addEventListene
 document.getElementById('sideDrawerList').addEventListener('click', e=>{
   const btn = e.target.closest('.side-drawer-item');
   if(!btn) return;
-  const key = btn.dataset.drawerKey;
   closeSideDrawer();
-  // Each destination reuses the exact same navigation its own existing
-  // entry point already does (the misc screen's ★ segment button, the
-  // Quran entry card, the friends screen's chats float button) rather than
-  // reimplementing what "open X" means a second time here.
+  navigateToSection(btn.dataset.drawerKey);
+});
+// Shared by the side drawer and the home screen's own section chips — each
+// destination reuses the exact same navigation its own existing entry
+// point already does (the misc screen's ★ segment button, the Quran entry
+// card, the friends screen's chats float button) rather than
+// reimplementing what "open X" means a second time per caller.
+function navigateToSection(key){
   if(key === 'favorites'){
     go('misc');
     const favBtn = document.querySelector('#miscSegment .seg-btn[data-misc="favorites"]');
@@ -6971,7 +6989,7 @@ document.getElementById('sideDrawerList').addEventListener('click', e=>{
       window.open(meccaLiveUrl, '_blank');
     }
   }
-});
+}
 
 // The left half of the home screen (center, or anywhere left of it) is
 // reserved for the drawer's own open-swipe — #stage's own tab-switch swipe
