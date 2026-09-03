@@ -3403,6 +3403,16 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
       </div>
     </section>
 
+    <section class="screen" data-screen="tafsir">
+      <div class="scroll">
+        <div class="settings-head">
+          <button class="nav-arrow" data-nav="home" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <div class="section-title" style="padding:0;">Тафсир Корана</div>
+        </div>
+        <p class="section-desc" style="margin-top:0;">Раздел в разработке.</p>
+      </div>
+    </section>
+
     <section class="screen" data-screen="listenReciter">
       <div class="quran-head">
         <button class="nav-arrow" data-nav="listen" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -6775,6 +6785,10 @@ const SIDE_DRAWER_ITEMS_META = {
     label: 'Коран',
     icon: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 19.5A2.5 2.5 0 016.5 17H20V4H6.5A2.5 2.5 0 004 6.5v13z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M4 19.5A2.5 2.5 0 016.5 22H20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>'
   },
+  tafsir: {
+    label: 'Тафсир Корана',
+    icon: '<svg viewBox="0 0 24 24" fill="none"><path d="M6 4h10a2 2 0 012 2v13a1 1 0 01-1.45.9L14 18.5l-2.55 1.4a1 1 0 01-.9 0L8 18.5l-2.55 1.4A1 1 0 014 19V7a3 3 0 012-3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8.5 9h7M8.5 12.5h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
+  },
   chats: {
     label: 'Сообщения',
     icon: '<svg viewBox="0 0 24 24" fill="none"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>'
@@ -6800,7 +6814,7 @@ const SIDE_DRAWER_ITEMS_META = {
     icon: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" fill="currentColor"/><path d="M7.5 8.5a6.4 6.4 0 000 7M16.5 8.5a6.4 6.4 0 010 7M4.3 5.3a10.9 10.9 0 000 13.4M19.7 5.3a10.9 10.9 0 010 13.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
   }
 };
-const SIDE_DRAWER_DEFAULT_ORDER = ['favorites', 'quran', 'listen', 'mecca_live', 'tajweed', 'chats', 'prayer', 'settings'];
+const SIDE_DRAWER_DEFAULT_ORDER = ['favorites', 'quran', 'tafsir', 'listen', 'mecca_live', 'tajweed', 'chats', 'prayer', 'settings'];
 
 function loadSideDrawerOrder(){
   try{
@@ -6864,6 +6878,8 @@ document.getElementById('sideDrawerList').addEventListener('click', e=>{
   } else if(key === 'quran'){
     go('quran');
     if(typeof openQuranScreen === 'function') openQuranScreen();
+  } else if(key === 'tafsir'){
+    go('tafsir');
   } else if(key === 'chats'){
     go('chats');
     if(typeof renderChatsList === 'function') renderChatsList();
