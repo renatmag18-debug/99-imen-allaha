@@ -1093,6 +1093,21 @@ body{
 .quran-search-result-snippet{ font-size:13.5px; color:var(--ivory); line-height:1.5; }
 .quran-search-result-snippet em{ color:var(--gold-soft); font-style:normal; }
 
+/* ================= TAFSIR ================= */
+.tafsir-title{ font-family:var(--font-display); font-size:20px; color:var(--ivory); margin-bottom:4px; }
+.tafsir-alt{ font-size:13px; color:var(--gold-soft); margin-bottom:10px; }
+.tafsir-meta{ font-size:12px; color:var(--ivory-dim); padding-bottom:14px; margin-bottom:16px; border-bottom:1px solid var(--line); }
+.tafsir-ayah{ display:flex; gap:10px; margin-bottom:16px; }
+.tafsir-ayah-n{
+  flex-shrink:0; width:24px; height:24px; border-radius:50%; background:var(--fill-1); border:1px solid var(--line);
+  color:var(--gold); font-size:11.5px; display:flex; align-items:center; justify-content:center; margin-top:1px;
+}
+.tafsir-ayah-text{ flex:1; font-size:15px; line-height:1.75; color:var(--ivory); }
+.tafsir-notes{ margin-top:8px; padding-top:16px; border-top:1px solid var(--line); }
+.tafsir-notes-title{ font-family:var(--font-display); font-size:15px; color:var(--ivory); margin-bottom:10px; }
+.tafsir-note{ font-size:12.5px; line-height:1.6; color:var(--ivory-dim); margin-bottom:10px; }
+.tafsir-status{ text-align:center; color:var(--ivory-dim); font-size:13.5px; padding:60px 20px; line-height:1.7; }
+
 /* --- chat: conversation list --- */
 .chat-row{ display:flex; align-items:center; gap:12px; padding:12px 4px; border-bottom:1px solid var(--fill-2); cursor:pointer; }
 .chat-row:last-child{ border-bottom:none; }
@@ -3404,14 +3419,41 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
     </section>
 
     <section class="screen" data-screen="tafsir">
-      <div class="scroll">
-        <div class="settings-head">
-          <button class="nav-arrow" data-nav="home" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-          <div class="section-title" style="padding:0;">Тафсир Корана</div>
+      <div class="quran-head">
+        <button class="nav-arrow" data-nav="home" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="quran-surah-btn" id="tafsirSurahBtn">
+          <span id="tafsirSurahName">Тафсир Корана</span>
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div style="width:44px;flex-shrink:0;"></div>
+      </div>
+      <div class="quran-page-scroll" id="tafsirPageScroll">
+        <div id="tafsirPage"></div>
+        <div class="tafsir-status" id="tafsirLoading">Загрузка…</div>
+        <div class="tafsir-status" id="tafsirError" style="display:none;">
+          Не удалось загрузить тафсир.<br>Проверьте подключение к интернету.
+          <button class="btn btn-ghost" id="tafsirRetryBtn" style="margin-top:14px;">Повторить</button>
         </div>
-        <p class="section-desc" style="margin-top:0;">Раздел в разработке.</p>
+      </div>
+      <div class="quran-foot">
+        <button class="quran-nav-btn" id="tafsirPrevBtn" aria-label="Предыдущая сура"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="quran-page-num" id="tafsirSurahNum">1 / 114</button>
+        <button class="quran-nav-btn" id="tafsirNextBtn" aria-label="Следующая сура"><svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       </div>
     </section>
+
+    <div class="sheet-backdrop" id="tafsirSurahBackdrop"></div>
+    <div class="sheet" id="tafsirSurahSheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-top">
+        <div class="sheet-idx">Суры</div>
+        <button class="sheet-close" id="tafsirSurahClose"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
+      </div>
+      <div class="sheet-body" style="text-align:left;padding-top:2px;">
+        <input type="text" id="tafsirSearchInput" class="quran-search-input" placeholder="Сура или номер…" autocomplete="off">
+        <div id="tafsirSurahList"></div>
+      </div>
+    </div>
 
     <section class="screen" data-screen="listenReciter">
       <div class="quran-head">
@@ -6880,6 +6922,7 @@ document.getElementById('sideDrawerList').addEventListener('click', e=>{
     if(typeof openQuranScreen === 'function') openQuranScreen();
   } else if(key === 'tafsir'){
     go('tafsir');
+    if(typeof openTafsirScreen === 'function') openTafsirScreen();
   } else if(key === 'chats'){
     go('chats');
     if(typeof renderChatsList === 'function') renderChatsList();
@@ -14828,6 +14871,136 @@ function quranReturnToReading(){
   quranState.mode = 'progress';
   quranRenderPage(quranState.bookmarkPage);
 }
+
+/* =====================================================
+   TAFSIR — surah-by-surah translation with commentary
+   footnotes. One static JSON (name/alt/meta/ayat/notes per
+   surah, keyed "1".."114") fetched on first open and kept
+   in memory for the session, same "fetch once, read many
+   times" shape as quranFetchChapters() above.
+===================================================== */
+// Absolute, not relative: the WebView loads this page (whether the live
+// version or the bundled offline copy) with a fixed file:///android_asset/
+// www/ base URL (see MainActivity's loadFreshWebContent), so a relative
+// fetch() would resolve to a local file:// URL and risk being blocked by
+// the WebView's fetch() security policy — quranFetchChapters() above hits
+// api.quran.com absolutely for the same reason.
+const TAFSIR_DATA_URL = 'https://99ism.ru/tafsir-data.json';
+let tafsirData = null;
+let tafsirLoadPromise = null;
+let tafsirCurrentNum = null;
+
+function tafsirFetchData(){
+  if(tafsirData) return Promise.resolve(tafsirData);
+  if(tafsirLoadPromise) return tafsirLoadPromise;
+  tafsirLoadPromise = fetch(TAFSIR_DATA_URL).then(r=>{
+    if(!r.ok) throw new Error('bad status');
+    return r.json();
+  }).then(data=>{ tafsirData = data; return data; });
+  return tafsirLoadPromise;
+}
+
+function tafsirRenderSurah(num){
+  const d = tafsirData[num];
+  const parts = [];
+  parts.push(`<div class="tafsir-title">${num}. ${d.name}${d.alt ? ` <span class="tafsir-alt">(${d.alt})</span>` : ''}</div>`);
+  if(d.meta) parts.push(`<div class="tafsir-meta">${d.meta}</div>`);
+  d.ayat.forEach((text, i)=>{
+    parts.push(`<div class="tafsir-ayah"><span class="tafsir-ayah-n">${i+1}</span><span class="tafsir-ayah-text">${text}</span></div>`);
+  });
+  if(d.notes && d.notes.length){
+    parts.push('<div class="tafsir-notes"><div class="tafsir-notes-title">Примечания</div>');
+    d.notes.forEach(n=> parts.push(`<div class="tafsir-note">${n}</div>`));
+    parts.push('</div>');
+  }
+  document.getElementById('tafsirPage').innerHTML = parts.join('');
+  document.getElementById('tafsirSurahName').textContent = `${num}. ${d.name}`;
+  document.getElementById('tafsirSurahNum').textContent = `${num} / 114`;
+  document.getElementById('tafsirPageScroll').scrollTop = 0;
+  tafsirCurrentNum = num;
+  try{ localStorage.setItem('tafsirLastSurah', String(num)); }catch(e){}
+}
+
+async function tafsirGoToSurah(num){
+  num = Math.max(1, Math.min(114, Math.round(num)));
+  document.getElementById('tafsirError').style.display = 'none';
+  document.getElementById('tafsirLoading').style.display = tafsirData ? 'none' : '';
+  try{
+    await tafsirFetchData();
+    document.getElementById('tafsirLoading').style.display = 'none';
+    tafsirRenderSurah(num);
+  }catch(e){
+    document.getElementById('tafsirLoading').style.display = 'none';
+    document.getElementById('tafsirError').style.display = '';
+  }
+}
+
+function openTafsirScreen(){
+  // Resume where the reader left off rather than reloading — same idea as
+  // the Quran reader dropping back onto its bookmarked page.
+  if(tafsirData && tafsirCurrentNum) return;
+  let last = 1;
+  try{ last = parseInt(localStorage.getItem('tafsirLastSurah'), 10) || 1; }catch(e){}
+  tafsirGoToSurah(last);
+}
+
+document.getElementById('tafsirPrevBtn').addEventListener('click', ()=> tafsirGoToSurah((tafsirCurrentNum||1) - 1));
+document.getElementById('tafsirNextBtn').addEventListener('click', ()=> tafsirGoToSurah((tafsirCurrentNum||1) + 1));
+document.getElementById('tafsirRetryBtn').addEventListener('click', ()=> tafsirGoToSurah(tafsirCurrentNum||1));
+
+function tafsirRenderSurahRows(query){
+  const listEl = document.getElementById('tafsirSurahList');
+  if(!tafsirData){ listEl.innerHTML = ''; return; }
+  const q = (query||'').trim().toLowerCase();
+  const nums = Object.keys(tafsirData).map(Number).sort((a,b)=>a-b);
+  const filtered = !q ? nums : nums.filter(n=>{
+    const d = tafsirData[n];
+    return String(n) === q || d.name.toLowerCase().includes(q) || (d.alt||'').toLowerCase().includes(q);
+  });
+  listEl.innerHTML = filtered.map(n=>{
+    const d = tafsirData[n];
+    return `<div class="quran-surah-row" data-num="${n}">
+      <span class="n">${n}</span>
+      <span class="name">
+        <span class="ru">${d.name}</span>
+        <span class="translit">${d.alt || ''}</span>
+        <span class="meta">${d.ayat.length} аятов</span>
+      </span>
+    </div>`;
+  }).join('');
+  listEl.querySelectorAll('.quran-surah-row').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      closeTafsirSurahSheet();
+      tafsirGoToSurah(parseInt(row.dataset.num, 10));
+    });
+  });
+}
+
+async function openTafsirSurahSheet(){
+  pushSheetHistory();
+  document.getElementById('tafsirSurahSheet').classList.add('show');
+  document.getElementById('tafsirSurahBackdrop').classList.add('show');
+  document.getElementById('tafsirSearchInput').value = '';
+  const listEl = document.getElementById('tafsirSurahList');
+  if(tafsirData){ tafsirRenderSurahRows(); return; }
+  listEl.innerHTML = '<p class="misc-intro">Загрузка…</p>';
+  try{
+    await tafsirFetchData();
+    tafsirRenderSurahRows();
+  }catch(e){
+    listEl.innerHTML = '<p class="misc-intro">Не удалось загрузить список сур.</p>';
+  }
+}
+function closeTafsirSurahSheet(){
+  popSheetHistory();
+  document.getElementById('tafsirSurahSheet').classList.remove('show');
+  document.getElementById('tafsirSurahBackdrop').classList.remove('show');
+}
+document.getElementById('tafsirSurahBtn').addEventListener('click', openTafsirSurahSheet);
+document.getElementById('tafsirSurahClose').addEventListener('click', closeTafsirSurahSheet);
+document.getElementById('tafsirSurahBackdrop').addEventListener('click', closeTafsirSurahSheet);
+document.getElementById('tafsirSearchInput').addEventListener('input', e=> tafsirRenderSurahRows(e.target.value));
+
 document.getElementById('quranPrevBtn').addEventListener('click', ()=> quranGoToPage(quranState.page - 1));
 document.getElementById('quranNextBtn').addEventListener('click', ()=> quranGoToPage(quranState.page + 1));
 document.getElementById('quranRetryBtn').addEventListener('click', ()=> quranRenderPage(quranState.page));
