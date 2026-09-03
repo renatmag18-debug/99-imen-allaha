@@ -1107,9 +1107,6 @@ body{
   cursor:pointer; color:var(--gold); font-weight:600; padding:0 1px; margin-left:1px;
   border-bottom:1px dotted var(--gold);
 }
-.tafsir-notes{ margin-top:8px; padding-top:16px; border-top:1px solid var(--line); }
-.tafsir-notes-title{ font-family:var(--font-display); font-size:15px; color:var(--ivory); margin-bottom:10px; }
-.tafsir-note{ font-size:12.5px; line-height:1.6; color:var(--ivory-dim); margin-bottom:10px; }
 .tafsir-status{ text-align:center; color:var(--ivory-dim); font-size:13.5px; padding:60px 20px; line-height:1.7; }
 #tafsirNoteSheet .sheet-body{ font-size:14px; line-height:1.75; color:var(--ivory); }
 
@@ -14939,11 +14936,9 @@ function tafsirRenderSurah(num){
   d.ayat.forEach((text, i)=>{
     parts.push(`<div class="tafsir-ayah"><span class="tafsir-ayah-n">${i+1}</span><span class="tafsir-ayah-text">${tafsirAyahHtml(text)}</span></div>`);
   });
-  if(d.notes && d.notes.length){
-    parts.push('<div class="tafsir-notes"><div class="tafsir-notes-title">Примечания</div>');
-    d.notes.forEach(note=> parts.push(`<div class="tafsir-note">${note.n}. ${tafsirEscapeHtml(note.t)}</div>`));
-    parts.push('</div>');
-  }
+  // Notes are read one at a time via their inline marker (tafsirNoteSheet
+  // below) rather than dumped as a list at the end — quicker to reach from
+  // the aya that actually cites them, no scrolling to the bottom and back.
   document.getElementById('tafsirPage').innerHTML = parts.join('');
   document.getElementById('tafsirSurahName').textContent = `${num}. ${d.name}`;
   document.getElementById('tafsirSurahNum').textContent = `${num} / 114`;
