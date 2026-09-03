@@ -1103,10 +1103,15 @@ body{
   color:var(--gold); font-size:11.5px; display:flex; align-items:center; justify-content:center; margin-top:1px;
 }
 .tafsir-ayah-text{ flex:1; font-size:15px; line-height:1.75; color:var(--ivory); }
+.tafsir-note-ref{
+  cursor:pointer; color:var(--gold); font-weight:600; padding:0 1px; margin-left:1px;
+  border-bottom:1px dotted var(--gold);
+}
 .tafsir-notes{ margin-top:8px; padding-top:16px; border-top:1px solid var(--line); }
 .tafsir-notes-title{ font-family:var(--font-display); font-size:15px; color:var(--ivory); margin-bottom:10px; }
 .tafsir-note{ font-size:12.5px; line-height:1.6; color:var(--ivory-dim); margin-bottom:10px; }
 .tafsir-status{ text-align:center; color:var(--ivory-dim); font-size:13.5px; padding:60px 20px; line-height:1.7; }
+#tafsirNoteSheet .sheet-body{ font-size:14px; line-height:1.75; color:var(--ivory); }
 
 /* --- chat: conversation list --- */
 .chat-row{ display:flex; align-items:center; gap:12px; padding:12px 4px; border-bottom:1px solid var(--fill-2); cursor:pointer; }
@@ -3453,6 +3458,16 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
         <input type="text" id="tafsirSearchInput" class="quran-search-input" placeholder="Сура или номер…" autocomplete="off">
         <div id="tafsirSurahList"></div>
       </div>
+    </div>
+
+    <div class="sheet-backdrop" id="tafsirNoteBackdrop"></div>
+    <div class="sheet" id="tafsirNoteSheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-top">
+        <div class="sheet-idx" id="tafsirNoteTitle">Примечание</div>
+        <button class="sheet-close" id="tafsirNoteClose"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
+      </div>
+      <div class="sheet-body" style="text-align:left;padding-top:2px;" id="tafsirNoteText"></div>
     </div>
 
     <section class="screen" data-screen="listenReciter">
@@ -14904,17 +14919,29 @@ function tafsirFetchData(){
   return tafsirLoadPromise;
 }
 
+function tafsirEscapeHtml(s){
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+// Ayah text carries inline "[[note:N]]" placeholders exactly where that
+// footnote's reference mark sits in the source (e.g. right after "Мим."
+// in "Алиф. Лям. Мим.(2)") — turn each into a tappable superscript that
+// opens that one note without leaving the reading view.
+function tafsirAyahHtml(text){
+  return tafsirEscapeHtml(text).replace(/\[\[note:(\d+)\]\]/g, (_, n)=>
+    `<sup class="tafsir-note-ref" data-note="${n}">${n}</sup>`);
+}
+
 function tafsirRenderSurah(num){
   const d = tafsirData[num];
   const parts = [];
   parts.push(`<div class="tafsir-title">${num}. ${d.name}${d.alt ? ` <span class="tafsir-alt">(${d.alt})</span>` : ''}</div>`);
   if(d.meta) parts.push(`<div class="tafsir-meta">${d.meta}</div>`);
   d.ayat.forEach((text, i)=>{
-    parts.push(`<div class="tafsir-ayah"><span class="tafsir-ayah-n">${i+1}</span><span class="tafsir-ayah-text">${text}</span></div>`);
+    parts.push(`<div class="tafsir-ayah"><span class="tafsir-ayah-n">${i+1}</span><span class="tafsir-ayah-text">${tafsirAyahHtml(text)}</span></div>`);
   });
   if(d.notes && d.notes.length){
     parts.push('<div class="tafsir-notes"><div class="tafsir-notes-title">Примечания</div>');
-    d.notes.forEach(n=> parts.push(`<div class="tafsir-note">${n}</div>`));
+    d.notes.forEach(note=> parts.push(`<div class="tafsir-note">${note.n}. ${tafsirEscapeHtml(note.t)}</div>`));
     parts.push('</div>');
   }
   document.getElementById('tafsirPage').innerHTML = parts.join('');
@@ -15004,6 +15031,28 @@ document.getElementById('tafsirSurahBtn').addEventListener('click', openTafsirSu
 document.getElementById('tafsirSurahClose').addEventListener('click', closeTafsirSurahSheet);
 document.getElementById('tafsirSurahBackdrop').addEventListener('click', closeTafsirSurahSheet);
 document.getElementById('tafsirSearchInput').addEventListener('input', e=> tafsirRenderSurahRows(e.target.value));
+
+function openTafsirNote(n){
+  const d = tafsirData && tafsirData[tafsirCurrentNum];
+  const note = d && d.notes.find(x=> x.n === n);
+  if(!note) return;
+  pushSheetHistory();
+  document.getElementById('tafsirNoteTitle').textContent = `Примечание ${n}`;
+  document.getElementById('tafsirNoteText').textContent = note.t;
+  document.getElementById('tafsirNoteSheet').classList.add('show');
+  document.getElementById('tafsirNoteBackdrop').classList.add('show');
+}
+function closeTafsirNote(){
+  popSheetHistory();
+  document.getElementById('tafsirNoteSheet').classList.remove('show');
+  document.getElementById('tafsirNoteBackdrop').classList.remove('show');
+}
+document.getElementById('tafsirNoteClose').addEventListener('click', closeTafsirNote);
+document.getElementById('tafsirNoteBackdrop').addEventListener('click', closeTafsirNote);
+document.getElementById('tafsirPage').addEventListener('click', e=>{
+  const ref = e.target.closest('.tafsir-note-ref');
+  if(ref) openTafsirNote(parseInt(ref.dataset.note, 10));
+});
 
 document.getElementById('quranPrevBtn').addEventListener('click', ()=> quranGoToPage(quranState.page - 1));
 document.getElementById('quranNextBtn').addEventListener('click', ()=> quranGoToPage(quranState.page + 1));
