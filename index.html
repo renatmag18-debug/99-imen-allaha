@@ -4545,6 +4545,10 @@ function go(name, replace = false){
     if(prevScreen === 'chat' && name !== 'chat' && typeof closeChatThread === 'function') closeChatThread();
     if(prevScreen === 'quran' && name !== 'quran' && typeof quranPauseAudio === 'function') quranPauseAudio();
     if(name === 'home' && typeof renderSideDrawerPrayerPreview === 'function') renderSideDrawerPrayerPreview();
+    // The tafsir screen already has its own prev/next-surah bar right above
+    // this — the floating tab dock underneath it is just clutter there.
+    const dockEl = document.querySelector('.tabbar');
+    if(dockEl) dockEl.style.display = (name === 'tafsir') ? 'none' : '';
   };
   
   if(!isPopping) {
