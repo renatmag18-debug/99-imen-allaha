@@ -1846,6 +1846,10 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 }
 
 .listen-status{ font-size:12.5px; color:var(--ivory-dim); text-align:center; padding:24px 10px; }
+.listen-dl-progress-wrap{ padding:0 20px 10px; flex-shrink:0; }
+.listen-dl-progress-track{ height:5px; border-radius:3px; background:var(--fill-1); overflow:hidden; }
+.listen-dl-progress-fill{ height:100%; width:0%; border-radius:3px; background:var(--gold); transition:width .3s var(--ease); }
+.listen-dl-progress-label{ margin-top:6px; font-size:11.5px; color:var(--ivory-dim); text-align:center; }
 .listen-surah-row .listen-icon-btn{
   flex-shrink:0; width:32px; height:32px; border-radius:50%; border:none; background:var(--glass);
   color:var(--ivory-dim); display:flex; align-items:center; justify-content:center; cursor:pointer;
@@ -3406,6 +3410,10 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
           <div class="section-title" style="padding:0;" id="listenReciterName">Чтец</div>
         </div>
         <button type="button" class="nav-arrow" id="listenDownloadAllBtn" aria-label="Скачать все суры" title="Скачать все суры"><svg viewBox="0 0 24 24" fill="none"><path d="M8 3v9m0 0l-3-3m3 3l3-3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 8v4m0 0l-2-2m2 2l2-2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 19h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
+      </div>
+      <div class="listen-dl-progress-wrap" id="listenDlProgressWrap" style="display:none;">
+        <div class="listen-dl-progress-track"><div class="listen-dl-progress-fill" id="listenDlProgressFill"></div></div>
+        <div class="listen-dl-progress-label" id="listenDlProgressLabel"></div>
       </div>
       <div class="scroll" id="listenSurahListWrap">
         <div class="listen-status" id="listenSurahLoading">Загрузка списка сур…</div>
@@ -14316,8 +14324,17 @@ async function listenToggleDownload(surahNum, btnEl){
 // simpler, and the in-flight one finishing anyway is harmless).
 let listenDownloadAllRunning = false;
 let listenDownloadAllCancelled = false;
+function listenFormatDuration(sec){
+  sec = Math.round(sec);
+  if(sec < 60) return `${sec} с`;
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return s ? `${m} мин ${s} с` : `${m} мин`;
+}
 async function listenDownloadAllSurahs(){
   const btn = document.getElementById('listenDownloadAllBtn');
+  const progressWrap = document.getElementById('listenDlProgressWrap');
+  const progressFill = document.getElementById('listenDlProgressFill');
+  const progressLabel = document.getElementById('listenDlProgressLabel');
   if(listenDownloadAllRunning){
     listenDownloadAllCancelled = true;
     return;
@@ -14332,11 +14349,14 @@ async function listenDownloadAllSurahs(){
   listenDownloadAllRunning = true;
   listenDownloadAllCancelled = false;
   btn.classList.add('downloading');
+  progressWrap.style.display = '';
+  progressFill.style.width = '0%';
+  progressLabel.textContent = `Скачивание… 0 из ${todo.length}`;
   let done = 0, failed = 0;
   const total = todo.length;
+  const startedAt = Date.now();
   for(const surahNum of todo){
     if(listenDownloadAllCancelled) break;
-    btn.title = `Скачивание… ${done}/${total}`;
     try{
       const url = listenHasExactKaraoke(reciter.id) ? (await listenFetchContinuousTrack(reciter, surahNum)).audioUrl : listenTrackUrl(reciter, surahNum);
       const resp = await fetch(url);
@@ -14349,10 +14369,22 @@ async function listenDownloadAllSurahs(){
     }catch(e){
       failed++;
     }
+    // Time estimate is based on average time per track so far — the first
+    // couple of tracks make for a noisy estimate, but it settles quickly
+    // and matters far less than just showing *something* moving.
+    const finished = done + failed;
+    const elapsedSec = (Date.now() - startedAt) / 1000;
+    const avgSec = elapsedSec / finished;
+    const etaSec = avgSec * (total - finished);
+    progressFill.style.width = (finished / total * 100) + '%';
+    progressLabel.textContent = finished < total
+      ? `Скачивание… ${finished} из ${total} — осталось ~${listenFormatDuration(etaSec)}`
+      : `Скачивание… ${finished} из ${total}`;
   }
   listenDownloadAllRunning = false;
   btn.classList.remove('downloading');
   btn.title = 'Скачать все суры';
+  progressWrap.style.display = 'none';
   renderListenSurahList();
   if(listenDownloadAllCancelled){
     showToast(`Остановлено — скачано ${done} из ${total}`);
