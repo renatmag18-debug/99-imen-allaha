@@ -15753,14 +15753,19 @@ function openPrayerScreen(){
 /* =====================================================
    ONE-TIME HINT — points new users at the side drawer, then never again.
 ===================================================== */
-function showSideDrawerOnboardingHint(){
+// Shared by both hints below — a tooltip pointing at the drawer button,
+// plus the drawer's edge peeking into view twice like a nudge (no
+// backdrop, closeSideDrawer isn't involved at all). Returns a promise
+// resolving once fully faded out, so a second hint can wait its turn
+// instead of overlapping the first one's animation.
+function showDrawerHintTip(text){
   const btn = document.getElementById('sideDrawerBtn');
   const drawer = document.getElementById('sideDrawer');
-  if(!btn || !drawer) return;
+  if(!btn || !drawer) return Promise.resolve();
 
   const tip = document.createElement('div');
   tip.className = 'side-drawer-hint-tip';
-  tip.textContent = 'Здесь боковое меню: Коран, время намаза, друзья и другие разделы';
+  tip.textContent = text;
   document.body.appendChild(tip);
   const rect = btn.getBoundingClientRect();
   tip.style.top = (rect.bottom + 10) + 'px';
@@ -15769,39 +15774,66 @@ function showSideDrawerOnboardingHint(){
   btn.classList.add('hint-pulse');
   requestAnimationFrame(()=> tip.classList.add('show'));
 
-  // Peeks the drawer's edge into view twice, like a nudge rather than an
-  // actual open (no backdrop, closeSideDrawer isn't involved at all).
   const peekOnce = (delayMs, holdMs) => new Promise(resolve => {
     setTimeout(()=>{
       drawer.classList.add('peek');
       setTimeout(()=>{ drawer.classList.remove('peek'); resolve(); }, holdMs);
     }, delayMs);
   });
-  peekOnce(300, 900).then(()=> peekOnce(260, 700)).then(()=>{
+  return peekOnce(300, 900).then(()=> peekOnce(260, 700)).then(()=> new Promise(resolve => {
     setTimeout(()=>{
       tip.classList.remove('show');
       btn.classList.remove('hint-pulse');
-      setTimeout(()=> tip.remove(), 350);
+      setTimeout(()=>{ tip.remove(); resolve(); }, 350);
     }, 400);
-  });
+  }));
+}
+function showSideDrawerOnboardingHint(){
+  return showDrawerHintTip('Здесь боковое меню: Коран, время намаза, друзья и другие разделы');
 }
 function maybeShowSideDrawerOnboardingHint(){
-  try{
-    if(localStorage.getItem('sideDrawerHintShown')) return;
-  }catch(e){ return; }
-  // Delayed rather than immediate so it doesn't compete with the home
-  // screen's own entrance, and re-checked against the active screen once
-  // the delay elapses — a chat/prayer deep link that took over in the
-  // meantime means this wasn't really seen, so the flag stays unset and
-  // it's still owed on the next genuine home-screen visit.
-  setTimeout(()=>{
-    const homeScreen = document.querySelector('.screen[data-screen="home"]');
-    if(!homeScreen || !homeScreen.classList.contains('active')) return;
-    try{ localStorage.setItem('sideDrawerHintShown', '1'); }catch(e){}
-    showSideDrawerOnboardingHint();
-  }, 1400);
+  return new Promise(resolve => {
+    try{
+      if(localStorage.getItem('sideDrawerHintShown')) return resolve();
+    }catch(e){ return resolve(); }
+    // Delayed rather than immediate so it doesn't compete with the home
+    // screen's own entrance, and re-checked against the active screen once
+    // the delay elapses — a chat/prayer deep link that took over in the
+    // meantime means this wasn't really seen, so the flag stays unset and
+    // it's still owed on the next genuine home-screen visit.
+    setTimeout(()=>{
+      const homeScreen = document.querySelector('.screen[data-screen="home"]');
+      if(!homeScreen || !homeScreen.classList.contains('active')) return resolve();
+      try{ localStorage.setItem('sideDrawerHintShown', '1'); }catch(e){}
+      showSideDrawerOnboardingHint().then(resolve);
+    }, 1400);
+  });
 }
-maybeShowSideDrawerOnboardingHint();
+// One-time notice pointing out the "Поддержка" link at the bottom of the
+// side drawer — a separate flag from sideDrawerHintShown above so it
+// still reaches everyone who already has that older flag set from before
+// support existed, not just brand-new installs. Waits for the drawer
+// intro hint to finish first (it resolves immediately if that one was
+// already shown or isn't due), so the two never overlap on-screen.
+function maybeShowSupportHint(){
+  try{
+    if(localStorage.getItem('supportHintShown')) return;
+  }catch(e){ return; }
+  maybeShowSideDrawerOnboardingHint().then(()=>{
+    // Same entrance-avoidance delay as the drawer-intro hint uses — without
+    // it, an existing user (whose sideDrawerHintShown is already set, so
+    // the promise above resolves immediately) would see this pop up the
+    // instant the page loads, before anything else on the home screen has
+    // even settled in.
+    setTimeout(()=>{
+      const homeScreen = document.querySelector('.screen[data-screen="home"]');
+      if(!homeScreen || !homeScreen.classList.contains('active')) return;
+      try{ localStorage.setItem('supportHintShown', '1'); }catch(e){}
+      showDrawerHintTip('Внизу бокового меню — «Поддержка»: там можно написать, если нужна помощь');
+    }, 1400);
+  });
+}
+maybeShowSupportHint();
 
 </script>
 </body>
