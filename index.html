@@ -856,6 +856,9 @@ body{
 .sheet-idx{ font-family:var(--font-num); font-size:13px; color:var(--jade); }
 .sheet-close{ width:34px;height:34px;border-radius:50%;border:1px solid var(--line); background:var(--glass); display:flex;align-items:center;justify-content:center; cursor:pointer; color:var(--ivory); flex-shrink:0; padding:0;} .sheet-close svg{ width:16px;height:16px;}
 .sheet-body{ overflow-y:auto; text-align:center; padding-top:6px;}
+.mecca-live-video-wrap{ position:relative; width:100%; aspect-ratio:16/9; border-radius:var(--r-card); overflow:hidden; background:#000; border:1px solid var(--line); }
+.mecca-live-video-wrap iframe{ position:absolute; inset:0; width:100%; height:100%; border:none; }
+.mecca-live-caption{ margin-top:12px; font-size:12.5px; color:var(--ivory-dim); text-align:left; line-height:1.5; }
 .sheet-ar{ font-family:var(--font-ar); font-size:60px; color:var(--ivory); direction:rtl; margin-bottom:12px; line-height:1.4; text-shadow:var(--ink-halo);}
 .sheet-salam{ font-family:var(--font-ar); font-size:29px; color:var(--gold); direction:rtl; margin-bottom:8px; line-height:1.1;}
 .sheet-tr{ font-family:var(--font-display); font-size:25px; font-weight:200; margin-bottom:6px;}
@@ -3703,6 +3706,21 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
     </div>
   </div>
 
+  <div class="sheet-backdrop" id="meccaLiveBackdrop"></div>
+  <div class="sheet" id="meccaLiveSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-top">
+      <div class="sheet-idx">Мекка · прямой эфир</div>
+      <button class="sheet-close" id="meccaLiveClose"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
+    </div>
+    <div class="sheet-body" style="padding-top:2px;">
+      <div class="mecca-live-video-wrap">
+        <iframe id="meccaLiveFrame" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen frameborder="0"></iframe>
+      </div>
+      <p class="mecca-live-caption">Официальная трансляция телеканала «Коран Карим» (Саудовская телерадиовещательная корпорация) из Заповедной мечети</p>
+    </div>
+  </div>
+
   <div class="sheet-backdrop" id="quranSettingsBackdrop"></div>
   <div class="sheet" id="quranSettingsSheet">
     <div class="sheet-handle"></div>
@@ -4195,6 +4213,7 @@ window.addEventListener('popstate', (e) => {
     try { closeFriendPicker(); } catch(e){}
     try { closeQuranSurahSheet(); } catch(e){}
     try { closeQuranSettingsSheet(); } catch(e){}
+    try { closeMeccaLiveSheet(); } catch(e){}
     setTimeout(() => { isClosingFromPopstate = false; }, 50);
   }
 });
@@ -6785,9 +6804,13 @@ const SIDE_DRAWER_ITEMS_META = {
   tajweed: {
     label: 'Таджвид',
     icon: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 4.5c-2.5-1.4-5.5-1.4-8 0v13.5c2.5-1.4 5.5-1.4 8 0 2.5-1.4 5.5-1.4 8 0V4.5c-2.5-1.4-5.5-1.4-8 0z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 4.5v13.5" stroke="currentColor" stroke-width="1.5"/></svg>'
+  },
+  mecca_live: {
+    label: 'Мекка онлайн',
+    icon: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" fill="currentColor"/><path d="M7.5 8.5a6.4 6.4 0 000 7M16.5 8.5a6.4 6.4 0 010 7M4.3 5.3a10.9 10.9 0 000 13.4M19.7 5.3a10.9 10.9 0 010 13.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
   }
 };
-const SIDE_DRAWER_DEFAULT_ORDER = ['favorites', 'quran', 'listen', 'tajweed', 'chats', 'prayer', 'settings'];
+const SIDE_DRAWER_DEFAULT_ORDER = ['favorites', 'quran', 'listen', 'mecca_live', 'tajweed', 'chats', 'prayer', 'settings'];
 
 function loadSideDrawerOrder(){
   try{
@@ -6864,6 +6887,8 @@ document.getElementById('sideDrawerList').addEventListener('click', e=>{
     if(typeof openListenScreen === 'function') openListenScreen();
   } else if(key === 'tajweed'){
     go('tajweed');
+  } else if(key === 'mecca_live'){
+    if(typeof openMeccaLiveSheet === 'function') openMeccaLiveSheet();
   }
 });
 
@@ -14788,6 +14813,34 @@ function closeQuranSurahSheet(){
 document.getElementById('quranSurahBtn').addEventListener('click', openQuranSurahSheet);
 document.getElementById('quranSurahClose').addEventListener('click', closeQuranSurahSheet);
 document.getElementById('quranSurahBackdrop').addEventListener('click', closeQuranSurahSheet);
+
+/* =====================================================
+   MECCA LIVE — embeds the official Saudi Quran TV channel's live
+   broadcast from Al-Masjid al-Haram (channel id verified directly
+   against youtube.com/user/SaudiQuranTv — the government-run Saudi
+   Broadcasting Authority channel, not a random re-stream). Uses
+   YouTube's own live_stream embed endpoint, which always resolves to
+   whatever that channel is currently broadcasting live — the channel
+   streams 24/7, so there's no fixed video id to go stale.
+   The iframe's src is only ever set while the sheet is open (and
+   cleared to blank on close) so the stream doesn't keep playing —
+   with audio — once the user has left it.
+===================================================== */
+const MECCA_LIVE_CHANNEL_ID = 'UCos52azQNBgW63_9uDJoPDA';
+function openMeccaLiveSheet(){
+  pushSheetHistory();
+  document.getElementById('meccaLiveFrame').src = `https://www.youtube.com/embed/live_stream?channel=${MECCA_LIVE_CHANNEL_ID}&autoplay=1`;
+  document.getElementById('meccaLiveSheet').classList.add('show');
+  document.getElementById('meccaLiveBackdrop').classList.add('show');
+}
+function closeMeccaLiveSheet(){
+  popSheetHistory();
+  document.getElementById('meccaLiveSheet').classList.remove('show');
+  document.getElementById('meccaLiveBackdrop').classList.remove('show');
+  document.getElementById('meccaLiveFrame').src = 'about:blank';
+}
+document.getElementById('meccaLiveClose').addEventListener('click', closeMeccaLiveSheet);
+document.getElementById('meccaLiveBackdrop').addEventListener('click', closeMeccaLiveSheet);
 
 // Matches "2:255", "2 255", "2-255", "2,255" — a direct surah:ayah reference,
 // tried before falling back to a text search.
