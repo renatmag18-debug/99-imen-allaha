@@ -781,7 +781,9 @@ body{
 }
 #sideDrawer.show{ transform:translateX(0); pointer-events:auto; }
 .side-drawer-head{ display:flex; align-items:center; justify-content:space-between; padding:0 16px 16px; flex-shrink:0; }
-.side-drawer-list{ display:flex; flex-direction:column; gap:2px; overflow-y:auto; padding:6px 10px; }
+.side-drawer-list{ display:flex; flex-direction:column; gap:2px; overflow-y:auto; padding:6px 10px; flex:1; min-height:0; }
+.side-drawer-footer{ flex-shrink:0; padding:8px 10px 0; border-top:1px solid var(--line); }
+.side-drawer-footer .side-drawer-item{ text-decoration:none; }
 .side-drawer-item{
   display:flex; align-items:center; gap:14px; width:100%; padding:13px 12px; border-radius:var(--r-input);
   background:none; border:none; color:var(--ivory); font-family:var(--font-body); font-size:15px;
@@ -3651,6 +3653,12 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
       </span>
     </button>
     <div class="side-drawer-list" id="sideDrawerList"></div>
+    <div class="side-drawer-footer">
+      <a href="https://t.me/Mgzhnvvv" class="side-drawer-item" rel="noopener noreferrer">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M21 3L3 10.5l7 2.5m11-10l-4 17-7-6.5m11-10.5L10 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Поддержка</span>
+      </a>
+    </div>
   </div>
 
   <div id="callOverlay">
@@ -6826,6 +6834,7 @@ function closeSideDrawer(){
 document.getElementById('sideDrawerBtn').addEventListener('click', openSideDrawer);
 document.getElementById('sideDrawerClose').addEventListener('click', closeSideDrawer);
 document.getElementById('sideDrawerBackdrop').addEventListener('click', closeSideDrawer);
+document.querySelector('.side-drawer-footer .side-drawer-item')?.addEventListener('click', ()=>{ closeSideDrawer(); });
 document.getElementById('sideDrawerList').addEventListener('click', e=>{
   const btn = e.target.closest('.side-drawer-item');
   if(!btn) return;
