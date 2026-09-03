@@ -6888,7 +6888,18 @@ document.getElementById('sideDrawerList').addEventListener('click', e=>{
   } else if(key === 'tajweed'){
     go('tajweed');
   } else if(key === 'mecca_live'){
-    if(typeof openMeccaLiveSheet === 'function') openMeccaLiveSheet();
+    // Prefer the native activity when available — see MeccaLiveActivity's
+    // own comment for why: the in-page <iframe> fallback below shows
+    // YouTube's "Error 153" inside the native app specifically, since that
+    // WebView's origin is file:// (this whole app being one page loaded via
+    // loadDataWithBaseURL). A real browser/PWA context (a genuine https://
+    // origin) doesn't have that problem, so the iframe sheet stays as the
+    // fallback there.
+    if(typeof AndroidApp !== 'undefined' && typeof AndroidApp.openMeccaLive === 'function'){
+      AndroidApp.openMeccaLive();
+    } else if(typeof openMeccaLiveSheet === 'function'){
+      openMeccaLiveSheet();
+    }
   }
 });
 
@@ -14815,16 +14826,23 @@ document.getElementById('quranSurahClose').addEventListener('click', closeQuranS
 document.getElementById('quranSurahBackdrop').addEventListener('click', closeQuranSurahSheet);
 
 /* =====================================================
-   MECCA LIVE — embeds the official Saudi Quran TV channel's live
-   broadcast from Al-Masjid al-Haram (channel id verified directly
-   against youtube.com/user/SaudiQuranTv — the government-run Saudi
-   Broadcasting Authority channel, not a random re-stream). Uses
-   YouTube's own live_stream embed endpoint, which always resolves to
-   whatever that channel is currently broadcasting live — the channel
-   streams 24/7, so there's no fixed video id to go stale.
-   The iframe's src is only ever set while the sheet is open (and
-   cleared to blank on close) so the stream doesn't keep playing —
-   with audio — once the user has left it.
+   MECCA LIVE (web/PWA fallback) — embeds the official Saudi Quran TV
+   channel's live broadcast from Al-Masjid al-Haram (channel id verified
+   directly against youtube.com/user/SaudiQuranTv — the government-run
+   Saudi Broadcasting Authority channel, not a random re-stream) as an
+   in-page <iframe>. Uses YouTube's own live_stream embed endpoint, which
+   always resolves to whatever that channel is currently broadcasting
+   live — the channel streams 24/7, so there's no fixed video id to go
+   stale. The iframe's src is only ever set while the sheet is open (and
+   cleared to blank on close) so the stream doesn't keep playing — with
+   audio — once the user has left it.
+   The native app uses AndroidApp.openMeccaLive() instead (see the
+   sideDrawerList click handler above and MeccaLiveActivity's own
+   comment) — this exact iframe approach shows YouTube's "Error 153"
+   there, since that WebView's origin is file://, which the embed
+   player's origin/referrer check rejects. A real https:// origin
+   (an actual browser tab, or this page served as a PWA) doesn't hit
+   that problem, so this stays as the fallback for those contexts.
 ===================================================== */
 const MECCA_LIVE_CHANNEL_ID = 'UCos52azQNBgW63_9uDJoPDA';
 function openMeccaLiveSheet(){
