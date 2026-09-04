@@ -1882,33 +1882,6 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 }
 
 /* --- "Направление киблы" screen --- */
-.qibla-compass-wrap{ display:flex; flex-direction:column; align-items:center; margin:18px 0 10px; }
-.qibla-compass{
-  position:relative; width:230px; height:230px; border-radius:50%;
-  background:radial-gradient(circle at 50% 42%, var(--accent-tint), var(--fill-1));
-  border:1px solid var(--gold);
-}
-.qibla-compass-dial{
-  position:absolute; inset:0; transition:transform .15s linear;
-}
-.qibla-compass-dial span{
-  position:absolute; font-family:var(--font-display); font-size:13px; color:var(--ivory-dim);
-  left:50%; top:50%;
-}
-.qibla-dial-n{ color:var(--gold); transform:translate(-50%,-105px); }
-.qibla-dial-e{ transform:translate(90px,-50%); }
-.qibla-dial-s{ transform:translate(-50%,90px); }
-.qibla-dial-w{ transform:translate(-115px,-50%); }
-.qibla-compass-ring{ position:absolute; inset:14px; border-radius:50%; border:1px dashed var(--line); }
-.qibla-needle{
-  position:absolute; inset:0; display:flex; justify-content:center; transition:transform .15s linear;
-}
-.qibla-needle svg{ width:32px; height:32px; color:var(--gold); margin-top:22px; filter:drop-shadow(0 2px 6px rgba(0,0,0,.35)); }
-.qibla-compass-center{
-  position:absolute; top:50%; left:50%; width:9px; height:9px; margin:-4.5px 0 0 -4.5px;
-  border-radius:50%; background:var(--gold);
-}
-.qibla-compass-status{ margin-top:12px; font-size:12px; color:var(--ivory-dim); text-align:center; max-width:280px; line-height:1.5; }
 .qibla-map-card{
   border-radius:var(--r-card); border:1px solid var(--line); background:var(--glass); padding:14px; margin:18px 0 10px; text-align:center;
 }
@@ -3468,20 +3441,6 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
           <button type="button" id="qiblaLocateBtn" class="btn btn-ghost prayer-locate-btn">Определить</button>
         </div>
 
-        <div class="qibla-compass-wrap">
-          <div class="qibla-compass">
-            <div class="qibla-compass-dial" id="qiblaCompassDial">
-              <span class="qibla-dial-n">С</span><span class="qibla-dial-e">В</span><span class="qibla-dial-s">Ю</span><span class="qibla-dial-w">З</span>
-            </div>
-            <div class="qibla-compass-ring"></div>
-            <div class="qibla-needle" id="qiblaNeedle">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3 7-3-1.5L9 9l3-7z"/><path d="M12 22a4 4 0 004-4H8a4 4 0 004 4z" opacity=".5"/></svg>
-            </div>
-            <div class="qibla-compass-center"></div>
-          </div>
-          <div class="qibla-compass-status" id="qiblaCompassStatus">Поверните телефон, пока стрелка не укажет вверх — в этот момент вы стоите лицом к Каабе.</div>
-        </div>
-
         <div class="stat-row">
           <div class="stat"><b id="qiblaBearingValue">—</b><span>направление</span></div>
           <div class="stat"><b id="qiblaDistanceValue">—</b><span>до Каабы</span></div>
@@ -4671,7 +4630,6 @@ function go(name, replace = false){
     // push notifications for that friend forever.
     if(prevScreen === 'chat' && name !== 'chat' && typeof closeChatThread === 'function') closeChatThread();
     if(prevScreen === 'quran' && name !== 'quran' && typeof quranPauseAudio === 'function') quranPauseAudio();
-    if(prevScreen === 'qibla' && name !== 'qibla' && typeof qiblaStopCompass === 'function') qiblaStopCompass();
     if(name === 'home' && typeof renderSideDrawerPrayerPreview === 'function') renderSideDrawerPrayerPreview();
     // Both screens already have their own fixed bar at the bottom (tafsir's
     // prev/next-surah row, the chat thread's message composer) — the
@@ -16369,65 +16327,6 @@ function qiblaDistanceKm(lat, lon){
 }
 
 let qiblaBearing = 0;
-let qiblaHeading = 0; // 0 when the compass sensor isn't available — needle then just shows the fixed bearing
-function qiblaApplyHeading(heading){
-  qiblaHeading = heading;
-  document.getElementById('qiblaCompassDial').style.transform = `rotate(${-heading}deg)`;
-  document.getElementById('qiblaNeedle').style.transform = `rotate(${qiblaBearing - heading}deg)`;
-}
-
-let qiblaCompassListening = false;
-let qiblaGotHeading = false;
-function qiblaOrientationHandler(e){
-  let heading;
-  if(typeof e.webkitCompassHeading === 'number'){
-    heading = e.webkitCompassHeading; // iOS Safari — already true-north-referenced
-  } else if(e.absolute && typeof e.alpha === 'number'){
-    // Chromium's absolute alpha increases counter-clockwise from north;
-    // compass heading increases clockwise, hence the flip. Device compass
-    // calibration (the "figure 8" wave) affects accuracy same as any
-    // compass app — nothing this code can correct for.
-    heading = (360 - e.alpha) % 360;
-  } else {
-    return;
-  }
-  qiblaGotHeading = true;
-  qiblaApplyHeading(heading);
-  document.getElementById('qiblaCompassStatus').textContent = 'Поверните телефон, пока стрелка не укажет вверх — в этот момент вы стоите лицом к Каабе.';
-}
-function qiblaStartCompass(){
-  if(qiblaCompassListening) return;
-  qiblaCompassListening = true;
-  qiblaGotHeading = false;
-  const attach = () => {
-    window.addEventListener('deviceorientationabsolute', qiblaOrientationHandler, true);
-    window.addEventListener('deviceorientation', qiblaOrientationHandler, true);
-    setTimeout(() => {
-      if(!qiblaGotHeading){
-        document.getElementById('qiblaCompassStatus').textContent = 'Компас недоступен на этом устройстве — направление ниже и на схеме уже верное, доворачиваться по стрелке нельзя.';
-      }
-    }, 2500);
-  };
-  // iOS 13+ gates the sensor behind a permission prompt that must be
-  // triggered from a user gesture — Android never defines this method, so
-  // this branch is effectively a no-op there and falls straight to attach().
-  if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
-    DeviceOrientationEvent.requestPermission().then(state => {
-      if(state === 'granted') attach();
-      else document.getElementById('qiblaCompassStatus').textContent = 'Доступ к компасу не разрешён — направление ниже и на схеме уже верное.';
-    }).catch(attach);
-  } else if('DeviceOrientationEvent' in window){
-    attach();
-  } else {
-    document.getElementById('qiblaCompassStatus').textContent = 'Компас не поддерживается этим устройством — направление ниже и на схеме уже верное.';
-  }
-}
-function qiblaStopCompass(){
-  if(!qiblaCompassListening) return;
-  qiblaCompassListening = false;
-  window.removeEventListener('deviceorientationabsolute', qiblaOrientationHandler, true);
-  window.removeEventListener('deviceorientation', qiblaOrientationHandler, true);
-}
 
 // Leaflet + OpenStreetMap tiles, self-hosted under vendor/leaflet/ (same
 // reason Firebase's SDK is self-hosted there instead of pulled from a CDN —
@@ -16525,7 +16424,6 @@ function renderQiblaScreen(){
   const distance = qiblaDistanceKm(prayerSettings.lat, prayerSettings.lon);
   document.getElementById('qiblaBearingValue').textContent = Math.round(qiblaBearing) + '°';
   document.getElementById('qiblaDistanceValue').textContent = Math.round(distance).toLocaleString('ru-RU') + ' км';
-  qiblaApplyHeading(qiblaHeading);
   loadLeaflet().then(() => {
     document.getElementById('qiblaMapStatus').style.display = 'none';
     qiblaRenderMap();
@@ -16546,7 +16444,6 @@ function openQiblaScreen(){
   // first is what made this screen look broken on a first visit.
   const usingDefaultLocation = prayerSettings.lat === PRAYER_DEFAULT_LAT && prayerSettings.lon === PRAYER_DEFAULT_LON;
   renderQiblaScreen();
-  qiblaStartCompass();
   if(usingDefaultLocation) locatePrayerCity();
 }
 
