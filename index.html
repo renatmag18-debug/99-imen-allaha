@@ -1908,9 +1908,10 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 /* Leaflet's own default control chrome (zoom buttons, attribution) is
    styled for a light page background regardless of the host site's own
    theme — restyle just enough to read on our dark UI in both themes. */
-.qibla-map-real .leaflet-control-zoom a{ background:var(--fill-1); color:var(--ivory); border-color:var(--line); }
+.qibla-map-real .leaflet-bar a{ background:var(--fill-1); color:var(--ivory); border-color:var(--line); }
 .qibla-map-real .leaflet-control-attribution{ background:rgba(0,0,0,.55); color:var(--ivory-dim); }
 .qibla-map-real .leaflet-control-attribution a{ color:var(--ivory-dim); }
+.qibla-locate-control a{ display:flex; align-items:center; justify-content:center; width:26px; height:26px; }
 .qibla-status{ font-size:12.5px; color:var(--ivory-dim); text-align:center; padding:20px; }
 .qibla-map-caption{ font-size:11px; color:var(--ivory-dim); margin-top:8px; }
 
@@ -16419,6 +16420,26 @@ const QIBLA_KAABA_ICON = () => L.divIcon({
   html: '<div style="width:22px;height:22px;border-radius:6px;background:#111;border:2.5px solid var(--gold,#c9a24b);box-shadow:0 2px 8px rgba(0,0,0,.5);"></div>',
   iconSize: [22, 22], iconAnchor: [11, 11],
 });
+// A "recenter on me" button — Leaflet has no built-in equivalent of the
+// browser Geolocation-button plugins ship, but a custom control is only a
+// few lines. Jumps to a closer, street-scale zoom rather than whatever
+// zoom fitBounds last landed on, since that's usually zoomed out to also
+// fit the Kaaba.
+const QiblaLocateControl = L.Control.extend({
+  options: { position: 'topright' },
+  onAdd: function(){
+    const div = L.DomUtil.create('div', 'leaflet-bar qibla-locate-control');
+    div.innerHTML = '<a href="#" role="button" title="Моё местоположение" aria-label="Моё местоположение">' +
+      '<svg viewBox="0 0 24 24" fill="none" width="16" height="16"><circle cx="12" cy="12" r="3" fill="currentColor"/>' +
+      '<path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></a>';
+    L.DomEvent.disableClickPropagation(div);
+    L.DomEvent.on(div, 'click', (e) => {
+      L.DomEvent.preventDefault(e);
+      qiblaMap.setView([prayerSettings.lat, prayerSettings.lon], 15);
+    });
+    return div;
+  }
+});
 
 let qiblaMap = null, qiblaYouMarker = null, qiblaKaabaMarker = null, qiblaMapLine = null;
 function qiblaRenderMap(){
@@ -16435,6 +16456,7 @@ function qiblaRenderMap(){
       maxZoom: 18,
       attribution: '© OpenStreetMap',
     }).addTo(qiblaMap);
+    new QiblaLocateControl().addTo(qiblaMap);
     qiblaYouMarker = L.marker(you).addTo(qiblaMap);
     qiblaKaabaMarker = L.marker(kaaba, { icon: QIBLA_KAABA_ICON() }).addTo(qiblaMap).bindPopup('Кааба');
     // Solid, saturated red rather than the app's own accent color — the
