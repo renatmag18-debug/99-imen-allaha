@@ -44,19 +44,24 @@
 // Applied before any CSS paints, so a returning user who chose dark mode
 // never sees a flash of the (now-default) light theme first.
 try{
-  if(localStorage.getItem('themePref') === 'dark') document.documentElement.setAttribute('data-theme','dark');
-  let savedSkin = localStorage.getItem('skinPref');
-  if(!savedSkin){
-    // Совсем новый пользователь (ни разу не заходил раньше) — по умолчанию
-    // «Классика», а не «Нафас». Отличаем от старого пользователя, который
-    // просто ни разу не открывал выбор темы, по следам его использования.
-    const isReturning = localStorage.getItem('learnedNames') || localStorage.getItem('bestScore') ||
-      localStorage.getItem('username') || localStorage.getItem('themePref');
-    if(!isReturning){
-      savedSkin = 'classic';
-      localStorage.setItem('skinPref', 'classic');
-    }
+  const savedTheme = localStorage.getItem('themePref');
+  const savedSkin = localStorage.getItem('skinPref');
+  // Отличаем от пользователя, который просто ни разу не открывал выбор
+  // темы, по следам его использования — иначе это условие продолжало бы
+  // ложно срабатывать и после первого визита.
+  const isReturning = localStorage.getItem('learnedNames') || localStorage.getItem('bestScore') ||
+    localStorage.getItem('username') || savedTheme || savedSkin;
+  let theme = savedTheme;
+  if(!isReturning && !savedTheme){
+    // Совсем новый пользователь — «Нафас» (тема по умолчанию, то есть без
+    // data-skin) в тёмном варианте, а не светлом. Сохраняем сразу, а не
+    // только применяем на этот показ — иначе после первого же накопленного
+    // следа использования (isReturning) тема тут же откатилась бы обратно
+    // на светлую.
+    theme = 'dark';
+    localStorage.setItem('themePref', 'dark');
   }
+  if(theme === 'dark') document.documentElement.setAttribute('data-theme','dark');
   if(savedSkin && savedSkin !== 'nafas') document.documentElement.setAttribute('data-skin', savedSkin);
 }catch(e){}
 </script>
