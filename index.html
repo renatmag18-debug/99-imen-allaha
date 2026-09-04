@@ -1160,6 +1160,13 @@ body{
   color:var(--gold); font-size:13px; display:flex; align-items:center; justify-content:center;
 }
 .sira-day-row .title{ flex:1; min-width:0; font-size:14px; color:var(--ivory); }
+.sira-full-link{
+  display:block; width:100%; text-align:center; padding:12px; margin-bottom:18px;
+  border-radius:var(--r-card); border:1px solid var(--gold); background:var(--glass);
+  color:var(--gold-soft); font-family:var(--font-body); font-size:13.5px; cursor:pointer;
+}
+.sira-full-heading{ font-family:var(--font-display); font-size:16.5px; color:var(--gold); margin:26px 0 10px; }
+.sira-full-heading:first-of-type{ margin-top:0; }
 
 /* --- chat: conversation list --- */
 .chat-row{ display:flex; align-items:center; gap:12px; padding:12px 4px; border-bottom:1px solid var(--fill-2); cursor:pointer; }
@@ -3580,6 +3587,7 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
         <div style="width:44px;flex-shrink:0;"></div>
       </div>
       <div class="quran-page-scroll" id="siraPageScroll">
+        <button type="button" class="sira-full-link" id="siraOpenFullBtn">📖 Читать полную Сиру Пророка →</button>
         <div id="siraPage"></div>
         <div class="tafsir-status" id="siraLoading">Загрузка…</div>
         <div class="tafsir-status" id="siraError" style="display:none;">
@@ -3603,6 +3611,44 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
       </div>
       <div class="sheet-body" style="text-align:left;padding-top:2px;">
         <div id="siraDayList"></div>
+      </div>
+    </div>
+
+    <!-- SIRA FULL (полная Сира Пророка, по главам книги) -->
+    <section class="screen" data-screen="siraFull">
+      <div class="quran-head">
+        <button class="nav-arrow" data-nav="sira" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="quran-surah-btn" id="siraFullChapterBtn">
+          <span id="siraFullChapterBtnLabel">Полная Сира Пророка</span>
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div style="width:44px;flex-shrink:0;"></div>
+      </div>
+      <div class="quran-page-scroll" id="siraFullPageScroll">
+        <button type="button" class="sira-full-link" id="siraOpenShortBtn">📖 Краткая версия — 30 дней →</button>
+        <div id="siraFullPage"></div>
+        <div class="tafsir-status" id="siraFullLoading">Загрузка…</div>
+        <div class="tafsir-status" id="siraFullError" style="display:none;">
+          Не удалось загрузить сиру.<br>Проверьте подключение к интернету.
+          <button class="btn btn-ghost" id="siraFullRetryBtn" style="margin-top:14px;">Повторить</button>
+        </div>
+      </div>
+      <div class="quran-foot">
+        <button class="quran-nav-btn" id="siraFullPrevBtn" aria-label="Предыдущая глава"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="quran-page-num" id="siraFullChapterNum">1 / 25</button>
+        <button class="quran-nav-btn" id="siraFullNextBtn" aria-label="Следующая глава"><svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </div>
+    </section>
+
+    <div class="sheet-backdrop" id="siraFullChapterBackdrop"></div>
+    <div class="sheet" id="siraFullChapterSheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-top">
+        <div class="sheet-idx">Полная Сира Пророка — главы</div>
+        <button class="sheet-close" id="siraFullChapterClose"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
+      </div>
+      <div class="sheet-body" style="text-align:left;padding-top:2px;">
+        <div id="siraFullChapterList"></div>
       </div>
     </div>
 
@@ -4711,7 +4757,7 @@ function go(name, replace = false){
     // chat thread specifically it can crowd the composer once the keyboard
     // is open too.
     const dockEl = document.querySelector('.tabbar');
-    if(dockEl) dockEl.style.display = (name === 'tafsir' || name === 'chat' || name === 'sira') ? 'none' : '';
+    if(dockEl) dockEl.style.display = (name === 'tafsir' || name === 'chat' || name === 'sira' || name === 'siraFull') ? 'none' : '';
   };
   
   if(!isPopping) {
@@ -15346,6 +15392,112 @@ function closeSiraDaySheet(){
 document.getElementById('siraDayBtn').addEventListener('click', openSiraDaySheet);
 document.getElementById('siraDayClose').addEventListener('click', closeSiraDaySheet);
 document.getElementById('siraDayBackdrop').addEventListener('click', closeSiraDaySheet);
+
+/* ================= SIRA FULL (полная Сира Пророка, 25 глав книги) ================= */
+const SIRA_FULL_DATA_URL = 'https://99ism.ru/sira-full-data.json';
+const SIRA_FULL_TOTAL_CHAPTERS = 25;
+let siraFullData = null;
+let siraFullLoadPromise = null;
+let siraFullCurrentChapter = null;
+
+function siraFullFetchData(){
+  if(siraFullData) return Promise.resolve(siraFullData);
+  if(siraFullLoadPromise) return siraFullLoadPromise;
+  siraFullLoadPromise = fetch(SIRA_FULL_DATA_URL).then(r=>{
+    if(!r.ok) throw new Error('bad status');
+    return r.json();
+  }).then(data=>{ siraFullData = data; return data; });
+  return siraFullLoadPromise;
+}
+
+function siraFullRenderChapter(num){
+  const d = siraFullData[num - 1];
+  const parts = [];
+  parts.push(`<div class="sira-day-badge">ГЛАВА ${num} ИЗ ${SIRA_FULL_TOTAL_CHAPTERS}</div>`);
+  parts.push(`<div class="sira-title">${siraEscapeHtml(d.title)}</div>`);
+  d.sections.forEach(s=>{
+    if(s.heading) parts.push(`<div class="sira-full-heading">${siraEscapeHtml(s.heading)}</div>`);
+    s.paragraphs.forEach(p => parts.push(`<p class="sira-p">${siraEscapeHtml(p)}</p>`));
+  });
+  document.getElementById('siraFullPage').innerHTML = parts.join('');
+  document.getElementById('siraFullChapterBtnLabel').textContent = `${num}. ${d.title}`;
+  document.getElementById('siraFullChapterNum').textContent = `${num} / ${SIRA_FULL_TOTAL_CHAPTERS}`;
+  document.getElementById('siraFullPageScroll').scrollTop = 0;
+  siraFullCurrentChapter = num;
+  try{ localStorage.setItem('siraFullLastChapter', String(num)); }catch(e){}
+}
+
+async function siraFullGoToChapter(num){
+  num = Math.max(1, Math.min(SIRA_FULL_TOTAL_CHAPTERS, Math.round(num)));
+  document.getElementById('siraFullError').style.display = 'none';
+  document.getElementById('siraFullLoading').style.display = siraFullData ? 'none' : '';
+  try{
+    await siraFullFetchData();
+    document.getElementById('siraFullLoading').style.display = 'none';
+    siraFullRenderChapter(num);
+  }catch(e){
+    document.getElementById('siraFullLoading').style.display = 'none';
+    document.getElementById('siraFullError').style.display = '';
+  }
+}
+
+function openSiraFullScreen(){
+  if(siraFullData && siraFullCurrentChapter) return;
+  let last = 1;
+  try{ last = parseInt(localStorage.getItem('siraFullLastChapter'), 10) || 1; }catch(e){}
+  siraFullGoToChapter(last);
+}
+
+document.getElementById('siraFullPrevBtn').addEventListener('click', ()=> siraFullGoToChapter((siraFullCurrentChapter||1) - 1));
+document.getElementById('siraFullNextBtn').addEventListener('click', ()=> siraFullGoToChapter((siraFullCurrentChapter||1) + 1));
+document.getElementById('siraFullRetryBtn').addEventListener('click', ()=> siraFullGoToChapter(siraFullCurrentChapter||1));
+
+function siraFullRenderChapterRows(){
+  const listEl = document.getElementById('siraFullChapterList');
+  if(!siraFullData){ listEl.innerHTML = ''; return; }
+  listEl.innerHTML = siraFullData.map(d => `<div class="sira-day-row" data-num="${d.num}">
+      <span class="n">${d.num}</span>
+      <span class="title">${siraEscapeHtml(d.title)}</span>
+    </div>`).join('');
+  listEl.querySelectorAll('.sira-day-row').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      closeSiraFullChapterSheet();
+      siraFullGoToChapter(parseInt(row.dataset.num, 10));
+    });
+  });
+}
+
+async function openSiraFullChapterSheet(){
+  pushSheetHistory();
+  document.getElementById('siraFullChapterSheet').classList.add('show');
+  document.getElementById('siraFullChapterBackdrop').classList.add('show');
+  const listEl = document.getElementById('siraFullChapterList');
+  if(siraFullData){ siraFullRenderChapterRows(); return; }
+  listEl.innerHTML = '<p class="misc-intro">Загрузка…</p>';
+  try{
+    await siraFullFetchData();
+    siraFullRenderChapterRows();
+  }catch(e){
+    listEl.innerHTML = '<p class="misc-intro">Не удалось загрузить список глав.</p>';
+  }
+}
+function closeSiraFullChapterSheet(){
+  popSheetHistory();
+  document.getElementById('siraFullChapterSheet').classList.remove('show');
+  document.getElementById('siraFullChapterBackdrop').classList.remove('show');
+}
+document.getElementById('siraFullChapterBtn').addEventListener('click', openSiraFullChapterSheet);
+document.getElementById('siraFullChapterClose').addEventListener('click', closeSiraFullChapterSheet);
+document.getElementById('siraFullChapterBackdrop').addEventListener('click', closeSiraFullChapterSheet);
+
+document.getElementById('siraOpenFullBtn').addEventListener('click', ()=>{
+  go('siraFull');
+  openSiraFullScreen();
+});
+document.getElementById('siraOpenShortBtn').addEventListener('click', ()=>{
+  go('sira');
+  openSiraScreen();
+});
 
 document.getElementById('quranPrevBtn').addEventListener('click', ()=> quranGoToPage(quranState.page - 1));
 document.getElementById('quranNextBtn').addEventListener('click', ()=> quranGoToPage(quranState.page + 1));
