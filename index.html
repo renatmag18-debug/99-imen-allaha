@@ -16437,7 +16437,10 @@ function qiblaRenderMap(){
     }).addTo(qiblaMap);
     qiblaYouMarker = L.marker(you).addTo(qiblaMap);
     qiblaKaabaMarker = L.marker(kaaba, { icon: QIBLA_KAABA_ICON() }).addTo(qiblaMap).bindPopup('Кааба');
-    qiblaMapLine = L.polyline([you, kaaba], { color: 'var(--gold)', weight: 2, dashArray: '6 6' }).addTo(qiblaMap);
+    // Solid, saturated red rather than the app's own accent color — the
+    // map tiles are light regardless of app theme, so gold/jade barely
+    // registered against them.
+    qiblaMapLine = L.polyline([you, kaaba], { color: '#e5383b', weight: 4, opacity: 0.95 }).addTo(qiblaMap);
   } else {
     qiblaYouMarker.setLatLng(you);
     qiblaMapLine.setLatLngs([you, kaaba]);
