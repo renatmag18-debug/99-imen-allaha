@@ -16430,21 +16430,30 @@ const QIBLA_KAABA_ICON = () => L.divIcon({
 // few lines. Jumps to a closer, street-scale zoom rather than whatever
 // zoom fitBounds last landed on, since that's usually zoomed out to also
 // fit the Kaaba.
-const QiblaLocateControl = L.Control.extend({
-  options: { position: 'topright' },
-  onAdd: function(){
-    const div = L.DomUtil.create('div', 'leaflet-bar qibla-locate-control');
-    div.innerHTML = '<a href="#" role="button" title="Моё местоположение" aria-label="Моё местоположение">' +
-      '<svg viewBox="0 0 24 24" fill="none" width="16" height="16"><circle cx="12" cy="12" r="3" fill="currentColor"/>' +
-      '<path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></a>';
-    L.DomEvent.disableClickPropagation(div);
-    L.DomEvent.on(div, 'click', (e) => {
-      L.DomEvent.preventDefault(e);
-      qiblaMap.setView([prayerSettings.lat, prayerSettings.lon], 15);
-    });
-    return div;
-  }
-});
+// Built lazily (not as a top-level `L.Control.extend(...)`) because `L`
+// itself doesn't exist yet at page-load time — Leaflet is only fetched
+// on demand by loadLeaflet() once the qibla screen is actually opened.
+// A top-level call here threw immediately on every single page load
+// (ReferenceError: L is not defined), which silently aborted the rest of
+// this script block — the actual cause of qibla (and anything defined
+// after it in this same <script>) breaking entirely.
+function qiblaMakeLocateControl(){
+  return new (L.Control.extend({
+    options: { position: 'topright' },
+    onAdd: function(){
+      const div = L.DomUtil.create('div', 'leaflet-bar qibla-locate-control');
+      div.innerHTML = '<a href="#" role="button" title="Моё местоположение" aria-label="Моё местоположение">' +
+        '<svg viewBox="0 0 24 24" fill="none" width="16" height="16"><circle cx="12" cy="12" r="3" fill="currentColor"/>' +
+        '<path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></a>';
+      L.DomEvent.disableClickPropagation(div);
+      L.DomEvent.on(div, 'click', (e) => {
+        L.DomEvent.preventDefault(e);
+        qiblaMap.setView([prayerSettings.lat, prayerSettings.lon], 15);
+      });
+      return div;
+    }
+  }))();
+}
 
 let qiblaMap = null, qiblaYouMarker = null, qiblaKaabaMarker = null, qiblaMapLine = null;
 function qiblaRenderMap(){
@@ -16461,7 +16470,7 @@ function qiblaRenderMap(){
       maxZoom: 18,
       attribution: '© OpenStreetMap',
     }).addTo(qiblaMap);
-    new QiblaLocateControl().addTo(qiblaMap);
+    qiblaMakeLocateControl().addTo(qiblaMap);
     qiblaYouMarker = L.marker(you).addTo(qiblaMap);
     qiblaKaabaMarker = L.marker(kaaba, { icon: QIBLA_KAABA_ICON() }).addTo(qiblaMap).bindPopup('Кааба');
     // Solid, saturated red rather than the app's own accent color — the
