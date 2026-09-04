@@ -396,7 +396,7 @@ body{
   padding:10px; border-radius:var(--r-pill);
   border:1px solid var(--nav-border);
   background:var(--nav-bg);
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
   box-shadow: 0 16px 36px -14px rgba(0,0,0,0.34);
 }
 /* Круглый док: только иконки, активная — залитый акцентом кружок.
@@ -525,7 +525,7 @@ body{
 .btn:disabled{ opacity:.5; cursor:default; pointer-events:none; }
 .btn-primary{ background:var(--gold); color:var(--on-accent); }
 .btn-primary:hover{ background:var(--gold-soft); }
-.btn-ghost{ background:var(--glass); color:var(--ivory); border-color:var(--line); backdrop-filter:blur(12px); }
+.btn-ghost{ background:var(--glass); color:var(--ivory); border-color:var(--line); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
 .btn-ghost:hover{ border-color:var(--gold); color:var(--gold); }
 .btn svg{width:16px;height:16px;}
 
@@ -565,7 +565,7 @@ body{
   position:relative; margin-bottom:14px; flex-shrink:0; padding:0 20px;
 }
 .search-wrap input{
-  width:100%; background:var(--glass); backdrop-filter:blur(12px); border:1px solid var(--line); border-radius:var(--r-pill);
+  width:100%; background:var(--glass); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:1px solid var(--line); border-radius:var(--r-pill);
   padding:13px 18px 13px 42px; color:var(--ivory); font-family:var(--font-body); font-size:14px; font-weight:300; outline:none;
   transition:border-color .2s var(--ease), background .2s var(--ease);
 }
@@ -634,7 +634,7 @@ body{
 .misc-collapse-item.faded{ transform:translateY(-10px); opacity:0; pointer-events:none; }
 .misc-collapsible-header.collapsed{ max-height:0; }
 .segmented-wrap{ flex-shrink:0; padding:0 20px 14px; }
-.segmented{ display:flex; gap:4px; border:1px solid var(--line); border-radius:var(--r-pill); padding:4px; background:var(--glass); backdrop-filter:blur(12px); overflow:hidden; }
+.segmented{ display:flex; gap:4px; border:1px solid var(--line); border-radius:var(--r-pill); padding:4px; background:var(--glass); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); overflow:hidden; }
 .seg-btn{
   flex:1; min-width:0; border:none; background:none; color:var(--ivory-dim); font-family:var(--font-body); font-weight:500; font-size:12.5px;
   padding:11px 6px; border-radius:var(--r-pill); cursor:pointer; transition:all .25s var(--ease);
@@ -666,7 +666,7 @@ body{
 .card{
   position:relative;
   border:1px solid var(--line); border-radius:var(--r-card); padding:15px 8px 13px; text-align:center; cursor:pointer;
-  background:var(--glass); backdrop-filter:blur(10px);
+  background:var(--glass); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
   transition: transform .2s var(--ease), border-color .2s var(--ease), background .2s var(--ease);
   animation: rise .5s var(--ease) both;
 }
@@ -728,7 +728,7 @@ body{
 
 /* ---------- detail sheet ---------- */
 .sheet-backdrop{
-  position:fixed; inset:0; background:rgba(8,5,18,0.6); backdrop-filter:blur(6px); z-index:20;
+  position:fixed; inset:0; background:rgba(8,5,18,0.6); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); z-index:20;
   opacity:0; pointer-events:none; transition:opacity .35s var(--ease);
 }
 .sheet-backdrop.show{ opacity:1; pointer-events:auto; }
@@ -788,11 +788,17 @@ body{
   position:fixed; top:0; left:0; bottom:0; z-index:21; width:min(80vw,300px);
   background:var(--glass); backdrop-filter:blur(24px) saturate(1.5); -webkit-backdrop-filter:blur(24px) saturate(1.5);
   border-right:1px solid var(--line); box-shadow:20px 0 60px -12px rgba(0,0,0,0.45);
-  transform:translateX(-100%); transition:transform .38s var(--ease);
+  /* translate3d (not translateX) + will-change: iOS Safari has a known bug
+     where an element combining backdrop-filter with an animated 2D
+     transform fails to composite — the blur renders but the element's own
+     content/border doesn't, or doesn't track the transform correctly.
+     Forcing its own GPU layer up front (matches the standard workaround
+     for this WebKit issue) avoids it. */
+  transform:translate3d(-100%,0,0); will-change:transform; transition:transform .38s var(--ease);
   pointer-events:none; display:flex; flex-direction:column;
   padding:calc(16px + var(--safe-top)) 0 calc(16px + var(--safe-bottom));
 }
-#sideDrawer.show{ transform:translateX(0); pointer-events:auto; }
+#sideDrawer.show{ transform:translate3d(0,0,0); pointer-events:auto; }
 .side-drawer-head{ display:flex; align-items:center; justify-content:space-between; padding:0 16px 16px; flex-shrink:0; }
 .side-drawer-list{ display:flex; flex-direction:column; gap:2px; overflow-y:auto; padding:6px 10px; flex:1; min-height:0; }
 .side-drawer-footer{ flex-shrink:0; padding:8px 10px 0; border-top:1px solid var(--line); }
@@ -1074,7 +1080,7 @@ body{
 .quran-foot{
   flex-shrink:0; display:flex; align-items:center; justify-content:space-between; gap:14px;
   padding:12px 22px calc(14px + var(--safe-bottom));
-  border-top:1px solid var(--line); background:var(--glass); backdrop-filter:blur(14px);
+  border-top:1px solid var(--line); background:var(--glass); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
 }
 .quran-nav-btn{
   width:44px; height:44px; border-radius:50%; border:1px solid var(--line); background:var(--panel);
@@ -1204,7 +1210,7 @@ body{
 .chat-input-bar{
   position:relative; flex-shrink:0; display:flex; align-items:flex-end; gap:10px;
   padding:10px 14px calc(12px + var(--safe-bottom));
-  border-top:1px solid var(--line); background:var(--glass); backdrop-filter:blur(14px);
+  border-top:1px solid var(--line); background:var(--glass); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
 }
 .chat-emoji-panel{
   position:absolute; left:0; right:0; bottom:100%; z-index:1;
@@ -1256,7 +1262,7 @@ body{
 .chat-recording-bar{
   flex-shrink:0; display:flex; align-items:center; gap:10px;
   padding:10px 14px calc(12px + var(--safe-bottom));
-  border-top:1px solid var(--line); background:var(--glass); backdrop-filter:blur(14px);
+  border-top:1px solid var(--line); background:var(--glass); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
 }
 .chat-recording-dot{
   width:10px; height:10px; border-radius:50%; background:#e14b4b; flex-shrink:0;
@@ -1313,7 +1319,7 @@ body{
 .chat-video-record-bar{
   flex-shrink:0; display:flex; align-items:center; gap:10px;
   padding:10px 14px calc(12px + var(--safe-bottom));
-  border-top:1px solid var(--line); background:var(--glass); backdrop-filter:blur(14px);
+  border-top:1px solid var(--line); background:var(--glass); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
 }
 .chat-video-record-preview-wrap{
   width:44px; height:44px; border-radius:50%; overflow:hidden; flex-shrink:0;
@@ -1597,7 +1603,7 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 .options{ display:flex; flex-direction:column; gap:10px;}
 .opt{
   text-align:left; padding:16px 20px; border-radius:var(--r-pill); border:1px solid var(--line);
-  background:var(--glass); backdrop-filter:blur(10px); color:var(--ivory); font-family:var(--font-body); font-size:14px;
+  background:var(--glass); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); color:var(--ivory); font-family:var(--font-body); font-size:14px;
   cursor:pointer; transition: all .25s var(--ease); line-height:1.4;
 }
 .opt:hover{ border-color:var(--gold); background:var(--fill-2);}
@@ -1774,7 +1780,7 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 .duel-participant-chip.live-now{border-color:var(--gold) !important;animation:chip-live 1s ease-out 2;}
 @keyframes remote-num-pop{0%{transform:scale(1);}40%{transform:scale(1.12);color:var(--jade);}100%{transform:scale(1);}}
 .counter-circle.remote-pop .counter-num{animation:remote-num-pop 0.45s ease-out;}
-.btn-float-dhikr{background:var(--glass);backdrop-filter:blur(12px);border:1px solid var(--gold);color:var(--gold);font-size:13px;font-weight:500;border-radius:var(--r-pill);padding:10px 18px;width:100%;margin-top:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .2s;}
+.btn-float-dhikr{background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--gold);color:var(--gold);font-size:13px;font-weight:500;border-radius:var(--r-pill);padding:10px 18px;width:100%;margin-top:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .2s;}
 .btn-float-dhikr:active{opacity:.7;}
 .dhikr-ar{ font-family:var(--font-ar); font-size:24px; color:var(--ivory); direction:rtl; line-height:1.85; margin-bottom:12px; text-align:right; }
 .dhikr-tr{ font-size:14px; color:var(--ivory); font-weight:500; margin-bottom:6px; line-height:1.5; }
@@ -2117,7 +2123,7 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 .pod .pod-av{
   width:46px; height:46px; border-radius:50%; margin:0 auto; display:flex; align-items:center; justify-content:center;
   font-size:17px; font-weight:300; color:var(--ivory);
-  border:1px solid var(--line); background:var(--glass); backdrop-filter:blur(12px);
+  border:1px solid var(--line); background:var(--glass); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
 }
 .pod.win .pod-av{
   width:58px; height:58px; font-size:21px; font-weight:600;
@@ -16145,29 +16151,40 @@ function locatePrayerCity(){
   if(!navigator.geolocation){ showToast('Геолокация не поддерживается'); return; }
   btns.forEach(btn => { btn.disabled = true; btn.textContent = 'Определяем…'; });
   navigator.geolocation.getCurrentPosition(async (pos) => {
-    prayerSettings.lat = pos.coords.latitude;
-    prayerSettings.lon = pos.coords.longitude;
-    prayerSettings.cityLabel = '';
-    setPrayerCityLabel();
-    renderPrayerTimesList();
-    if(typeof renderQiblaScreen === 'function') renderQiblaScreen();
-    savePrayerSettings();
-    // Best-effort reverse geocode for a human-readable label — a free,
-    // keyless client-side endpoint; the coordinates above already work
-    // fully without this, so a failure here just leaves the raw numbers
-    // showing instead of a city name.
+    // Everything from here down is "nice to have" on top of the coordinates
+    // already in hand — wrapped in try/finally so a failure in any one of
+    // them (qibla's map render throwing on some browser, the reverse-geocode
+    // fetch, a storage write) can never leave the button stuck reading
+    // "Определяем…" forever, which is worse than any of those failing
+    // silently. (Exactly what happened on iOS Safari: the location was
+    // captured and the qibla screen updated fine, but something after that
+    // point threw before reaching the button reset below.)
     try{
-      const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&localityLanguage=ru`);
-      const data = await res.json();
-      const label = data.city || data.locality || data.principalSubdivision;
-      if(label){
-        prayerSettings.cityLabel = label;
-        setPrayerCityLabel();
-        if(typeof renderQiblaScreen === 'function') renderQiblaScreen();
-        savePrayerSettings();
-      }
-    }catch(e){ /* coordinates alone are still fully usable */ }
-    btns.forEach(btn => { btn.disabled = false; btn.textContent = 'Обновить'; });
+      prayerSettings.lat = pos.coords.latitude;
+      prayerSettings.lon = pos.coords.longitude;
+      prayerSettings.cityLabel = '';
+      setPrayerCityLabel();
+      renderPrayerTimesList();
+      try{ if(typeof renderQiblaScreen === 'function') renderQiblaScreen(); }catch(e){ console.warn('renderQiblaScreen failed:', e); }
+      savePrayerSettings();
+      // Best-effort reverse geocode for a human-readable label — a free,
+      // keyless client-side endpoint; the coordinates above already work
+      // fully without this, so a failure here just leaves the raw numbers
+      // showing instead of a city name.
+      try{
+        const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&localityLanguage=ru`);
+        const data = await res.json();
+        const label = data.city || data.locality || data.principalSubdivision;
+        if(label){
+          prayerSettings.cityLabel = label;
+          setPrayerCityLabel();
+          try{ if(typeof renderQiblaScreen === 'function') renderQiblaScreen(); }catch(e){ console.warn('renderQiblaScreen failed:', e); }
+          savePrayerSettings();
+        }
+      }catch(e){ /* coordinates alone are still fully usable */ }
+    } finally {
+      btns.forEach(btn => { btn.disabled = false; btn.textContent = 'Обновить'; });
+    }
   }, (err) => {
     console.warn('geolocation failed:', err);
     showToast('Не удалось определить местоположение: ' + (err.message||err));
