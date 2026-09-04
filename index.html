@@ -1899,6 +1899,23 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 .qibla-status{ font-size:12.5px; color:var(--ivory-dim); text-align:center; padding:20px; }
 .qibla-map-caption{ font-size:11px; color:var(--ivory-dim); margin-top:8px; }
 
+/* --- "Карта друзей" screen — same self-hosted Leaflet/OSM setup as the
+   qibla map above, just full-screen instead of a small card. --- */
+.friends-map-real{
+  position:relative; width:100%; height:min(65vh, 560px); border-radius:calc(var(--r-card) - 6px);
+  overflow:hidden; background:var(--fill-1); margin-top:14px;
+}
+.friends-map-real .leaflet-bar a{ background:var(--fill-1); color:var(--ivory); border-color:var(--line); }
+.friends-map-real .leaflet-control-attribution{ background:rgba(0,0,0,.55); color:var(--ivory-dim); }
+.friends-map-real .leaflet-control-attribution a{ color:var(--ivory-dim); }
+.friends-map-status{ font-size:12.5px; color:var(--ivory-dim); text-align:center; padding:20px; }
+.friend-map-pin{
+  width:38px; height:38px; border-radius:50%; border:2.5px solid var(--gold);
+  box-shadow:0 3px 10px -2px rgba(0,0,0,.5);
+}
+.friend-map-pin.self{ border-color:var(--jade); }
+.friend-map-pin .friend-avatar{ width:100%; height:100%; font-size:14px; }
+
 .listen-status{ font-size:12.5px; color:var(--ivory-dim); text-align:center; padding:24px 10px; }
 .listen-dl-progress-wrap{ padding:0 20px 10px; flex-shrink:0; }
 .listen-dl-progress-track{ height:5px; border-radius:3px; background:var(--fill-1); overflow:hidden; }
@@ -3038,6 +3055,8 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
           <button class="btn btn-primary" id="addFriendBtn">Добавить в друзья</button>
         </div>
 
+        <button type="button" class="btn btn-ghost" id="friendsMapBtn" style="width:100%;margin-bottom:14px;display:none;">🗺️ Карта друзей</button>
+
         <div id="friendRequestsSection" style="display:none">
           <div class="section-label">Заявки в друзья</div>
           <div id="friendRequestsList"></div>
@@ -3062,6 +3081,21 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
           <div id="leaderboardEmpty" style="text-align:center;color:var(--ivory-dim);padding:40px 20px;">Загрузка рейтинга...</div>
         </div>
 
+      </div>
+    </section>
+
+    <!-- FRIENDS MAP -->
+    <section class="screen" data-screen="friendsMap">
+      <div class="scroll">
+        <div class="settings-head">
+          <button class="nav-arrow" data-nav="friends" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <div class="section-title" style="padding:0;">Карта друзей</div>
+        </div>
+        <div id="friendsMapReal" class="friends-map-real"></div>
+        <div class="friends-map-status" id="friendsMapStatus">Загрузка карты…</div>
+        <div class="friend-empty-hint" id="friendsMapEmptyHint" style="display:none;text-align:center;color:var(--ivory-dim);font-size:12.5px;margin-top:14px;">
+          Пока никто из друзей не делится геопозицией. Включить свою можно в Настройках → «Геопозиция».
+        </div>
       </div>
     </section>
 
@@ -3291,6 +3325,32 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
               </div>
 
               <button id="logoutBtn" class="btn btn-ghost" style="width:100%;color:var(--rose);border-color:var(--rose);margin-top:14px;">Выход</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <button type="button" class="settings-group-header" data-settings-group="privacy">
+            <span class="settings-group-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M12 5l2.2 5-2.2-1-2.2 1L12 5z" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg></span>
+            <span class="settings-group-text">
+              <span class="settings-group-title">Геопозиция</span>
+              <span class="settings-group-sub">Карта друзей — кто видит, где вы</span>
+            </span>
+            <svg class="settings-group-chevron" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="settings-group-body" data-settings-group-body="privacy">
+            <div class="settings-group-body-inner">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;">
+                <div style="flex:1;padding-right:12px;">
+                  <div style="font-size:14px;color:var(--ivory);">Показывать мою геопозицию друзьям</div>
+                  <div style="font-size:11.5px;color:var(--ivory-dim);margin-top:2px;">Только пока приложение открыто. Друг увидит вас на карте, только если у него тоже включено это.</div>
+                </div>
+                <label style="position:relative;display:inline-block;width:40px;height:24px;flex-shrink:0;">
+                  <input type="checkbox" id="shareLiveLocationToggle" style="opacity:0;width:0;height:0;">
+                  <span class="slider" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:var(--fill-3);transition:.4s;border-radius:24px;border:1px solid var(--line);"></span>
+                  <span class="slider-knob" style="position:absolute;content:'';height:18px;width:18px;left:2px;bottom:2px;background-color:var(--ivory);transition:.4s;border-radius:50%;"></span>
+                </label>
+              </div>
             </div>
           </div>
         </div>
@@ -4631,6 +4691,7 @@ function go(name, replace = false){
     // push notifications for that friend forever.
     if(prevScreen === 'chat' && name !== 'chat' && typeof closeChatThread === 'function') closeChatThread();
     if(prevScreen === 'quran' && name !== 'quran' && typeof quranPauseAudio === 'function') quranPauseAudio();
+    if(prevScreen === 'friendsMap' && name !== 'friendsMap' && typeof stopFriendsMapScreen === 'function') stopFriendsMapScreen();
     if(name === 'home' && typeof renderSideDrawerPrayerPreview === 'function') renderSideDrawerPrayerPreview();
     // Both screens already have their own fixed bar at the bottom (tafsir's
     // prev/next-surah row, the chat thread's message composer) — the
@@ -8561,12 +8622,14 @@ function updateProfileUI(){
   const authCard = document.getElementById('authCard');
   const profileCard = document.getElementById('profileCard');
   const addFriendForm = document.getElementById('addFriendForm');
+  const friendsMapBtn = document.getElementById('friendsMapBtn');
   if(typeof updateSettingsGearVisibility === 'function') updateSettingsGearVisibility();
 
   if(state.profile && state.profile.authenticated){
     authCard.style.display = 'none';
     profileCard.style.display = 'block';
     addFriendForm.style.display = 'flex';
+    if(friendsMapBtn) friendsMapBtn.style.display = 'block';
     document.getElementById('usernameDisplay').textContent = state.profile.username;
     renderAvatarInto(document.getElementById('ownAvatarCircle'), state.profile.avatar, state.profile.username);
     loadOwnProfile();
@@ -8583,6 +8646,7 @@ function updateProfileUI(){
     authCard.style.display = 'block';
     profileCard.style.display = 'none';
     addFriendForm.style.display = 'none';
+    if(friendsMapBtn) friendsMapBtn.style.display = 'none';
     document.getElementById('linkEmailCard').style.display = 'none';
     updateAccountSettingsUI(null);
   }
@@ -9315,6 +9379,7 @@ document.getElementById('copyUsernameBtn').addEventListener('click', async ()=>{
 document.getElementById('logoutBtn').addEventListener('click', ()=>{
   clearUsername();
   clearAuthCredentials();
+  if(typeof stopSharingLiveLocation === 'function') stopSharingLiveLocation();
   state.profile = { username: '', authenticated: false };
   updateProfileUI();
   showToast('Вы вышли');
@@ -9561,6 +9626,7 @@ async function listenFriendsRealtime(){
   });
   setupPresence();
   if(typeof watchIncomingCalls === 'function') watchIncomingCalls();
+  if(typeof initLiveLocationSharing === 'function') initLiveLocationSharing();
 }
 
 /* ---------------- online presence (Firebase RTDB) ---------------- */
@@ -16452,6 +16518,205 @@ function openQiblaScreen(){
   renderQiblaScreen();
   if(usingDefaultLocation) locatePrayerCity();
 }
+
+/* =====================================================
+   FRIENDS MAP — opt-in live location sharing between mutual friends.
+   Reuses the same self-hosted Leaflet + OSM setup as the qibla map above
+   (loadLeaflet(), LEAFLET_BASE) rather than a second map stack. Sharing
+   only ever runs while this tab/app is open (navigator.geolocation.
+   watchPosition has no background mode in a WebView without a native
+   foreground-service — see MainActivity.kt), and only while the person has
+   explicitly turned "Показывать мою геопозицию друзьям" on in Настройки.
+===================================================== */
+const LIVE_LOCATION_STALE_MS = 5 * 60 * 1000; // hide a friend's pin once their last update is older than this
+let liveLocationWatchId = null;
+let liveLocationLastSent = 0;
+
+function isSharingLiveLocation(){
+  try{ return localStorage.getItem('shareLiveLocation') === 'on'; }catch(e){ return false; }
+}
+function setSharingLiveLocationPref(on){
+  try{ localStorage.setItem('shareLiveLocation', on ? 'on' : 'off'); }catch(e){}
+}
+
+async function startSharingLiveLocation(){
+  if(liveLocationWatchId !== null) return; // already watching
+  if(!navigator.geolocation || !state.profile || !state.profile.authenticated) return;
+  await fbAuthReady;
+  if(!fbDb) return;
+  const myRef = fbDb.ref('liveLocation/' + fbKey(state.profile.username));
+  liveLocationWatchId = navigator.geolocation.watchPosition(pos => {
+    const now = Date.now();
+    // Coordinates change on every GPS tick; writing all of them would flood
+    // the realtime DB for no visible benefit on a friend's map. 20s is
+    // frequent enough to look "live" without hammering the connection.
+    if(now - liveLocationLastSent < 20000) return;
+    liveLocationLastSent = now;
+    myRef.set({ lat: pos.coords.latitude, lon: pos.coords.longitude, ts: now });
+  }, err => {
+    console.warn('live location watch failed:', err);
+  }, { enableHighAccuracy: false, maximumAge: 30000, timeout: 20000 });
+  myRef.onDisconnect().remove();
+}
+function stopSharingLiveLocation(){
+  if(liveLocationWatchId !== null){
+    navigator.geolocation.clearWatch(liveLocationWatchId);
+    liveLocationWatchId = null;
+  }
+  if(fbDb && state.profile && state.profile.username){
+    fbDb.ref('liveLocation/' + fbKey(state.profile.username)).remove();
+  }
+}
+// Called once auth is confirmed (see listenFriendsRealtime()) so a saved
+// "on" preference resumes sharing after a fresh login/app restart without
+// the person having to retoggle it every time.
+function initLiveLocationSharing(){
+  if(isSharingLiveLocation()) startSharingLiveLocation();
+}
+
+const shareLiveLocationToggle = document.getElementById('shareLiveLocationToggle');
+(function initShareLiveLocationToggle(){
+  const knob = shareLiveLocationToggle.parentElement.querySelector('.slider-knob');
+  const bg = shareLiveLocationToggle.parentElement.querySelector('.slider');
+  shareLiveLocationToggle.checked = isSharingLiveLocation();
+  const paint = () => {
+    if(shareLiveLocationToggle.checked){
+      bg.style.backgroundColor = 'var(--gold)'; bg.style.borderColor = 'var(--gold)';
+      knob.style.transform = 'translateX(16px)'; knob.style.backgroundColor = 'var(--on-accent)';
+    } else {
+      bg.style.backgroundColor = 'var(--fill-3)'; bg.style.borderColor = 'var(--line)';
+      knob.style.transform = 'translateX(0)'; knob.style.backgroundColor = 'var(--ivory)';
+    }
+  };
+  paint();
+  shareLiveLocationToggle.addEventListener('change', () => {
+    setSharingLiveLocationPref(shareLiveLocationToggle.checked);
+    if(shareLiveLocationToggle.checked) startSharingLiveLocation();
+    else stopSharingLiveLocation();
+    paint();
+  });
+})();
+
+let friendsMap = null;
+const friendsMapMarkers = {}; // fbKey(username), or '__self__' -> L.marker
+const friendsMapUnsubs = {}; // fbKey(username) -> off() callback
+function friendsMapLocateControl(){
+  return new (L.Control.extend({
+    options: { position: 'topright' },
+    onAdd: function(){
+      const div = L.DomUtil.create('div', 'leaflet-bar qibla-locate-control');
+      div.innerHTML = '<a href="#" role="button" title="Моё местоположение" aria-label="Моё местоположение">' +
+        '<svg viewBox="0 0 24 24" fill="none" width="16" height="16"><circle cx="12" cy="12" r="3" fill="currentColor"/>' +
+        '<path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></a>';
+      L.DomEvent.disableClickPropagation(div);
+      L.DomEvent.on(div, 'click', (e) => {
+        L.DomEvent.preventDefault(e);
+        if(!navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(pos => {
+          friendsMap.setView([pos.coords.latitude, pos.coords.longitude], 15);
+        });
+      });
+      return div;
+    }
+  }))();
+}
+function friendsMapPinIcon(isSelf){
+  return L.divIcon({
+    className: 'friend-map-pin-wrap',
+    html: `<div class="avatar-wrap static friend-map-pin${isSelf ? ' self' : ''}"><div class="friend-avatar"></div><div class="presence-dot online"></div></div>`,
+    iconSize: [38, 38], iconAnchor: [19, 19],
+  });
+}
+function friendsMapUpsertMarker(key, name, avatar, lat, lon, isSelf){
+  let marker = friendsMapMarkers[key];
+  if(!marker){
+    marker = L.marker([lat, lon], { icon: friendsMapPinIcon(isSelf) }).addTo(friendsMap);
+    friendsMapMarkers[key] = marker;
+  } else {
+    marker.setLatLng([lat, lon]);
+  }
+  const el = marker.getElement();
+  if(el) renderAvatarInto(el.querySelector('.friend-avatar'), avatar, name);
+  marker.bindPopup(escapeHtml(name));
+}
+function friendsMapRemoveMarker(key){
+  if(friendsMapMarkers[key]){
+    friendsMap.removeLayer(friendsMapMarkers[key]);
+    delete friendsMapMarkers[key];
+  }
+}
+function friendsMapFitToMarkers(){
+  const latlngs = Object.values(friendsMapMarkers).map(m => m.getLatLng());
+  if(!latlngs.length) return;
+  if(latlngs.length === 1) friendsMap.setView(latlngs[0], 14);
+  else friendsMap.fitBounds(L.latLngBounds(latlngs), { padding: [32, 32] });
+}
+
+function renderFriendsMapScreen(){
+  const emptyHint = document.getElementById('friendsMapEmptyHint');
+  loadLeaflet().then(() => {
+    document.getElementById('friendsMapStatus').style.display = 'none';
+    if(!friendsMap){
+      friendsMap = L.map('friendsMapReal', { attributionControl: false });
+      L.control.attribution({ prefix: false }).addTo(friendsMap);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '© OpenStreetMap',
+      }).addTo(friendsMap);
+      friendsMapLocateControl().addTo(friendsMap);
+      friendsMap.setView([prayerSettings.lat, prayerSettings.lon], 12);
+    }
+    setTimeout(() => friendsMap && friendsMap.invalidateSize(), 60);
+
+    // Own marker — shown only while actively sharing, mirroring what
+    // friends themselves would see.
+    if(isSharingLiveLocation() && navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(pos => {
+        friendsMapUpsertMarker('__self__', state.profile.username + ' (вы)', state.profile.avatar, pos.coords.latitude, pos.coords.longitude, true);
+        friendsMapFitToMarkers();
+      }, ()=>{}, { maximumAge: 30000 });
+    }
+
+    // One listener per friend — attached fresh each time the screen opens,
+    // detached in stopFriendsMapScreen() below (mirrors watchPresence()'s
+    // own attach/detach contract elsewhere in this file).
+    state.friendsList.forEach(f => {
+      const key = fbKey(f.uid);
+      if(friendsMapUnsubs[key]) return;
+      const ref = fbDb.ref('liveLocation/' + key);
+      const listener = snap => {
+        const val = snap.val();
+        const fresh = val && (Date.now() - val.ts) < LIVE_LOCATION_STALE_MS;
+        if(fresh){
+          friendsMapUpsertMarker(key, f.name, f.avatar, val.lat, val.lon, false);
+        } else {
+          friendsMapRemoveMarker(key);
+        }
+        const anySharing = Object.keys(friendsMapMarkers).some(k => k !== '__self__');
+        if(emptyHint) emptyHint.style.display = anySharing ? 'none' : 'block';
+        friendsMapFitToMarkers();
+      };
+      ref.on('value', listener);
+      friendsMapUnsubs[key] = () => ref.off('value', listener);
+    });
+  }).catch(() => {
+    document.getElementById('friendsMapStatus').textContent = 'Не удалось загрузить карту. Проверьте подключение к интернету.';
+  });
+}
+function stopFriendsMapScreen(){
+  Object.values(friendsMapUnsubs).forEach(off => off());
+  for(const key in friendsMapUnsubs) delete friendsMapUnsubs[key];
+  Object.keys(friendsMapMarkers).forEach(friendsMapRemoveMarker);
+}
+function openFriendsMapScreen(){
+  document.getElementById('friendsMapStatus').style.display = 'block';
+  document.getElementById('friendsMapStatus').textContent = 'Загрузка карты…';
+  renderFriendsMapScreen();
+}
+document.getElementById('friendsMapBtn').addEventListener('click', ()=>{
+  go('friendsMap');
+  openFriendsMapScreen();
+});
 
 /* =====================================================
    ONE-TIME HINT — points new users at the side drawer, then never again.
