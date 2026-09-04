@@ -4322,6 +4322,15 @@ let fbAuthReady = (async () => {
 // (successfully or not) settles so the notification button/status can
 // actually reflect reality instead of being stuck on "unsupported".
 fbAuthReady.then(()=>{ if(typeof updateNotifUI === 'function') updateNotifUI(); });
+// iOS's own permission dialog (tapping "Allow" for a home-screen PWA) can
+// background the page briefly, and Notification.permission has been seen
+// to only actually flip to "granted" once the page regains focus — after
+// enableNotifications() already checked it and found the stale pre-grant
+// value. Re-checking on refocus catches that instead of leaving the button
+// looking like the tap did nothing.
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible' && typeof updateNotifUI === 'function') updateNotifUI();
+});
 </script>
 <script>
 
