@@ -1870,6 +1870,40 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
   background:var(--glass); color:var(--ivory); font-family:var(--font-body); font-size:13.5px; margin-bottom:8px;
 }
 
+/* --- "Направление киблы" screen --- */
+.qibla-compass-wrap{ display:flex; flex-direction:column; align-items:center; margin:18px 0 10px; }
+.qibla-compass{
+  position:relative; width:230px; height:230px; border-radius:50%;
+  background:radial-gradient(circle at 50% 42%, var(--accent-tint), var(--fill-1));
+  border:1px solid var(--gold);
+}
+.qibla-compass-dial{
+  position:absolute; inset:0; transition:transform .15s linear;
+}
+.qibla-compass-dial span{
+  position:absolute; font-family:var(--font-display); font-size:13px; color:var(--ivory-dim);
+  left:50%; top:50%;
+}
+.qibla-dial-n{ color:var(--gold); transform:translate(-50%,-105px); }
+.qibla-dial-e{ transform:translate(90px,-50%); }
+.qibla-dial-s{ transform:translate(-50%,90px); }
+.qibla-dial-w{ transform:translate(-115px,-50%); }
+.qibla-compass-ring{ position:absolute; inset:14px; border-radius:50%; border:1px dashed var(--line); }
+.qibla-needle{
+  position:absolute; inset:0; display:flex; justify-content:center; transition:transform .15s linear;
+}
+.qibla-needle svg{ width:32px; height:32px; color:var(--gold); margin-top:22px; filter:drop-shadow(0 2px 6px rgba(0,0,0,.35)); }
+.qibla-compass-center{
+  position:absolute; top:50%; left:50%; width:9px; height:9px; margin:-4.5px 0 0 -4.5px;
+  border-radius:50%; background:var(--gold);
+}
+.qibla-compass-status{ margin-top:12px; font-size:12px; color:var(--ivory-dim); text-align:center; max-width:280px; line-height:1.5; }
+.qibla-map{
+  border-radius:var(--r-card); border:1px solid var(--line); background:var(--glass); padding:14px; margin:18px 0 10px; text-align:center;
+}
+.qibla-map svg{ width:100%; max-width:220px; height:auto; }
+.qibla-map-caption{ font-size:11px; color:var(--ivory-dim); margin-top:8px; }
+
 .listen-status{ font-size:12.5px; color:var(--ivory-dim); text-align:center; padding:24px 10px; }
 .listen-dl-progress-wrap{ padding:0 20px 10px; flex-shrink:0; }
 .listen-dl-progress-track{ height:5px; border-radius:3px; background:var(--fill-1); overflow:hidden; }
@@ -2343,6 +2377,10 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
           <button type="button" class="section-chip" data-nav-section="mecca_live">
             <span class="section-chip-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" fill="currentColor"/><path d="M7.5 8.5a6.4 6.4 0 000 7M16.5 8.5a6.4 6.4 0 010 7M4.3 5.3a10.9 10.9 0 000 13.4M19.7 5.3a10.9 10.9 0 010 13.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
             <span class="section-chip-title">Мекка онлайн</span>
+          </button>
+          <button type="button" class="section-chip" data-nav-section="qibla">
+            <span class="section-chip-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M12 5l2.2 5-2.2-1-2.2 1L12 5z" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg></span>
+            <span class="section-chip-title">Направление киблы</span>
           </button>
           <button type="button" class="section-chip" id="homeProphetsLink">
             <span class="section-chip-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.6"/><path d="M5 20c.7-3.8 3.4-6.2 7-6.2s6.3 2.4 7 6.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
@@ -3392,6 +3430,54 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
         <div class="prayer-pill-row" id="prayerMadhabRow">
           <button type="button" class="prayer-pill-btn" data-madhab="0">Шафии/Малики/Ханбали</button>
           <button type="button" class="prayer-pill-btn" data-madhab="1">Ханафи</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" data-screen="qibla">
+      <div class="scroll">
+        <div class="settings-head">
+          <button class="nav-arrow" data-nav="home" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <div class="section-title" style="padding:0;">Направление киблы</div>
+        </div>
+
+        <div class="prayer-location-row">
+          <span id="qiblaCityLabel">Местоположение не определено</span>
+          <button type="button" id="qiblaLocateBtn" class="btn btn-ghost prayer-locate-btn">Определить</button>
+        </div>
+
+        <div class="qibla-compass-wrap">
+          <div class="qibla-compass">
+            <div class="qibla-compass-dial" id="qiblaCompassDial">
+              <span class="qibla-dial-n">С</span><span class="qibla-dial-e">В</span><span class="qibla-dial-s">Ю</span><span class="qibla-dial-w">З</span>
+            </div>
+            <div class="qibla-compass-ring"></div>
+            <div class="qibla-needle" id="qiblaNeedle">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3 7-3-1.5L9 9l3-7z"/><path d="M12 22a4 4 0 004-4H8a4 4 0 004 4z" opacity=".5"/></svg>
+            </div>
+            <div class="qibla-compass-center"></div>
+          </div>
+          <div class="qibla-compass-status" id="qiblaCompassStatus">Поверните телефон, пока стрелка не укажет вверх — в этот момент вы стоите лицом к Каабе.</div>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat"><b id="qiblaBearingValue">—</b><span>направление</span></div>
+          <div class="stat"><b id="qiblaDistanceValue">—</b><span>до Каабы</span></div>
+        </div>
+
+        <div class="qibla-map">
+          <svg viewBox="0 0 200 200">
+            <circle cx="100" cy="100" r="90" fill="none" stroke="var(--line)" stroke-width="1"/>
+            <line x1="100" y1="14" x2="100" y2="26" stroke="var(--line)" stroke-width="1.5"/>
+            <line x1="186" y1="100" x2="174" y2="100" stroke="var(--line)" stroke-width="1.5"/>
+            <line x1="100" y1="186" x2="100" y2="174" stroke="var(--line)" stroke-width="1.5"/>
+            <line x1="14" y1="100" x2="26" y2="100" stroke="var(--line)" stroke-width="1.5"/>
+            <text x="100" y="10" text-anchor="middle" font-size="9" fill="var(--gold)">С</text>
+            <line id="qiblaMapLine" x1="100" y1="100" x2="100" y2="20" stroke="var(--gold)" stroke-width="1.6" stroke-dasharray="3 3"/>
+            <circle id="qiblaMapKaaba" cx="100" cy="20" r="6" fill="var(--gold)"/>
+            <circle cx="100" cy="100" r="5" fill="var(--ivory)"/>
+          </svg>
+          <div class="qibla-map-caption">Вид сверху, север вверху — прямая линия от вас до Каабы</div>
         </div>
       </div>
     </section>
@@ -4563,6 +4649,7 @@ function go(name, replace = false){
     // push notifications for that friend forever.
     if(prevScreen === 'chat' && name !== 'chat' && typeof closeChatThread === 'function') closeChatThread();
     if(prevScreen === 'quran' && name !== 'quran' && typeof quranPauseAudio === 'function') quranPauseAudio();
+    if(prevScreen === 'qibla' && name !== 'qibla' && typeof qiblaStopCompass === 'function') qiblaStopCompass();
     if(name === 'home' && typeof renderSideDrawerPrayerPreview === 'function') renderSideDrawerPrayerPreview();
     // The tafsir screen already has its own prev/next-surah bar right above
     // this — the floating tab dock underneath it is just clutter there.
@@ -6885,9 +6972,13 @@ const SIDE_DRAWER_ITEMS_META = {
   mecca_live: {
     label: 'Мекка онлайн',
     icon: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" fill="currentColor"/><path d="M7.5 8.5a6.4 6.4 0 000 7M16.5 8.5a6.4 6.4 0 010 7M4.3 5.3a10.9 10.9 0 000 13.4M19.7 5.3a10.9 10.9 0 010 13.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
+  },
+  qibla: {
+    label: 'Направление киблы',
+    icon: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M12 5l2.2 5-2.2-1-2.2 1L12 5z" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg>'
   }
 };
-const SIDE_DRAWER_DEFAULT_ORDER = ['favorites', 'quran', 'tafsir', 'listen', 'mecca_live', 'tajweed', 'chats', 'prayer', 'settings'];
+const SIDE_DRAWER_DEFAULT_ORDER = ['favorites', 'quran', 'tafsir', 'listen', 'mecca_live', 'tajweed', 'chats', 'prayer', 'qibla', 'settings'];
 
 function loadSideDrawerOrder(){
   try{
@@ -6965,6 +7056,9 @@ function navigateToSection(key){
   } else if(key === 'prayer'){
     go('prayer');
     if(typeof openPrayerScreen === 'function') openPrayerScreen();
+  } else if(key === 'qibla'){
+    go('qibla');
+    if(typeof openQiblaScreen === 'function') openQiblaScreen();
   } else if(key === 'listen'){
     go('listen');
     if(typeof openListenScreen === 'function') openListenScreen();
@@ -16032,16 +16126,24 @@ function setPrayerCityLabel(){
   el.textContent = prayerSettings.cityLabel || `${prayerSettings.lat.toFixed(2)}, ${prayerSettings.lon.toFixed(2)}`;
 }
 
+// Shared by the prayer-times and qibla screens (both screens' own markup
+// stays in the DOM even while hidden, so both locate buttons always exist
+// here regardless of which screen is currently showing) — one geolocation
+// call updates prayerSettings.lat/lon and both screens re-render from it.
+function qiblaLocateButtons(){
+  return [document.getElementById('prayerLocateBtn'), document.getElementById('qiblaLocateBtn')].filter(Boolean);
+}
 function locatePrayerCity(){
-  const btn = document.getElementById('prayerLocateBtn');
+  const btns = qiblaLocateButtons();
   if(!navigator.geolocation){ showToast('Геолокация не поддерживается'); return; }
-  if(btn){ btn.disabled = true; btn.textContent = 'Определяем…'; }
+  btns.forEach(btn => { btn.disabled = true; btn.textContent = 'Определяем…'; });
   navigator.geolocation.getCurrentPosition(async (pos) => {
     prayerSettings.lat = pos.coords.latitude;
     prayerSettings.lon = pos.coords.longitude;
     prayerSettings.cityLabel = '';
     setPrayerCityLabel();
     renderPrayerTimesList();
+    if(typeof renderQiblaScreen === 'function') renderQiblaScreen();
     savePrayerSettings();
     // Best-effort reverse geocode for a human-readable label — a free,
     // keyless client-side endpoint; the coordinates above already work
@@ -16054,14 +16156,15 @@ function locatePrayerCity(){
       if(label){
         prayerSettings.cityLabel = label;
         setPrayerCityLabel();
+        if(typeof renderQiblaScreen === 'function') renderQiblaScreen();
         savePrayerSettings();
       }
     }catch(e){ /* coordinates alone are still fully usable */ }
-    if(btn){ btn.disabled = false; btn.textContent = 'Обновить'; }
+    btns.forEach(btn => { btn.disabled = false; btn.textContent = 'Обновить'; });
   }, (err) => {
     console.warn('geolocation failed:', err);
     showToast('Не удалось определить местоположение: ' + (err.message||err));
-    if(btn){ btn.disabled = false; btn.textContent = 'Определить'; }
+    btns.forEach(btn => { btn.disabled = false; btn.textContent = 'Определить'; });
   }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 3600000 });
 }
 
@@ -16203,6 +16306,123 @@ function openPrayerScreen(){
   // First-ever visit with no location saved yet — ask right away instead of
   // showing Mecca's times with no explanation why.
   if(isFirstVisit) locatePrayerCity();
+}
+
+/* =====================================================
+   QIBLA DIRECTION — reuses prayerSettings.lat/lon (the same
+   "Определить" location the prayer-times screen already asks for)
+   rather than tracking a second location of its own.
+===================================================== */
+const KAABA_LAT = PRAYER_DEFAULT_LAT, KAABA_LON = PRAYER_DEFAULT_LON;
+
+function qiblaBearingFrom(lat, lon){
+  const toRad = d => d * Math.PI / 180, toDeg = r => r * 180 / Math.PI;
+  const phi1 = toRad(lat), phi2 = toRad(KAABA_LAT);
+  const dLambda = toRad(KAABA_LON - lon);
+  const y = Math.sin(dLambda) * Math.cos(phi2);
+  const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(dLambda);
+  return (toDeg(Math.atan2(y, x)) + 360) % 360;
+}
+function qiblaDistanceKm(lat, lon){
+  const toRad = d => d * Math.PI / 180;
+  const R = 6371;
+  const phi1 = toRad(lat), phi2 = toRad(KAABA_LAT);
+  const dPhi = toRad(KAABA_LAT - lat), dLambda = toRad(KAABA_LON - lon);
+  const a = Math.sin(dPhi/2)**2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLambda/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+let qiblaBearing = 0;
+let qiblaHeading = 0; // 0 when the compass sensor isn't available — needle then just shows the fixed bearing
+function qiblaApplyHeading(heading){
+  qiblaHeading = heading;
+  document.getElementById('qiblaCompassDial').style.transform = `rotate(${-heading}deg)`;
+  document.getElementById('qiblaNeedle').style.transform = `rotate(${qiblaBearing - heading}deg)`;
+}
+
+let qiblaCompassListening = false;
+let qiblaGotHeading = false;
+function qiblaOrientationHandler(e){
+  let heading;
+  if(typeof e.webkitCompassHeading === 'number'){
+    heading = e.webkitCompassHeading; // iOS Safari — already true-north-referenced
+  } else if(e.absolute && typeof e.alpha === 'number'){
+    // Chromium's absolute alpha increases counter-clockwise from north;
+    // compass heading increases clockwise, hence the flip. Device compass
+    // calibration (the "figure 8" wave) affects accuracy same as any
+    // compass app — nothing this code can correct for.
+    heading = (360 - e.alpha) % 360;
+  } else {
+    return;
+  }
+  qiblaGotHeading = true;
+  qiblaApplyHeading(heading);
+  document.getElementById('qiblaCompassStatus').textContent = 'Поверните телефон, пока стрелка не укажет вверх — в этот момент вы стоите лицом к Каабе.';
+}
+function qiblaStartCompass(){
+  if(qiblaCompassListening) return;
+  qiblaCompassListening = true;
+  qiblaGotHeading = false;
+  const attach = () => {
+    window.addEventListener('deviceorientationabsolute', qiblaOrientationHandler, true);
+    window.addEventListener('deviceorientation', qiblaOrientationHandler, true);
+    setTimeout(() => {
+      if(!qiblaGotHeading){
+        document.getElementById('qiblaCompassStatus').textContent = 'Компас недоступен на этом устройстве — направление ниже и на схеме уже верное, доворачиваться по стрелке нельзя.';
+      }
+    }, 2500);
+  };
+  // iOS 13+ gates the sensor behind a permission prompt that must be
+  // triggered from a user gesture — Android never defines this method, so
+  // this branch is effectively a no-op there and falls straight to attach().
+  if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
+    DeviceOrientationEvent.requestPermission().then(state => {
+      if(state === 'granted') attach();
+      else document.getElementById('qiblaCompassStatus').textContent = 'Доступ к компасу не разрешён — направление ниже и на схеме уже верное.';
+    }).catch(attach);
+  } else if('DeviceOrientationEvent' in window){
+    attach();
+  } else {
+    document.getElementById('qiblaCompassStatus').textContent = 'Компас не поддерживается этим устройством — направление ниже и на схеме уже верное.';
+  }
+}
+function qiblaStopCompass(){
+  if(!qiblaCompassListening) return;
+  qiblaCompassListening = false;
+  window.removeEventListener('deviceorientationabsolute', qiblaOrientationHandler, true);
+  window.removeEventListener('deviceorientation', qiblaOrientationHandler, true);
+}
+
+function qiblaRenderMap(bearingDeg){
+  const rad = bearingDeg * Math.PI / 180;
+  const R = 80;
+  const x = 100 + R * Math.sin(rad);
+  const y = 100 - R * Math.cos(rad);
+  document.getElementById('qiblaMapLine').setAttribute('x2', x.toFixed(1));
+  document.getElementById('qiblaMapLine').setAttribute('y2', y.toFixed(1));
+  document.getElementById('qiblaMapKaaba').setAttribute('cx', x.toFixed(1));
+  document.getElementById('qiblaMapKaaba').setAttribute('cy', y.toFixed(1));
+}
+
+function renderQiblaScreen(){
+  document.getElementById('qiblaCityLabel').textContent =
+    prayerSettings.cityLabel || `${prayerSettings.lat.toFixed(2)}, ${prayerSettings.lon.toFixed(2)}`;
+  qiblaBearing = qiblaBearingFrom(prayerSettings.lat, prayerSettings.lon);
+  const distance = qiblaDistanceKm(prayerSettings.lat, prayerSettings.lon);
+  document.getElementById('qiblaBearingValue').textContent = Math.round(qiblaBearing) + '°';
+  document.getElementById('qiblaDistanceValue').textContent = Math.round(distance).toLocaleString('ru-RU') + ' км';
+  qiblaRenderMap(qiblaBearing);
+  qiblaApplyHeading(qiblaHeading);
+}
+
+let qiblaScreenWired = false;
+function openQiblaScreen(){
+  if(!qiblaScreenWired){
+    qiblaScreenWired = true;
+    document.getElementById('qiblaLocateBtn').addEventListener('click', locatePrayerCity);
+  }
+  renderQiblaScreen();
+  qiblaStartCompass();
 }
 
 /* =====================================================
