@@ -16425,7 +16425,12 @@ function qiblaRenderMap(){
   const you = [prayerSettings.lat, prayerSettings.lon];
   const kaaba = [KAABA_LAT, KAABA_LON];
   if(!qiblaMap){
-    qiblaMap = L.map('qiblaMapReal', { attributionControl: true });
+    // attributionControl:false + a fresh one with prefix:false drops
+    // Leaflet's own default branding link (which bundles in a 🇺🇦 flag
+    // icon since v1.9.0) while keeping the OpenStreetMap credit its tile
+    // usage policy requires.
+    qiblaMap = L.map('qiblaMapReal', { attributionControl: false });
+    L.control.attribution({ prefix: false }).addTo(qiblaMap);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18,
       attribution: '© OpenStreetMap',
