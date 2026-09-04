@@ -1129,6 +1129,38 @@ body{
 .tafsir-status{ text-align:center; color:var(--ivory-dim); font-size:13.5px; padding:60px 20px; line-height:1.7; }
 #tafsirNoteSheet .sheet-body{ font-size:14px; line-height:1.75; color:var(--ivory); }
 
+/* ================= SIRA (30 дней с Посланником Аллаха) ================= */
+.sira-day-badge{ font-size:11.5px; color:var(--gold); letter-spacing:.04em; margin-bottom:6px; }
+.sira-title{ font-family:var(--font-display); font-size:20px; color:var(--ivory); margin-bottom:10px; }
+.sira-epigraph{
+  font-size:13.5px; font-style:italic; color:var(--gold-soft); line-height:1.6;
+  padding:12px 14px; margin-bottom:18px; border-left:2px solid var(--gold); background:var(--glass); border-radius:0 var(--r-card) var(--r-card) 0;
+}
+.sira-section-label{ font-size:11.5px; letter-spacing:.06em; color:var(--ivory-dim); margin:22px 0 10px; }
+.sira-section-label:first-of-type{ margin-top:0; }
+.sira-p{ font-size:15px; line-height:1.75; color:var(--ivory); margin-bottom:12px; }
+.sira-source{ font-size:11.5px; color:var(--ivory-dim); padding-top:14px; margin-top:6px; border-top:1px solid var(--line); }
+.sira-steps{ list-style:none; padding:0; margin:0; counter-reset:sira-step; }
+.sira-steps li{
+  display:flex; gap:12px; align-items:flex-start; margin-bottom:12px; font-size:14.5px; line-height:1.6; color:var(--ivory);
+}
+.sira-steps li::before{
+  counter-increment:sira-step; content:counter(sira-step); flex-shrink:0; width:24px; height:24px; border-radius:50%;
+  background:var(--fill-1); border:1px solid var(--gold); color:var(--gold); font-size:12px; font-weight:700;
+  display:flex; align-items:center; justify-content:center; margin-top:1px;
+}
+.sira-dua{
+  font-size:14px; line-height:1.7; color:var(--gold-soft); padding:14px; margin-top:4px; margin-bottom:24px;
+  background:var(--glass); border:1px solid var(--line); border-radius:var(--r-card);
+}
+.sira-day-row{ display:flex; align-items:center; gap:12px; padding:12px 4px; border-bottom:1px solid var(--line); cursor:pointer; }
+.sira-day-row:last-child{ border-bottom:none; }
+.sira-day-row .n{
+  flex-shrink:0; width:32px; height:32px; border-radius:50%; background:var(--fill-1); border:1px solid var(--line);
+  color:var(--gold); font-size:13px; display:flex; align-items:center; justify-content:center;
+}
+.sira-day-row .title{ flex:1; min-width:0; font-size:14px; color:var(--ivory); }
+
 /* --- chat: conversation list --- */
 .chat-row{ display:flex; align-items:center; gap:12px; padding:12px 4px; border-bottom:1px solid var(--fill-2); cursor:pointer; }
 .chat-row:last-child{ border-bottom:none; }
@@ -2399,6 +2431,10 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
             <span class="section-chip-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M6 3h12a1 1 0 011 1v17l-7-4-7 4V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span>
             <span class="section-chip-title">Избранное</span>
           </button>
+          <button type="button" class="section-chip" data-nav-section="sira">
+            <span class="section-chip-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 6.5c-2-1.6-4.7-2.2-7-1.7v13c2.3-.5 5 .1 7 1.7 2-1.6 4.7-2.2 7-1.7v-13c-2.3-.5-5 .1-7 1.7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 6.5v13" stroke="currentColor" stroke-width="1.5"/></svg></span>
+            <span class="section-chip-title">Сира Пророка</span>
+          </button>
         </div>
 
       </div>
@@ -3531,6 +3567,43 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
         <button class="sheet-close" id="tafsirNoteClose"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
       </div>
       <div class="sheet-body" style="text-align:left;padding-top:2px;" id="tafsirNoteText"></div>
+    </div>
+
+    <!-- SIRA (30 дней с Посланником Аллаха) -->
+    <section class="screen" data-screen="sira">
+      <div class="quran-head">
+        <button class="nav-arrow" data-nav="home" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="quran-surah-btn" id="siraDayBtn">
+          <span id="siraDayBtnLabel">Сира Пророка</span>
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div style="width:44px;flex-shrink:0;"></div>
+      </div>
+      <div class="quran-page-scroll" id="siraPageScroll">
+        <div id="siraPage"></div>
+        <div class="tafsir-status" id="siraLoading">Загрузка…</div>
+        <div class="tafsir-status" id="siraError" style="display:none;">
+          Не удалось загрузить сиру.<br>Проверьте подключение к интернету.
+          <button class="btn btn-ghost" id="siraRetryBtn" style="margin-top:14px;">Повторить</button>
+        </div>
+      </div>
+      <div class="quran-foot">
+        <button class="quran-nav-btn" id="siraPrevBtn" aria-label="Предыдущий день"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="quran-page-num" id="siraDayNum">1 / 30</button>
+        <button class="quran-nav-btn" id="siraNextBtn" aria-label="Следующий день"><svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </div>
+    </section>
+
+    <div class="sheet-backdrop" id="siraDayBackdrop"></div>
+    <div class="sheet" id="siraDaySheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-top">
+        <div class="sheet-idx">30 дней с Посланником Аллаха</div>
+        <button class="sheet-close" id="siraDayClose"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
+      </div>
+      <div class="sheet-body" style="text-align:left;padding-top:2px;">
+        <div id="siraDayList"></div>
+      </div>
     </div>
 
     <section class="screen" data-screen="listenReciter">
@@ -6963,9 +7036,13 @@ const SIDE_DRAWER_ITEMS_META = {
   qibla: {
     label: 'Направление киблы',
     icon: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M12 5l2.2 5-2.2-1-2.2 1L12 5z" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg>'
+  },
+  sira: {
+    label: 'Сира Пророка',
+    icon: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 6.5c-2-1.6-4.7-2.2-7-1.7v13c2.3-.5 5 .1 7 1.7 2-1.6 4.7-2.2 7-1.7v-13c-2.3-.5-5 .1-7 1.7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 6.5v13" stroke="currentColor" stroke-width="1.5"/></svg>'
   }
 };
-const SIDE_DRAWER_DEFAULT_ORDER = ['favorites', 'quran', 'tafsir', 'listen', 'mecca_live', 'tajweed', 'chats', 'prayer', 'qibla', 'settings'];
+const SIDE_DRAWER_DEFAULT_ORDER = ['favorites', 'quran', 'tafsir', 'listen', 'mecca_live', 'tajweed', 'chats', 'prayer', 'qibla', 'sira', 'settings'];
 
 function loadSideDrawerOrder(){
   try{
@@ -7049,6 +7126,9 @@ function navigateToSection(key){
   } else if(key === 'qibla'){
     go('qibla');
     if(typeof openQiblaScreen === 'function') openQiblaScreen();
+  } else if(key === 'sira'){
+    go('sira');
+    if(typeof openSiraScreen === 'function') openSiraScreen();
   } else if(key === 'listen'){
     go('listen');
     if(typeof openListenScreen === 'function') openListenScreen();
@@ -15149,6 +15229,123 @@ document.getElementById('tafsirPage').addEventListener('click', e=>{
   const ref = e.target.closest('.tafsir-note-ref');
   if(ref) openTafsirNote(parseInt(ref.dataset.note, 10));
 });
+
+/* ================= SIRA (30 дней с Посланником Аллаха) ================= */
+// Same absolute-URL reasoning as TAFSIR_DATA_URL above — this page's own
+// base URI inside the app is file:///android_asset/www/, so a relative
+// fetch() would resolve against the local bundle instead of the live site.
+const SIRA_DATA_URL = 'https://99ism.ru/sira-data.json';
+const SIRA_TOTAL_DAYS = 30;
+let siraData = null;
+let siraLoadPromise = null;
+let siraCurrentDay = null;
+
+function siraFetchData(){
+  if(siraData) return Promise.resolve(siraData);
+  if(siraLoadPromise) return siraLoadPromise;
+  siraLoadPromise = fetch(SIRA_DATA_URL).then(r=>{
+    if(!r.ok) throw new Error('bad status');
+    return r.json();
+  }).then(data=>{ siraData = data; return data; });
+  return siraLoadPromise;
+}
+
+function siraEscapeHtml(s){
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function siraRenderDay(num){
+  const d = siraData[num];
+  const parts = [];
+  parts.push(`<div class="sira-day-badge">ДЕНЬ ${String(num).padStart(2,'0')}</div>`);
+  parts.push(`<div class="sira-title">${siraEscapeHtml(d.title)}</div>`);
+  if(d.epigraph) parts.push(`<div class="sira-epigraph">${siraEscapeHtml(d.epigraph)}</div>`);
+  parts.push('<div class="sira-section-label">ЭПИЗОД</div>');
+  d.episode.forEach(p => parts.push(`<p class="sira-p">${siraEscapeHtml(p)}</p>`));
+  if(d.source) parts.push(`<div class="sira-source">Источник: ${siraEscapeHtml(d.source)}</div>`);
+  parts.push('<div class="sira-section-label">ЧТО ЗДЕСЬ НУЖНО УВИДЕТЬ</div>');
+  d.reflection.forEach(p => parts.push(`<p class="sira-p">${siraEscapeHtml(p)}</p>`));
+  parts.push('<div class="sira-section-label">ТРИ ШАГА НА СЕГОДНЯ</div>');
+  parts.push('<ol class="sira-steps">' + d.steps.map(s => `<li>${siraEscapeHtml(s)}</li>`).join('') + '</ol>');
+  if(d.dua){
+    parts.push('<div class="sira-section-label">ДУА</div>');
+    parts.push(`<div class="sira-dua">${siraEscapeHtml(d.dua)}</div>`);
+  }
+  document.getElementById('siraPage').innerHTML = parts.join('');
+  document.getElementById('siraDayBtnLabel').textContent = `День ${num}: ${d.title}`;
+  document.getElementById('siraDayNum').textContent = `${num} / ${SIRA_TOTAL_DAYS}`;
+  document.getElementById('siraPageScroll').scrollTop = 0;
+  siraCurrentDay = num;
+  try{ localStorage.setItem('siraLastDay', String(num)); }catch(e){}
+}
+
+async function siraGoToDay(num){
+  num = Math.max(1, Math.min(SIRA_TOTAL_DAYS, Math.round(num)));
+  document.getElementById('siraError').style.display = 'none';
+  document.getElementById('siraLoading').style.display = siraData ? 'none' : '';
+  try{
+    await siraFetchData();
+    document.getElementById('siraLoading').style.display = 'none';
+    siraRenderDay(num);
+  }catch(e){
+    document.getElementById('siraLoading').style.display = 'none';
+    document.getElementById('siraError').style.display = '';
+  }
+}
+
+function openSiraScreen(){
+  // Resume where the reader left off, same idea as openTafsirScreen().
+  if(siraData && siraCurrentDay) return;
+  let last = 1;
+  try{ last = parseInt(localStorage.getItem('siraLastDay'), 10) || 1; }catch(e){}
+  siraGoToDay(last);
+}
+
+document.getElementById('siraPrevBtn').addEventListener('click', ()=> siraGoToDay((siraCurrentDay||1) - 1));
+document.getElementById('siraNextBtn').addEventListener('click', ()=> siraGoToDay((siraCurrentDay||1) + 1));
+document.getElementById('siraRetryBtn').addEventListener('click', ()=> siraGoToDay(siraCurrentDay||1));
+
+function siraRenderDayRows(){
+  const listEl = document.getElementById('siraDayList');
+  if(!siraData){ listEl.innerHTML = ''; return; }
+  const nums = Object.keys(siraData).map(Number).sort((a,b)=>a-b);
+  listEl.innerHTML = nums.map(n=>{
+    const d = siraData[n];
+    return `<div class="sira-day-row" data-num="${n}">
+      <span class="n">${n}</span>
+      <span class="title">${siraEscapeHtml(d.title)}</span>
+    </div>`;
+  }).join('');
+  listEl.querySelectorAll('.sira-day-row').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      closeSiraDaySheet();
+      siraGoToDay(parseInt(row.dataset.num, 10));
+    });
+  });
+}
+
+async function openSiraDaySheet(){
+  pushSheetHistory();
+  document.getElementById('siraDaySheet').classList.add('show');
+  document.getElementById('siraDayBackdrop').classList.add('show');
+  const listEl = document.getElementById('siraDayList');
+  if(siraData){ siraRenderDayRows(); return; }
+  listEl.innerHTML = '<p class="misc-intro">Загрузка…</p>';
+  try{
+    await siraFetchData();
+    siraRenderDayRows();
+  }catch(e){
+    listEl.innerHTML = '<p class="misc-intro">Не удалось загрузить список дней.</p>';
+  }
+}
+function closeSiraDaySheet(){
+  popSheetHistory();
+  document.getElementById('siraDaySheet').classList.remove('show');
+  document.getElementById('siraDayBackdrop').classList.remove('show');
+}
+document.getElementById('siraDayBtn').addEventListener('click', openSiraDaySheet);
+document.getElementById('siraDayClose').addEventListener('click', closeSiraDaySheet);
+document.getElementById('siraDayBackdrop').addEventListener('click', closeSiraDaySheet);
 
 document.getElementById('quranPrevBtn').addEventListener('click', ()=> quranGoToPage(quranState.page - 1));
 document.getElementById('quranNextBtn').addEventListener('click', ()=> quranGoToPage(quranState.page + 1));
