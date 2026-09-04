@@ -4711,7 +4711,7 @@ function go(name, replace = false){
     // chat thread specifically it can crowd the composer once the keyboard
     // is open too.
     const dockEl = document.querySelector('.tabbar');
-    if(dockEl) dockEl.style.display = (name === 'tafsir' || name === 'chat') ? 'none' : '';
+    if(dockEl) dockEl.style.display = (name === 'tafsir' || name === 'chat' || name === 'sira') ? 'none' : '';
   };
   
   if(!isPopping) {
