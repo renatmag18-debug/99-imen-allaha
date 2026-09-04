@@ -6889,8 +6889,11 @@ document.getElementById('brandBtn').addEventListener('click', ()=>go('home'));
 function updateSettingsGearVisibility(){
   const show = state.screen === 'friends' && state.profile && state.profile.authenticated;
   document.getElementById('profileMenuBtn').style.display = show ? 'flex' : 'none';
+  // Messaging capability disabled — never surface this shortcut, even on
+  // the friends screen (its click handler and the chats/chat screens are
+  // left in place, just unreachable, so this is easy to bring back).
   const chatsFloatBtn = document.getElementById('chatsFloatBtn');
-  if(chatsFloatBtn) chatsFloatBtn.style.display = show ? 'flex' : 'none';
+  if(chatsFloatBtn) chatsFloatBtn.style.display = 'none';
   const themeBtn = document.getElementById('themeToggleBtn');
   // Скины без ночного режима делают эту кнопку бессмысленной — не
   // просто гасим её, а полностью прячем, чтобы не выглядела рабочей.
@@ -10379,7 +10382,6 @@ function renderFriendsScreen(){
             <div class="friend-name">${escapeHtml(f.name)}</div>
           </div>
           <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-            <button class="friend-action-btn chat" data-chat-friend="${escapeHtml(f.uid)}" title="Написать">💬</button>
             <button class="friend-action-btn duel" data-duel-friend="${escapeHtml(f.uid)}" title="Пригласить на дуэль">⚔️</button>
             <div class="friend-menu-wrap">
               <button class="friend-action-btn menu" data-friend-menu="${escapeHtml(f.uid)}" title="Ещё">⋮</button>
