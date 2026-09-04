@@ -1898,10 +1898,20 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
   border-radius:50%; background:var(--gold);
 }
 .qibla-compass-status{ margin-top:12px; font-size:12px; color:var(--ivory-dim); text-align:center; max-width:280px; line-height:1.5; }
-.qibla-map{
+.qibla-map-card{
   border-radius:var(--r-card); border:1px solid var(--line); background:var(--glass); padding:14px; margin:18px 0 10px; text-align:center;
 }
-.qibla-map svg{ width:100%; max-width:220px; height:auto; }
+.qibla-map-real{
+  position:relative; width:100%; height:220px; border-radius:calc(var(--r-card) - 6px); overflow:hidden;
+  background:var(--fill-1);
+}
+/* Leaflet's own default control chrome (zoom buttons, attribution) is
+   styled for a light page background regardless of the host site's own
+   theme — restyle just enough to read on our dark UI in both themes. */
+.qibla-map-real .leaflet-control-zoom a{ background:var(--fill-1); color:var(--ivory); border-color:var(--line); }
+.qibla-map-real .leaflet-control-attribution{ background:rgba(0,0,0,.55); color:var(--ivory-dim); }
+.qibla-map-real .leaflet-control-attribution a{ color:var(--ivory-dim); }
+.qibla-status{ font-size:12.5px; color:var(--ivory-dim); text-align:center; padding:20px; }
 .qibla-map-caption{ font-size:11px; color:var(--ivory-dim); margin-top:8px; }
 
 .listen-status{ font-size:12.5px; color:var(--ivory-dim); text-align:center; padding:24px 10px; }
@@ -3465,19 +3475,10 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
           <div class="stat"><b id="qiblaDistanceValue">—</b><span>до Каабы</span></div>
         </div>
 
-        <div class="qibla-map">
-          <svg viewBox="0 0 200 200">
-            <circle cx="100" cy="100" r="90" fill="none" stroke="var(--line)" stroke-width="1"/>
-            <line x1="100" y1="14" x2="100" y2="26" stroke="var(--line)" stroke-width="1.5"/>
-            <line x1="186" y1="100" x2="174" y2="100" stroke="var(--line)" stroke-width="1.5"/>
-            <line x1="100" y1="186" x2="100" y2="174" stroke="var(--line)" stroke-width="1.5"/>
-            <line x1="14" y1="100" x2="26" y2="100" stroke="var(--line)" stroke-width="1.5"/>
-            <text x="100" y="10" text-anchor="middle" font-size="9" fill="var(--gold)">С</text>
-            <line id="qiblaMapLine" x1="100" y1="100" x2="100" y2="20" stroke="var(--gold)" stroke-width="1.6" stroke-dasharray="3 3"/>
-            <circle id="qiblaMapKaaba" cx="100" cy="20" r="6" fill="var(--gold)"/>
-            <circle cx="100" cy="100" r="5" fill="var(--ivory)"/>
-          </svg>
-          <div class="qibla-map-caption">Вид сверху, север вверху — прямая линия от вас до Каабы</div>
+        <div class="qibla-map-card">
+          <div id="qiblaMapReal" class="qibla-map-real"></div>
+          <div class="qibla-status" id="qiblaMapStatus">Загрузка карты…</div>
+          <div class="qibla-map-caption">Прямая линия от вас до Каабы</div>
         </div>
       </div>
     </section>
@@ -16393,15 +16394,55 @@ function qiblaStopCompass(){
   window.removeEventListener('deviceorientation', qiblaOrientationHandler, true);
 }
 
-function qiblaRenderMap(bearingDeg){
-  const rad = bearingDeg * Math.PI / 180;
-  const R = 80;
-  const x = 100 + R * Math.sin(rad);
-  const y = 100 - R * Math.cos(rad);
-  document.getElementById('qiblaMapLine').setAttribute('x2', x.toFixed(1));
-  document.getElementById('qiblaMapLine').setAttribute('y2', y.toFixed(1));
-  document.getElementById('qiblaMapKaaba').setAttribute('cx', x.toFixed(1));
-  document.getElementById('qiblaMapKaaba').setAttribute('cy', y.toFixed(1));
+// Leaflet + OpenStreetMap tiles, self-hosted under vendor/leaflet/ (same
+// reason Firebase's SDK is self-hosted there instead of pulled from a CDN —
+// see FIREBASE_SDK_BASE above) so the map keeps working the same way the
+// rest of this site's own JS/CSS does. Absolute https://99ism.ru URL, not
+// a relative one: this page's own base URI is file:///android_asset/www/
+// inside the app (see loadFreshWebContent in MainActivity), so a relative
+// path here would resolve against the local bundle instead of the site.
+const LEAFLET_BASE = 'https://99ism.ru/vendor/leaflet';
+let leafletLoadPromise = null;
+function loadLeaflet(){
+  if(window.L) return Promise.resolve();
+  if(leafletLoadPromise) return leafletLoadPromise;
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = `${LEAFLET_BASE}/leaflet.css`;
+  document.head.appendChild(link);
+  leafletLoadPromise = loadScriptTag(`${LEAFLET_BASE}/leaflet.js`);
+  return leafletLoadPromise;
+}
+
+const QIBLA_KAABA_ICON = () => L.divIcon({
+  className: 'qibla-kaaba-marker',
+  html: '<div style="width:22px;height:22px;border-radius:6px;background:#111;border:2.5px solid var(--gold,#c9a24b);box-shadow:0 2px 8px rgba(0,0,0,.5);"></div>',
+  iconSize: [22, 22], iconAnchor: [11, 11],
+});
+
+let qiblaMap = null, qiblaYouMarker = null, qiblaKaabaMarker = null, qiblaMapLine = null;
+function qiblaRenderMap(){
+  const you = [prayerSettings.lat, prayerSettings.lon];
+  const kaaba = [KAABA_LAT, KAABA_LON];
+  if(!qiblaMap){
+    qiblaMap = L.map('qiblaMapReal', { attributionControl: true });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '© OpenStreetMap',
+    }).addTo(qiblaMap);
+    qiblaYouMarker = L.marker(you).addTo(qiblaMap);
+    qiblaKaabaMarker = L.marker(kaaba, { icon: QIBLA_KAABA_ICON() }).addTo(qiblaMap).bindPopup('Кааба');
+    qiblaMapLine = L.polyline([you, kaaba], { color: 'var(--gold)', weight: 2, dashArray: '6 6' }).addTo(qiblaMap);
+  } else {
+    qiblaYouMarker.setLatLng(you);
+    qiblaMapLine.setLatLngs([you, kaaba]);
+  }
+  qiblaMap.fitBounds(L.latLngBounds([you, kaaba]), { padding: [24, 24] });
+  // A map created while its container was hidden (screen not active yet)
+  // gets 0×0 tile math baked in — this is the standard Leaflet fix, needed
+  // here because openQiblaScreen() can run before go() finishes revealing
+  // the screen.
+  setTimeout(() => qiblaMap && qiblaMap.invalidateSize(), 60);
 }
 
 function renderQiblaScreen(){
@@ -16411,8 +16452,13 @@ function renderQiblaScreen(){
   const distance = qiblaDistanceKm(prayerSettings.lat, prayerSettings.lon);
   document.getElementById('qiblaBearingValue').textContent = Math.round(qiblaBearing) + '°';
   document.getElementById('qiblaDistanceValue').textContent = Math.round(distance).toLocaleString('ru-RU') + ' км';
-  qiblaRenderMap(qiblaBearing);
   qiblaApplyHeading(qiblaHeading);
+  loadLeaflet().then(() => {
+    document.getElementById('qiblaMapStatus').style.display = 'none';
+    qiblaRenderMap();
+  }).catch(() => {
+    document.getElementById('qiblaMapStatus').textContent = 'Не удалось загрузить карту. Проверьте подключение к интернету.';
+  });
 }
 
 let qiblaScreenWired = false;
@@ -16421,8 +16467,14 @@ function openQiblaScreen(){
     qiblaScreenWired = true;
     document.getElementById('qiblaLocateBtn').addEventListener('click', locatePrayerCity);
   }
+  // prayerSettings falls back to the Kaaba's own coordinates (see
+  // PRAYER_DEFAULT_LAT/LON) until a location is ever set — showing that
+  // straight-faced as "0°, 0 км" instead of asking for a real location
+  // first is what made this screen look broken on a first visit.
+  const usingDefaultLocation = prayerSettings.lat === PRAYER_DEFAULT_LAT && prayerSettings.lon === PRAYER_DEFAULT_LON;
   renderQiblaScreen();
   qiblaStartCompass();
+  if(usingDefaultLocation) locatePrayerCity();
 }
 
 /* =====================================================
