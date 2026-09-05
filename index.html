@@ -1168,6 +1168,34 @@ body{
 .sira-full-heading{ font-family:var(--font-display); font-size:16.5px; color:var(--gold); margin:26px 0 10px; }
 .sira-full-heading:first-of-type{ margin-top:0; }
 
+/* ================= ARABIC (изучение арабского языка) ================= */
+.arabic-vocab-title{ font-size:11.5px; letter-spacing:.06em; color:var(--ivory-dim); margin:22px 0 10px; }
+.arabic-vocab-title:first-of-type{ margin-top:0; }
+.arabic-vocab-row{
+  display:flex; align-items:center; gap:14px; padding:12px 0; border-bottom:1px solid var(--line);
+}
+.arabic-vocab-row:last-child{ border-bottom:none; }
+.arabic-vocab-ar{
+  flex-shrink:0; width:38%; text-align:right; direction:rtl; font-size:21px; line-height:1.5; color:var(--ivory);
+  font-family:"Traditional Arabic","Scheherazade New",serif;
+}
+.arabic-vocab-mid{ flex:1; min-width:0; }
+.arabic-vocab-translit{ font-size:12px; color:var(--gold-soft); font-style:italic; }
+.arabic-vocab-ru{ font-size:13.5px; color:var(--ivory); margin-top:2px; }
+.arabic-letter-card{
+  border:1px solid var(--line); background:var(--glass); border-radius:var(--r-card); padding:14px; margin-bottom:12px;
+}
+.arabic-letter-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.arabic-letter-name{ font-size:13.5px; color:var(--ivory); }
+.arabic-letter-big{ font-size:30px; color:var(--gold); direction:rtl; font-family:"Traditional Arabic","Scheherazade New",serif; }
+.arabic-letter-forms{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:10px; }
+.arabic-letter-form{ text-align:center; }
+.arabic-letter-form .lbl{ display:block; font-size:10px; color:var(--ivory-dim); margin-bottom:4px; }
+.arabic-letter-form .val{ display:block; font-size:19px; color:var(--gold-soft); direction:rtl; font-family:"Traditional Arabic","Scheherazade New",serif; }
+.arabic-letter-sound{ font-size:12px; color:var(--ivory-dim); line-height:1.5; margin-bottom:6px; }
+.arabic-letter-example{ font-size:12.5px; color:var(--ivory); display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
+.arabic-letter-example .ar{ direction:rtl; font-size:16px; color:var(--gold-soft); font-family:"Traditional Arabic","Scheherazade New",serif; }
+
 /* --- chat: conversation list --- */
 .chat-row{ display:flex; align-items:center; gap:12px; padding:12px 4px; border-bottom:1px solid var(--fill-2); cursor:pointer; }
 .chat-row:last-child{ border-bottom:none; }
@@ -2442,6 +2470,10 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
             <span class="section-chip-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 6.5c-2-1.6-4.7-2.2-7-1.7v13c2.3-.5 5 .1 7 1.7 2-1.6 4.7-2.2 7-1.7v-13c-2.3-.5-5 .1-7 1.7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 6.5v13" stroke="currentColor" stroke-width="1.5"/></svg></span>
             <span class="section-chip-title">Сира Пророка</span>
           </button>
+          <button type="button" class="section-chip" data-nav-section="arabic">
+            <span class="section-chip-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M4 19.5A2.5 2.5 0 016.5 17H20V4H6.5A2.5 2.5 0 004 6.5v13z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 9h8M8 12.5h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+            <span class="section-chip-title">Арабский язык</span>
+          </button>
         </div>
 
       </div>
@@ -3652,6 +3684,43 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
       </div>
     </div>
 
+    <!-- ARABIC (изучение арабского языка) -->
+    <section class="screen" data-screen="arabic">
+      <div class="quran-head">
+        <button class="nav-arrow" data-nav="home" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="quran-surah-btn" id="arabicLessonBtn">
+          <span id="arabicLessonBtnLabel">Арабский язык</span>
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div style="width:44px;flex-shrink:0;"></div>
+      </div>
+      <div class="quran-page-scroll" id="arabicPageScroll">
+        <div id="arabicPage"></div>
+        <div class="tafsir-status" id="arabicLoading">Загрузка…</div>
+        <div class="tafsir-status" id="arabicError" style="display:none;">
+          Не удалось загрузить уроки.<br>Проверьте подключение к интернету.
+          <button class="btn btn-ghost" id="arabicRetryBtn" style="margin-top:14px;">Повторить</button>
+        </div>
+      </div>
+      <div class="quran-foot">
+        <button class="quran-nav-btn" id="arabicPrevBtn" aria-label="Предыдущий урок"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="quran-page-num" id="arabicLessonNum">1 / 15</button>
+        <button class="quran-nav-btn" id="arabicNextBtn" aria-label="Следующий урок"><svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </div>
+    </section>
+
+    <div class="sheet-backdrop" id="arabicLessonBackdrop"></div>
+    <div class="sheet" id="arabicLessonSheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-top">
+        <div class="sheet-idx">Уроки арабского языка</div>
+        <button class="sheet-close" id="arabicLessonClose"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
+      </div>
+      <div class="sheet-body" style="text-align:left;padding-top:2px;">
+        <div id="arabicLessonList"></div>
+      </div>
+    </div>
+
     <section class="screen" data-screen="listenReciter">
       <div class="quran-head">
         <button class="nav-arrow" data-nav="listen" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -4757,7 +4826,7 @@ function go(name, replace = false){
     // chat thread specifically it can crowd the composer once the keyboard
     // is open too.
     const dockEl = document.querySelector('.tabbar');
-    if(dockEl) dockEl.style.display = (name === 'tafsir' || name === 'chat' || name === 'sira' || name === 'siraFull') ? 'none' : '';
+    if(dockEl) dockEl.style.display = (name === 'tafsir' || name === 'chat' || name === 'sira' || name === 'siraFull' || name === 'arabic') ? 'none' : '';
   };
   
   if(!isPopping) {
@@ -7086,9 +7155,13 @@ const SIDE_DRAWER_ITEMS_META = {
   sira: {
     label: 'Сира Пророка',
     icon: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 6.5c-2-1.6-4.7-2.2-7-1.7v13c2.3-.5 5 .1 7 1.7 2-1.6 4.7-2.2 7-1.7v-13c-2.3-.5-5 .1-7 1.7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 6.5v13" stroke="currentColor" stroke-width="1.5"/></svg>'
+  },
+  arabic: {
+    label: 'Арабский язык',
+    icon: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 19.5A2.5 2.5 0 016.5 17H20V4H6.5A2.5 2.5 0 004 6.5v13z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 9h8M8 12.5h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
   }
 };
-const SIDE_DRAWER_DEFAULT_ORDER = ['favorites', 'quran', 'tafsir', 'listen', 'mecca_live', 'tajweed', 'chats', 'prayer', 'qibla', 'sira', 'settings'];
+const SIDE_DRAWER_DEFAULT_ORDER = ['favorites', 'quran', 'tafsir', 'listen', 'mecca_live', 'tajweed', 'chats', 'prayer', 'qibla', 'sira', 'arabic', 'settings'];
 
 function loadSideDrawerOrder(){
   try{
@@ -7175,6 +7248,9 @@ function navigateToSection(key){
   } else if(key === 'sira'){
     go('sira');
     if(typeof openSiraScreen === 'function') openSiraScreen();
+  } else if(key === 'arabic'){
+    go('arabic');
+    if(typeof openArabicScreen === 'function') openArabicScreen();
   } else if(key === 'listen'){
     go('listen');
     if(typeof openListenScreen === 'function') openListenScreen();
@@ -15498,6 +15574,150 @@ document.getElementById('siraOpenShortBtn').addEventListener('click', ()=>{
   go('sira');
   openSiraScreen();
 });
+
+/* ================= ARABIC (изучение арабского языка, 15 уроков) ================= */
+const ARABIC_DATA_URL = 'https://99ism.ru/arabic-lessons-data.json';
+const ARABIC_TOTAL_LESSONS = 15;
+let arabicData = null;
+let arabicLoadPromise = null;
+let arabicCurrentLesson = null;
+
+function arabicFetchData(){
+  if(arabicData) return Promise.resolve(arabicData);
+  if(arabicLoadPromise) return arabicLoadPromise;
+  arabicLoadPromise = fetch(ARABIC_DATA_URL).then(r=>{
+    if(!r.ok) throw new Error('bad status');
+    return r.json();
+  }).then(data=>{ arabicData = data; return data; });
+  return arabicLoadPromise;
+}
+
+function arabicEscapeHtml(s){
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function arabicVocabHtml(block){
+  const parts = [];
+  if(block.title) parts.push(`<div class="arabic-vocab-title">${arabicEscapeHtml(block.title)}</div>`);
+  block.items.forEach(it=>{
+    parts.push(`<div class="arabic-vocab-row">
+      <div class="arabic-vocab-ar">${arabicEscapeHtml(it.ar)}</div>
+      <div class="arabic-vocab-mid">
+        <div class="arabic-vocab-translit">${arabicEscapeHtml(it.translit)}</div>
+        <div class="arabic-vocab-ru">${arabicEscapeHtml(it.ru)}</div>
+      </div>
+    </div>`);
+  });
+  return parts.join('');
+}
+
+function arabicAlphabetHtml(block){
+  const formLabels = ['отдельно', 'в начале', 'в середине', 'в конце'];
+  return block.letters.map((l, i) => `
+    <div class="arabic-letter-card">
+      <div class="arabic-letter-head">
+        <span class="arabic-letter-name">${i+1}. ${arabicEscapeHtml(l.name)}</span>
+        <span class="arabic-letter-big">${arabicEscapeHtml(l.letter)}</span>
+      </div>
+      <div class="arabic-letter-forms">
+        ${[l.isolated, l.initial, l.medial, l.final].map((f, fi) => `
+          <div class="arabic-letter-form">
+            <span class="lbl">${formLabels[fi]}</span>
+            <span class="val">${arabicEscapeHtml(f)}</span>
+          </div>`).join('')}
+      </div>
+      <div class="arabic-letter-sound">${arabicEscapeHtml(l.sound)}</div>
+      <div class="arabic-letter-example">
+        <span class="ar">${arabicEscapeHtml(l.example.ar)}</span>
+        <span>(${arabicEscapeHtml(l.example.translit)}) — ${arabicEscapeHtml(l.example.ru)}</span>
+      </div>
+    </div>`).join('');
+}
+
+function arabicRenderLesson(num){
+  const d = arabicData[num - 1];
+  const parts = [];
+  parts.push(`<div class="sira-day-badge">УРОК ${num} ИЗ ${ARABIC_TOTAL_LESSONS}</div>`);
+  parts.push(`<div class="sira-title">${arabicEscapeHtml(d.title)}</div>`);
+  d.blocks.forEach(block=>{
+    if(block.type === 'p'){
+      parts.push(`<p class="sira-p">${arabicEscapeHtml(block.text)}</p>`);
+    } else if(block.type === 'vocab'){
+      parts.push(arabicVocabHtml(block));
+    } else if(block.type === 'alphabet'){
+      parts.push(arabicAlphabetHtml(block));
+    }
+  });
+  document.getElementById('arabicPage').innerHTML = parts.join('');
+  document.getElementById('arabicLessonBtnLabel').textContent = `${num}. ${d.title}`;
+  document.getElementById('arabicLessonNum').textContent = `${num} / ${ARABIC_TOTAL_LESSONS}`;
+  document.getElementById('arabicPageScroll').scrollTop = 0;
+  arabicCurrentLesson = num;
+  try{ localStorage.setItem('arabicLastLesson', String(num)); }catch(e){}
+}
+
+async function arabicGoToLesson(num){
+  num = Math.max(1, Math.min(ARABIC_TOTAL_LESSONS, Math.round(num)));
+  document.getElementById('arabicError').style.display = 'none';
+  document.getElementById('arabicLoading').style.display = arabicData ? 'none' : '';
+  try{
+    await arabicFetchData();
+    document.getElementById('arabicLoading').style.display = 'none';
+    arabicRenderLesson(num);
+  }catch(e){
+    document.getElementById('arabicLoading').style.display = 'none';
+    document.getElementById('arabicError').style.display = '';
+  }
+}
+
+function openArabicScreen(){
+  if(arabicData && arabicCurrentLesson) return;
+  let last = 1;
+  try{ last = parseInt(localStorage.getItem('arabicLastLesson'), 10) || 1; }catch(e){}
+  arabicGoToLesson(last);
+}
+
+document.getElementById('arabicPrevBtn').addEventListener('click', ()=> arabicGoToLesson((arabicCurrentLesson||1) - 1));
+document.getElementById('arabicNextBtn').addEventListener('click', ()=> arabicGoToLesson((arabicCurrentLesson||1) + 1));
+document.getElementById('arabicRetryBtn').addEventListener('click', ()=> arabicGoToLesson(arabicCurrentLesson||1));
+
+function arabicRenderLessonRows(){
+  const listEl = document.getElementById('arabicLessonList');
+  if(!arabicData){ listEl.innerHTML = ''; return; }
+  listEl.innerHTML = arabicData.map(d => `<div class="sira-day-row" data-num="${d.num}">
+      <span class="n">${d.num}</span>
+      <span class="title">${arabicEscapeHtml(d.title)}</span>
+    </div>`).join('');
+  listEl.querySelectorAll('.sira-day-row').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      closeArabicLessonSheet();
+      arabicGoToLesson(parseInt(row.dataset.num, 10));
+    });
+  });
+}
+
+async function openArabicLessonSheet(){
+  pushSheetHistory();
+  document.getElementById('arabicLessonSheet').classList.add('show');
+  document.getElementById('arabicLessonBackdrop').classList.add('show');
+  const listEl = document.getElementById('arabicLessonList');
+  if(arabicData){ arabicRenderLessonRows(); return; }
+  listEl.innerHTML = '<p class="misc-intro">Загрузка…</p>';
+  try{
+    await arabicFetchData();
+    arabicRenderLessonRows();
+  }catch(e){
+    listEl.innerHTML = '<p class="misc-intro">Не удалось загрузить список уроков.</p>';
+  }
+}
+function closeArabicLessonSheet(){
+  popSheetHistory();
+  document.getElementById('arabicLessonSheet').classList.remove('show');
+  document.getElementById('arabicLessonBackdrop').classList.remove('show');
+}
+document.getElementById('arabicLessonBtn').addEventListener('click', openArabicLessonSheet);
+document.getElementById('arabicLessonClose').addEventListener('click', closeArabicLessonSheet);
+document.getElementById('arabicLessonBackdrop').addEventListener('click', closeArabicLessonSheet);
 
 document.getElementById('quranPrevBtn').addEventListener('click', ()=> quranGoToPage(quranState.page - 1));
 document.getElementById('quranNextBtn').addEventListener('click', ()=> quranGoToPage(quranState.page + 1));
