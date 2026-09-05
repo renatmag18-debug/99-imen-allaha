@@ -1203,6 +1203,32 @@ body{
 .arabic-letter-sound{ font-size:12.5px; color:var(--ivory-dim); line-height:1.5; margin-bottom:8px; }
 .arabic-letter-example{ font-size:13px; color:var(--ivory); display:flex; align-items:baseline; justify-content:center; gap:8px; flex-wrap:wrap; }
 .arabic-letter-example .ar{ direction:rtl; font-size:18px; color:var(--gold-soft); font-family:"Traditional Arabic","Scheherazade New",serif; }
+.sentence-builder{ margin-bottom:22px; }
+.sentence-answer{
+  min-height:64px; border:1px dashed var(--line); border-radius:var(--r-card); background:var(--glass);
+  padding:12px; display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center; direction:rtl;
+}
+.sentence-answer:empty::before{ content:'Нажимай на слова снизу по порядку'; direction:ltr; color:var(--ivory-dim); font-size:12.5px; }
+.sentence-bank{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; direction:rtl; margin-top:14px; min-height:38px; }
+.sentence-tile{
+  font-family:"Traditional Arabic","Scheherazade New",serif; font-size:21px; color:var(--ivory);
+  background:var(--fill-1); border:1px solid var(--line); border-radius:12px; padding:6px 12px; cursor:pointer;
+}
+.sentence-tile:active{ transform:scale(.94); }
+.sentence-tile.correct{ border-color:var(--jade); color:var(--jade); }
+.sentence-tile.wrong{ border-color:var(--rose); color:var(--rose); }
+.sentence-hint{ text-align:center; font-size:13.5px; color:var(--gold-soft); margin-top:10px; min-height:18px; }
+.sentence-status{ text-align:center; font-size:13.5px; margin-top:6px; min-height:18px; }
+.sentence-status.correct{ color:var(--jade); }
+.sentence-status.wrong{ color:var(--rose); }
+.sentence-actions{ display:flex; align-items:center; justify-content:center; gap:10px; margin-top:16px; flex-wrap:wrap; }
+.sentence-btn{
+  border:1px solid var(--line); background:var(--fill-1); color:var(--ivory); border-radius:999px;
+  padding:9px 16px; font-size:13.5px; cursor:pointer;
+}
+.sentence-btn:active{ transform:scale(.96); }
+.sentence-btn.primary{ border-color:var(--gold); color:var(--gold); }
+.sentence-btn:disabled{ opacity:.4; }
 
 /* --- chat: conversation list --- */
 .chat-row{ display:flex; align-items:center; gap:12px; padding:12px 4px; border-bottom:1px solid var(--fill-2); cursor:pointer; }
@@ -3712,7 +3738,7 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
       </div>
       <div class="quran-foot">
         <button class="quran-nav-btn" id="arabicPrevBtn" aria-label="Предыдущий урок"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-        <button class="quran-page-num" id="arabicLessonNum">1 / 15</button>
+        <button class="quran-page-num" id="arabicLessonNum">1 / 16</button>
         <button class="quran-nav-btn" id="arabicNextBtn" aria-label="Следующий урок"><svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       </div>
     </section>
@@ -15585,7 +15611,7 @@ document.getElementById('siraOpenShortBtn').addEventListener('click', ()=>{
 
 /* ================= ARABIC (изучение арабского языка, 15 уроков) ================= */
 const ARABIC_DATA_URL = 'https://99ism.ru/arabic-lessons-data.json';
-const ARABIC_TOTAL_LESSONS = 15;
+const ARABIC_TOTAL_LESSONS = 16;
 let arabicData = null;
 let arabicLoadPromise = null;
 let arabicCurrentLesson = null;
@@ -15756,10 +15782,138 @@ arabicPageEl.addEventListener('click', e=>{
   arabicPageEl.addEventListener('touchcancel', ()=>{ tracking = false; axis = null; }, {passive:true});
 })();
 
+// "Составь предложение" — a word-order exercise (tap the scrambled words
+// back into place) built from full phrases the learner already saw
+// earlier in the course, rather than the single-word/letter flashcards
+// above. One state object per deck, keyed the same way as the flashcard
+// decks but with its own shape (a current item's word order still to
+// place, and what's been placed so far) since "correct" here means a
+// whole ordered sequence, not a single right answer.
+const arabicSentenceState = {};
+
+function arabicShuffledOrder(n){
+  const order = Array.from({length:n}, (_, i) => i);
+  for(let i = order.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  // A 2-word phrase has a 50% chance of shuffling right back into the
+  // correct order, which would hand the answer over already solved.
+  if(n > 1 && order.every((v, i) => v === i)) [order[0], order[1]] = [order[1], order[0]];
+  return order;
+}
+
+function arabicSentenceHtml(block, deckId){
+  arabicSentenceState[deckId] = { items: block.items, idx: 0 };
+  return `<div class="sentence-builder" id="${deckId}">
+    <div class="flashcard-progress" id="${deckId}-progress"></div>
+    <div class="sentence-answer" id="${deckId}-answer"></div>
+    <div class="sentence-bank" id="${deckId}-bank"></div>
+    <div class="sentence-hint" id="${deckId}-hint"></div>
+    <div class="sentence-status" id="${deckId}-status"></div>
+    <div class="sentence-actions">
+      <button type="button" class="sentence-btn" data-sdeck="${deckId}" data-act="reset">Сброс</button>
+      <button type="button" class="sentence-btn" data-sdeck="${deckId}" data-act="hint">Подсказка</button>
+      <button type="button" class="flashcard-audio-btn" data-sdeck="${deckId}" data-act="audio" aria-label="Озвучить">🔊</button>
+      <button type="button" class="sentence-btn primary" data-sdeck="${deckId}" data-act="check">Проверить</button>
+    </div>
+    <div class="flashcard-nav">
+      <button type="button" class="flashcard-arrow" data-sdeck="${deckId}" data-act="prev" aria-label="Назад">‹</button>
+      <button type="button" class="flashcard-arrow" data-sdeck="${deckId}" data-act="next" aria-label="Далее">›</button>
+    </div>
+  </div>`;
+}
+
+function arabicSentenceIsCorrect(deckId){
+  const st = arabicSentenceState[deckId];
+  const item = st.items[st.idx];
+  return st.placed.length === item.words.length && st.placed.every((v, i) => v === i);
+}
+
+function arabicSentenceClearStatus(deckId){
+  const el = document.getElementById(deckId + '-status');
+  el.textContent = '';
+  el.className = 'sentence-status';
+}
+
+function arabicSentenceRender(deckId){
+  const st = arabicSentenceState[deckId];
+  const item = st.items[st.idx];
+  document.getElementById(deckId + '-progress').textContent = `${st.idx + 1} / ${st.items.length}`;
+  const stateClass = st.checked ? (arabicSentenceIsCorrect(deckId) ? ' correct' : ' wrong') : '';
+  document.getElementById(deckId + '-answer').innerHTML = st.placed.map(origIdx =>
+    `<span class="sentence-tile${stateClass}" data-sdeck="${deckId}" data-orig="${origIdx}" data-zone="answer">${arabicEscapeHtml(item.words[origIdx])}</span>`
+  ).join('');
+  const remaining = st.order.filter(i => !st.placed.includes(i));
+  document.getElementById(deckId + '-bank').innerHTML = remaining.map(origIdx =>
+    `<span class="sentence-tile" data-sdeck="${deckId}" data-orig="${origIdx}" data-zone="bank">${arabicEscapeHtml(item.words[origIdx])}</span>`
+  ).join('');
+  const checkBtn = document.querySelector(`.sentence-btn[data-sdeck="${deckId}"][data-act="check"]`);
+  if(checkBtn) checkBtn.disabled = st.placed.length !== item.words.length;
+}
+
+function arabicSentenceGoTo(deckId, idx){
+  const st = arabicSentenceState[deckId];
+  st.idx = Math.max(0, Math.min(st.items.length - 1, idx));
+  st.order = arabicShuffledOrder(st.items[st.idx].words.length);
+  st.placed = [];
+  st.checked = false;
+  document.getElementById(deckId + '-hint').textContent = '';
+  arabicSentenceClearStatus(deckId);
+  arabicSentenceRender(deckId);
+}
+
+arabicPageEl.addEventListener('click', e=>{
+  const tile = e.target.closest('.sentence-tile');
+  if(tile){
+    const deckId = tile.dataset.sdeck;
+    const st = arabicSentenceState[deckId];
+    if(!st) return;
+    const orig = parseInt(tile.dataset.orig, 10);
+    if(tile.dataset.zone === 'bank') st.placed.push(orig);
+    else st.placed = st.placed.filter(i => i !== orig);
+    st.checked = false;
+    arabicSentenceClearStatus(deckId);
+    arabicSentenceRender(deckId);
+    return;
+  }
+  const btn = e.target.closest('.sentence-builder .sentence-btn, .sentence-builder .flashcard-audio-btn, .sentence-builder .flashcard-arrow');
+  if(!btn) return;
+  const deckId = btn.dataset.sdeck;
+  const st = arabicSentenceState[deckId];
+  if(!st) return;
+  const act = btn.dataset.act;
+  if(act === 'reset'){
+    st.placed = [];
+    st.checked = false;
+    arabicSentenceClearStatus(deckId);
+    arabicSentenceRender(deckId);
+  } else if(act === 'hint'){
+    document.getElementById(deckId + '-hint').textContent = st.items[st.idx].ru;
+  } else if(act === 'audio'){
+    arabicSpeak(st.items[st.idx].words.join(' '));
+  } else if(act === 'check'){
+    st.checked = true;
+    const correct = arabicSentenceIsCorrect(deckId);
+    const statusEl = document.getElementById(deckId + '-status');
+    statusEl.textContent = correct ? 'Верно!' : 'Не совсем — попробуй ещё раз';
+    statusEl.className = 'sentence-status ' + (correct ? 'correct' : 'wrong');
+    arabicSentenceRender(deckId);
+    if(correct && st.idx < st.items.length - 1){
+      setTimeout(() => arabicSentenceGoTo(deckId, st.idx + 1), 900);
+    }
+  } else if(act === 'prev'){
+    arabicSentenceGoTo(deckId, st.idx - 1);
+  } else if(act === 'next'){
+    arabicSentenceGoTo(deckId, st.idx + 1);
+  }
+});
+
 function arabicRenderLesson(num){
   const d = arabicData[num - 1];
   const parts = [];
   const deckIds = [];
+  const sentenceDeckIds = [];
   parts.push(`<div class="sira-day-badge">УРОК ${num} ИЗ ${ARABIC_TOTAL_LESSONS}</div>`);
   parts.push(`<div class="sira-title">${arabicEscapeHtml(d.title)}</div>`);
   d.blocks.forEach((block, bi)=>{
@@ -15773,10 +15927,15 @@ function arabicRenderLesson(num){
       const id = `arabic-deck-${num}-${bi}`;
       parts.push(arabicAlphabetHtml(block, id));
       deckIds.push(id);
+    } else if(block.type === 'sentence'){
+      const id = `arabic-sentence-${num}-${bi}`;
+      parts.push(arabicSentenceHtml(block, id));
+      sentenceDeckIds.push(id);
     }
   });
   document.getElementById('arabicPage').innerHTML = parts.join('');
   deckIds.forEach(arabicRenderCard);
+  sentenceDeckIds.forEach(id => arabicSentenceGoTo(id, 0));
   document.getElementById('arabicLessonBtnLabel').textContent = `${num}. ${d.title}`;
   document.getElementById('arabicLessonNum').textContent = `${num} / ${ARABIC_TOTAL_LESSONS}`;
   document.getElementById('arabicPageScroll').scrollTop = 0;
