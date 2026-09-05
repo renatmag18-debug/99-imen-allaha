@@ -15604,10 +15604,21 @@ function arabicEscapeHtml(s){
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// Browser/OS text-to-speech — there's no recorded audio for this content,
-// but speechSynthesis with an Arabic voice covers pronunciation well enough
-// for a beginner's course, at zero cost and no server-side audio pipeline.
+// There's no recorded audio for this content, so pronunciation comes from
+// text-to-speech. Android's system WebView (unlike Chrome for Android)
+// doesn't implement the Web Speech API at all — speechSynthesis is simply
+// undefined there — so inside the packaged app this goes through
+// AndroidApp.speak(), a bridge to Android's own TextToSpeech engine (see
+// MainActivity.kt). speechSynthesis is kept as the fallback for anyone
+// reading the site in an actual browser, where it works natively.
 function arabicSpeak(text){
+  if(typeof AndroidApp !== 'undefined' && typeof AndroidApp.speak === 'function'){
+    try{
+      if(AndroidApp.speak(text)) return;
+    }catch(e){ console.warn('AndroidApp.speak failed:', e); }
+    showToast('Не удалось найти голос для арабского на этом устройстве');
+    return;
+  }
   if(!('speechSynthesis' in window)){
     showToast('Озвучка не поддерживается на этом устройстве');
     return;
