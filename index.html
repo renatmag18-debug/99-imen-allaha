@@ -16515,7 +16515,7 @@ async function checkForAppUpdate(){
   try{
     const lastCheckTime = parseInt(localStorage.getItem('lastAppUpdateCheck')||'0', 10);
     const now = Date.now();
-    if(now - lastCheckTime < 300000) return; // check at most once per 5 minutes
+    if(now - lastCheckTime < 60000) return; // check at most once per minute
 
     localStorage.setItem('lastAppUpdateCheck', now.toString());
     const resp = await fetch('https://99ism.ru/version.json', {cache:'no-store'});
@@ -16645,7 +16645,11 @@ function installAPKUpdate(){
 // progress bar) instead of a bare confirm() — the actual install call below
 // is unchanged from before, so if that specific step still has issues,
 // this only affects how the offer is *shown*, not whether install works.
+// The initial call used to be the only one — with the app left open, it
+// never checked again. The interval makes it actually re-check once a
+// minute for as long as the app stays open, not just once per launch.
 setTimeout(checkForAppUpdate, 2000);
+setInterval(checkForAppUpdate, 60000);
 
 /* =====================================================
    ВРЕМЯ НАМАЗА — local sun-position calculation, matching
