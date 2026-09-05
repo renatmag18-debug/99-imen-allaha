@@ -15619,7 +15619,12 @@ let arabicCurrentLesson = null;
 function arabicFetchData(){
   if(arabicData) return Promise.resolve(arabicData);
   if(arabicLoadPromise) return arabicLoadPromise;
-  arabicLoadPromise = fetch(ARABIC_DATA_URL).then(r=>{
+  // Same cache-busting as loadFreshWebContent()'s index.html/api.js fetch —
+  // GitHub Pages' CDN caches this file for up to 10 minutes (cache-control:
+  // max-age=600), and {cache:'no-store'} alone only skips the browser's own
+  // cache, not that edge cache, so a lesson edit could take up to 10
+  // minutes to actually reach anyone already on this screen.
+  arabicLoadPromise = fetch(ARABIC_DATA_URL + '?_cb=' + Date.now(), {cache:'no-store'}).then(r=>{
     if(!r.ok) throw new Error('bad status');
     return r.json();
   }).then(data=>{ arabicData = data; return data; });
