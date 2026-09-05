@@ -1169,32 +1169,40 @@ body{
 .sira-full-heading:first-of-type{ margin-top:0; }
 
 /* ================= ARABIC (изучение арабского языка) ================= */
-.arabic-vocab-title{ font-size:11.5px; letter-spacing:.06em; color:var(--ivory-dim); margin:22px 0 10px; }
+.arabic-vocab-title{ font-size:11.5px; letter-spacing:.06em; color:var(--ivory-dim); margin:22px 0 10px; text-align:center; }
 .arabic-vocab-title:first-of-type{ margin-top:0; }
-.arabic-vocab-row{
-  display:flex; align-items:center; gap:14px; padding:12px 0; border-bottom:1px solid var(--line);
+.flashcard-deck{ margin-bottom:22px; }
+.flashcard-progress{ text-align:center; font-size:11.5px; color:var(--ivory-dim); margin-bottom:10px; }
+.flashcard{
+  border:1px solid var(--line); background:var(--glass); border-radius:var(--r-card);
+  padding:34px 20px; min-height:180px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  text-align:center; touch-action:pan-y; user-select:none;
 }
-.arabic-vocab-row:last-child{ border-bottom:none; }
-.arabic-vocab-ar{
-  flex-shrink:0; width:38%; text-align:right; direction:rtl; font-size:21px; line-height:1.5; color:var(--ivory);
-  font-family:"Traditional Arabic","Scheherazade New",serif;
+.flashcard-ar{
+  font-size:46px; line-height:1.4; color:var(--ivory); direction:rtl;
+  font-family:"Traditional Arabic","Scheherazade New",serif; margin-bottom:14px;
 }
-.arabic-vocab-mid{ flex:1; min-width:0; }
-.arabic-vocab-translit{ font-size:12px; color:var(--gold-soft); font-style:italic; }
-.arabic-vocab-ru{ font-size:13.5px; color:var(--ivory); margin-top:2px; }
-.arabic-letter-card{
-  border:1px solid var(--line); background:var(--glass); border-radius:var(--r-card); padding:14px; margin-bottom:12px;
+.flashcard-translit{ font-size:15px; color:var(--gold-soft); font-style:italic; margin-bottom:6px; }
+.flashcard-ru{ font-size:16.5px; color:var(--ivory); }
+.flashcard-letter-name{ font-size:13px; color:var(--ivory-dim); margin-bottom:6px; }
+.flashcard-nav{ display:flex; align-items:center; justify-content:center; gap:18px; margin-top:16px; }
+.flashcard-arrow{
+  width:44px; height:44px; flex-shrink:0; border-radius:50%; border:1px solid var(--line); background:var(--fill-1);
+  color:var(--ivory); font-size:20px; display:flex; align-items:center; justify-content:center; cursor:pointer;
 }
-.arabic-letter-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
-.arabic-letter-name{ font-size:13.5px; color:var(--ivory); }
-.arabic-letter-big{ font-size:30px; color:var(--gold); direction:rtl; font-family:"Traditional Arabic","Scheherazade New",serif; }
-.arabic-letter-forms{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:10px; }
+.flashcard-arrow:active{ transform:scale(.92); }
+.flashcard-audio-btn{
+  width:54px; height:54px; flex-shrink:0; border-radius:50%; border:1px solid var(--gold); background:var(--glass);
+  color:var(--gold); font-size:23px; display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+.flashcard-audio-btn:active{ transform:scale(.92); }
+.arabic-letter-forms{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; width:100%; margin:6px 0 14px; }
 .arabic-letter-form{ text-align:center; }
 .arabic-letter-form .lbl{ display:block; font-size:10px; color:var(--ivory-dim); margin-bottom:4px; }
-.arabic-letter-form .val{ display:block; font-size:19px; color:var(--gold-soft); direction:rtl; font-family:"Traditional Arabic","Scheherazade New",serif; }
-.arabic-letter-sound{ font-size:12px; color:var(--ivory-dim); line-height:1.5; margin-bottom:6px; }
-.arabic-letter-example{ font-size:12.5px; color:var(--ivory); display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
-.arabic-letter-example .ar{ direction:rtl; font-size:16px; color:var(--gold-soft); font-family:"Traditional Arabic","Scheherazade New",serif; }
+.arabic-letter-form .val{ display:block; font-size:20px; color:var(--gold-soft); direction:rtl; font-family:"Traditional Arabic","Scheherazade New",serif; }
+.arabic-letter-sound{ font-size:12.5px; color:var(--ivory-dim); line-height:1.5; margin-bottom:8px; }
+.arabic-letter-example{ font-size:13px; color:var(--ivory); display:flex; align-items:baseline; justify-content:center; gap:8px; flex-wrap:wrap; }
+.arabic-letter-example .ar{ direction:rtl; font-size:18px; color:var(--gold-soft); font-family:"Traditional Arabic","Scheherazade New",serif; }
 
 /* --- chat: conversation list --- */
 .chat-row{ display:flex; align-items:center; gap:12px; padding:12px 4px; border-bottom:1px solid var(--fill-2); cursor:pointer; }
@@ -15596,33 +15604,79 @@ function arabicEscapeHtml(s){
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-function arabicVocabHtml(block){
-  const parts = [];
-  if(block.title) parts.push(`<div class="arabic-vocab-title">${arabicEscapeHtml(block.title)}</div>`);
-  block.items.forEach(it=>{
-    parts.push(`<div class="arabic-vocab-row">
-      <div class="arabic-vocab-ar">${arabicEscapeHtml(it.ar)}</div>
-      <div class="arabic-vocab-mid">
-        <div class="arabic-vocab-translit">${arabicEscapeHtml(it.translit)}</div>
-        <div class="arabic-vocab-ru">${arabicEscapeHtml(it.ru)}</div>
-      </div>
-    </div>`);
-  });
-  return parts.join('');
+// Browser/OS text-to-speech — there's no recorded audio for this content,
+// but speechSynthesis with an Arabic voice covers pronunciation well enough
+// for a beginner's course, at zero cost and no server-side audio pipeline.
+function arabicSpeak(text){
+  if(!('speechSynthesis' in window)){
+    showToast('Озвучка не поддерживается на этом устройстве');
+    return;
+  }
+  try{
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'ar-SA';
+    u.rate = 0.8;
+    speechSynthesis.speak(u);
+  }catch(e){ console.warn('arabicSpeak failed:', e); }
 }
 
-function arabicAlphabetHtml(block){
-  const formLabels = ['отдельно', 'в начале', 'в середине', 'в конце'];
-  return block.letters.map((l, i) => `
-    <div class="arabic-letter-card">
-      <div class="arabic-letter-head">
-        <span class="arabic-letter-name">${i+1}. ${arabicEscapeHtml(l.name)}</span>
-        <span class="arabic-letter-big">${arabicEscapeHtml(l.letter)}</span>
-      </div>
+// One flashcard deck per vocab/alphabet block — shows a single item large,
+// swipeable/arrow-navigable, with a speaker button (see arabicSpeak above).
+// State lives in these three maps, keyed by the deck's own DOM id.
+const arabicDeckItems = {};
+const arabicDeckKind = {};
+const arabicDeckIndex = {};
+
+function arabicDeckShell(deckId){
+  return `<div class="flashcard-deck" id="${deckId}">
+    <div class="flashcard-progress" id="${deckId}-progress"></div>
+    <div class="flashcard" id="${deckId}-card"></div>
+    <div class="flashcard-nav">
+      <button type="button" class="flashcard-arrow" data-deck="${deckId}" data-dir="-1" aria-label="Назад">‹</button>
+      <button type="button" class="flashcard-audio-btn" data-deck="${deckId}" aria-label="Озвучить">🔊</button>
+      <button type="button" class="flashcard-arrow" data-deck="${deckId}" data-dir="1" aria-label="Далее">›</button>
+    </div>
+  </div>`;
+}
+
+function arabicVocabHtml(block, deckId){
+  arabicDeckItems[deckId] = block.items;
+  arabicDeckKind[deckId] = 'vocab';
+  arabicDeckIndex[deckId] = 0;
+  const titleHtml = block.title ? `<div class="arabic-vocab-title">${arabicEscapeHtml(block.title)}</div>` : '';
+  return titleHtml + arabicDeckShell(deckId);
+}
+
+function arabicAlphabetHtml(block, deckId){
+  arabicDeckItems[deckId] = block.letters;
+  arabicDeckKind[deckId] = 'alphabet';
+  arabicDeckIndex[deckId] = 0;
+  return arabicDeckShell(deckId);
+}
+
+const ARABIC_FORM_LABELS = ['отдельно', 'в начале', 'в середине', 'в конце'];
+
+function arabicRenderCard(deckId){
+  const items = arabicDeckItems[deckId];
+  const idx = arabicDeckIndex[deckId];
+  document.getElementById(deckId + '-progress').textContent = `${idx + 1} / ${items.length}`;
+  const cardEl = document.getElementById(deckId + '-card');
+  if(arabicDeckKind[deckId] === 'vocab'){
+    const it = items[idx];
+    cardEl.innerHTML = `
+      <div class="flashcard-ar">${arabicEscapeHtml(it.ar)}</div>
+      <div class="flashcard-translit">${arabicEscapeHtml(it.translit)}</div>
+      <div class="flashcard-ru">${arabicEscapeHtml(it.ru)}</div>`;
+  } else {
+    const l = items[idx];
+    cardEl.innerHTML = `
+      <div class="flashcard-letter-name">${idx + 1}. ${arabicEscapeHtml(l.name)}</div>
+      <div class="flashcard-ar">${arabicEscapeHtml(l.letter)}</div>
       <div class="arabic-letter-forms">
         ${[l.isolated, l.initial, l.medial, l.final].map((f, fi) => `
           <div class="arabic-letter-form">
-            <span class="lbl">${formLabels[fi]}</span>
+            <span class="lbl">${ARABIC_FORM_LABELS[fi]}</span>
             <span class="val">${arabicEscapeHtml(f)}</span>
           </div>`).join('')}
       </div>
@@ -15630,25 +15684,88 @@ function arabicAlphabetHtml(block){
       <div class="arabic-letter-example">
         <span class="ar">${arabicEscapeHtml(l.example.ar)}</span>
         <span>(${arabicEscapeHtml(l.example.translit)}) — ${arabicEscapeHtml(l.example.ru)}</span>
-      </div>
-    </div>`).join('');
+      </div>`;
+  }
 }
+
+function arabicDeckMove(deckId, dir){
+  const items = arabicDeckItems[deckId];
+  if(!items) return;
+  arabicDeckIndex[deckId] = Math.max(0, Math.min(items.length - 1, arabicDeckIndex[deckId] + dir));
+  arabicRenderCard(deckId);
+}
+
+function arabicDeckSpeak(deckId){
+  const items = arabicDeckItems[deckId];
+  if(!items) return;
+  const it = items[arabicDeckIndex[deckId]];
+  arabicSpeak(arabicDeckKind[deckId] === 'vocab' ? it.ar : it.letter);
+}
+
+// Delegated once (not re-bound per lesson) since every deck's markup is
+// re-created on each arabicRenderLesson() call but always carries the same
+// .flashcard-arrow/.flashcard-audio-btn classes and data-deck id.
+const arabicPageEl = document.getElementById('arabicPage');
+arabicPageEl.addEventListener('click', e=>{
+  const arrow = e.target.closest('.flashcard-arrow');
+  if(arrow){ arabicDeckMove(arrow.dataset.deck, parseInt(arrow.dataset.dir, 10)); return; }
+  const audioBtn = e.target.closest('.flashcard-audio-btn');
+  if(audioBtn) arabicDeckSpeak(audioBtn.dataset.deck);
+});
+// Same touch-tracking shape as initStageSwipe() above — a short horizontal
+// swipe on a card moves to the next/previous item, a vertical drag still
+// scrolls the page normally (axis is only locked once a real direction
+// shows, and only 'x' calls preventDefault so vertical scrolling isn't
+// fought over).
+(function initArabicDeckSwipe(){
+  let deckId = null, sx = 0, sy = 0, axis = null, tracking = false;
+  arabicPageEl.addEventListener('touchstart', e=>{
+    tracking = false; axis = null;
+    const card = e.target.closest('.flashcard');
+    if(!card || e.touches.length !== 1) return;
+    deckId = card.closest('.flashcard-deck').id;
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+    tracking = true;
+  }, {passive:true});
+  arabicPageEl.addEventListener('touchmove', e=>{
+    if(!tracking || e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - sx, dy = e.touches[0].clientY - sy;
+    if(axis === null && (Math.abs(dx) > 10 || Math.abs(dy) > 10)){
+      axis = Math.abs(dx) > Math.abs(dy) * 1.4 ? 'x' : 'y';
+    }
+    if(axis === 'x') e.preventDefault();
+  }, {passive:false});
+  arabicPageEl.addEventListener('touchend', e=>{
+    if(!tracking || axis !== 'x'){ tracking = false; axis = null; return; }
+    tracking = false;
+    const dx = e.changedTouches[0].clientX - sx;
+    if(Math.abs(dx) < 40) return;
+    arabicDeckMove(deckId, dx < 0 ? 1 : -1);
+  }, {passive:true});
+  arabicPageEl.addEventListener('touchcancel', ()=>{ tracking = false; axis = null; }, {passive:true});
+})();
 
 function arabicRenderLesson(num){
   const d = arabicData[num - 1];
   const parts = [];
+  const deckIds = [];
   parts.push(`<div class="sira-day-badge">УРОК ${num} ИЗ ${ARABIC_TOTAL_LESSONS}</div>`);
   parts.push(`<div class="sira-title">${arabicEscapeHtml(d.title)}</div>`);
-  d.blocks.forEach(block=>{
+  d.blocks.forEach((block, bi)=>{
     if(block.type === 'p'){
       parts.push(`<p class="sira-p">${arabicEscapeHtml(block.text)}</p>`);
     } else if(block.type === 'vocab'){
-      parts.push(arabicVocabHtml(block));
+      const id = `arabic-deck-${num}-${bi}`;
+      parts.push(arabicVocabHtml(block, id));
+      deckIds.push(id);
     } else if(block.type === 'alphabet'){
-      parts.push(arabicAlphabetHtml(block));
+      const id = `arabic-deck-${num}-${bi}`;
+      parts.push(arabicAlphabetHtml(block, id));
+      deckIds.push(id);
     }
   });
   document.getElementById('arabicPage').innerHTML = parts.join('');
+  deckIds.forEach(arabicRenderCard);
   document.getElementById('arabicLessonBtnLabel').textContent = `${num}. ${d.title}`;
   document.getElementById('arabicLessonNum').textContent = `${num} / ${ARABIC_TOTAL_LESSONS}`;
   document.getElementById('arabicPageScroll').scrollTop = 0;
