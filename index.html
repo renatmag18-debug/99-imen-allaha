@@ -2413,10 +2413,10 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
         <button type="button" class="home-prayer-card" id="homePrayerPreview"></button>
 
         <div class="hadith-card">
-          <p class="hadith-quote">У Аллаха <em>девяносто девять имён</em>, сто без одного, и всякий, кто сосчитает их <em>[запомнит их наизусть, осознает их смысл]</em>, войдёт в рай. Поистине, Аллах — Единственный и любит нечётное.</p>
+          <p class="hadith-quote" id="hadithOfDayQuote">У Аллаха <em>девяносто девять имён</em>, сто без одного, и всякий, кто сосчитает их <em>[запомнит их наизусть, осознает их смысл]</em>, войдёт в рай. Поистине, Аллах — Единственный и любит нечётное.</p>
           <div class="hadith-source">
-            <span class="hadith-narrator">Хадис Абу Хурайры</span>
-            <span class="hadith-ref">Аль-Бухари 6410 · Муслим 2677</span>
+            <span class="hadith-narrator" id="hadithOfDayNarrator">Хадис Абу Хурайры</span>
+            <span class="hadith-ref" id="hadithOfDayRef">Аль-Бухари 6410 · Муслим 2677</span>
           </div>
         </div>
 
@@ -16740,6 +16740,48 @@ document.getElementById('homePrayerPreview').addEventListener('click', ()=>{
 // unlike the top-of-file initial-render calls (updateHomeStats() and co.)
 // which run before these prayer consts exist.
 renderSideDrawerPrayerPreview();
+
+/* =====================================================
+   HADITH OF THE DAY — the home screen's hadith card used to show one fixed
+   hadith forever; this rotates it once a day through a small pool of
+   authentic (sahih) hadiths, several of them hadith qudsi (marked as such
+   in the narrator line — a hadith qudsi is a saying of Allah's conveyed by
+   the Prophet ﷺ in his own words, distinct from the Qur'an itself, but
+   still not his own words the way an ordinary hadith is). Every entry here
+   is a well-known hadith from Sahih al-Bukhari and/or Sahih Muslim (or
+   Sunan at-Tirmidhi where marked hasan) — nothing weak or fabricated, and
+   nothing without a real, checkable reference.
+===================================================== */
+const HADITH_OF_DAY_POOL = [
+  { quote: 'У Аллаха <em>девяносто девять имён</em>, сто без одного, и всякий, кто сосчитает их [запомнит их наизусть, осознает их смысл], войдёт в рай. Поистине, Аллах — Единственный и любит нечётное.', narrator: 'Хадис Абу Хурайры', ref: 'Аль-Бухари 6410 · Муслим 2677' },
+  { quote: 'Поистине, <em>дела оцениваются по намерениям</em>, и каждому человеку — то, что он намеревался.', narrator: 'Хадис Умара ибн аль-Хаттаба', ref: 'Аль-Бухари 1 · Муслим 1907' },
+  { quote: 'Не уверует [по-настоящему] никто из вас, пока не <em>пожелает своему брату того же, чего желает себе</em>.', narrator: 'Хадис Анаса ибн Малика', ref: 'Аль-Бухари 13 · Муслим 45' },
+  { quote: '<em>Стыдливость</em> — часть веры.', narrator: 'Хадис Абу Хурайры', ref: 'Аль-Бухари 9 · Муслим 35' },
+  { quote: '<em>Доброе слово</em> — это милостыня.', narrator: 'Хадис Абу Хурайры', ref: 'Аль-Бухари 2989 · Муслим 1009' },
+  { quote: '<em>Сильный верующий</em> лучше и любимее Аллаху, чем слабый верующий, хотя в каждом есть благо.', narrator: 'Хадис Абу Хурайры', ref: 'Муслим 2664' },
+  { quote: 'Кто <em>облегчит затруднение верующему</em> в этом мире, тому Аллах облегчит затруднение в День воскресения.', narrator: 'Хадис Абу Хурайры', ref: 'Муслим 2699' },
+  { quote: '<em>Лучшие из вас</em> — те, кто изучает Коран и обучает ему [других].', narrator: 'Хадис Усмана ибн Аффана', ref: 'Аль-Бухари 5027' },
+  { quote: 'Кто <em>укажет на благое дело</em>, тому будет такая же награда, как и совершившему его.', narrator: 'Хадис Абу Мас‘уда аль-Ансари', ref: 'Муслим 1893' },
+  { quote: 'Твоя <em>улыбка</em> в лицо своему брату — уже милостыня.', narrator: 'Хадис Абу Зарра', ref: 'Ат-Тирмизи 1956 (хасан)' },
+  { quote: 'Кто верует в Аллаха и Судный день, пусть <em>говорит благое или молчит</em>.', narrator: 'Хадис Абу Хурайры', ref: 'Аль-Бухари 6018 · Муслим 47' },
+  { quote: 'Не уверует [по-настоящему] никто из вас, пока я не стану ему <em>дороже его отца, его ребёнка и всех людей</em>.', narrator: 'Хадис Анаса ибн Малика', ref: 'Аль-Бухари 15 · Муслим 44' },
+  { quote: 'Я — таков, каким Мой раб думает обо Мне. Если он приблизится ко Мне на пядь, Я приближаюсь к нему на локоть; а если он идёт ко Мне <em>пешком</em>, Я иду к нему <em>бегом</em>.', narrator: 'Хадис Абу Хурайры (аль-Кудси)', ref: 'Аль-Бухари 7405 · Муслим 2675' },
+  { quote: 'Поистине, <em>Моя милость опережает Мой гнев</em>.', narrator: 'Хадис Абу Хурайры (аль-Кудси)', ref: 'Аль-Бухари 7404 · Муслим 2751' },
+  { quote: 'Трать, о сын Адама, и <em>Я буду тратить на тебя</em>.', narrator: 'Хадис Абу Хурайры (аль-Кудси)', ref: 'Аль-Бухари 4684 · Муслим 993' },
+  { quote: 'Я приготовил для Своих праведных рабов то, <em>чего не видел глаз, не слышало ухо</em>, и что не приходило на сердце человеку.', narrator: 'Хадис Абу Хурайры (аль-Кудси)', ref: 'Аль-Бухари 3244 · Муслим 2824' },
+  { quote: 'О рабы Мои! Я <em>запретил Себе притеснение</em> и сделал его запретным между вами, так не притесняйте друг друга.', narrator: 'Хадис Абу Зарра (аль-Кудси)', ref: 'Муслим 2577' },
+  { quote: 'Самые любимые дела Аллаху — те, что <em>совершаются постоянно</em>, даже если их мало.', narrator: 'Хадис Аиши', ref: 'Аль-Бухари 6465 · Муслим 783' },
+];
+function renderHadithOfDay(){
+  const quoteEl = document.getElementById('hadithOfDayQuote');
+  if(!quoteEl) return;
+  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+  const hadith = HADITH_OF_DAY_POOL[dayOfYear % HADITH_OF_DAY_POOL.length];
+  quoteEl.innerHTML = hadith.quote;
+  document.getElementById('hadithOfDayNarrator').textContent = hadith.narrator;
+  document.getElementById('hadithOfDayRef').textContent = hadith.ref;
+}
+renderHadithOfDay();
 
 function openPrayerScreen(){
   // Captured before loadPrayerSettings()/savePrayerSettings() below, which
