@@ -16774,8 +16774,8 @@ function alarmsAvailable(){
   return typeof AndroidApp !== 'undefined' && typeof AndroidApp.getAlarms === 'function';
 }
 
-const ALARM_PRAYER_IDS = { fajr:0, dhuhr:2, asr:3, maghrib:4, isha:5 };
-const ALARM_PRAYER_LABELS = { fajr:'Фаджр', dhuhr:'Зухр', asr:'Аср', maghrib:'Магриб', isha:'Иша' };
+const ALARM_PRAYER_IDS = { fajr:0, sunrise:1, dhuhr:2, asr:3, maghrib:4, isha:5 };
+const ALARM_PRAYER_LABELS = { fajr:'Фаджр', sunrise:'Восход', dhuhr:'Зухр', asr:'Аср', maghrib:'Магриб', isha:'Иша' };
 
 let alarmsList = [];
 let alarmPreviewTimes = {};
