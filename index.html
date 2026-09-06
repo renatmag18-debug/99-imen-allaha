@@ -1116,7 +1116,8 @@ body{
 .tafsir-title{ font-family:var(--font-display); font-size:20px; color:var(--ivory); margin-bottom:4px; }
 .tafsir-alt{ font-size:13px; color:var(--gold-soft); margin-bottom:10px; }
 .tafsir-meta{ font-size:12px; color:var(--ivory-dim); padding-bottom:14px; margin-bottom:16px; border-bottom:1px solid var(--line); }
-.tafsir-ayah{ display:flex; gap:10px; margin-bottom:16px; }
+.tafsir-ayah{ display:flex; gap:10px; margin-bottom:16px; border-radius:var(--r-card); transition:background-color 1.2s ease; }
+.tafsir-ayah.tafsir-ayah-highlight{ background-color:var(--accent-tint, rgba(201,162,75,.18)); }
 .tafsir-ayah-n{
   flex-shrink:0; width:24px; height:24px; border-radius:50%; background:var(--fill-1); border:1px solid var(--line);
   color:var(--gold); font-size:11.5px; display:flex; align-items:center; justify-content:center; margin-top:1px;
@@ -3617,7 +3618,9 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
         <button class="sheet-close" id="tafsirSurahClose"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
       </div>
       <div class="sheet-body" style="text-align:left;padding-top:2px;">
-        <input type="text" id="tafsirSearchInput" class="quran-search-input" placeholder="Сура или номер…" autocomplete="off">
+        <input type="text" id="tafsirSearchInput" class="quran-search-input" placeholder="Сура, номер или слово…" autocomplete="off">
+        <div class="quran-search-status" id="tafsirSearchStatus" style="display:none;"></div>
+        <div id="tafsirSearchResults"></div>
         <div id="tafsirSurahList"></div>
       </div>
     </div>
@@ -15233,6 +15236,9 @@ const TAFSIR_DATA_URL = 'https://99ism.ru/tafsir-data.json';
 let tafsirData = null;
 let tafsirLoadPromise = null;
 let tafsirCurrentNum = null;
+// Set by tafsirJumpToAyah() right before switching surahs — consumed once
+// by the next tafsirRenderSurah() call to scroll/highlight that one ayah.
+let tafsirPendingScrollAyah = null;
 
 function tafsirFetchData(){
   if(tafsirData) return Promise.resolve(tafsirData);
@@ -15262,7 +15268,7 @@ function tafsirRenderSurah(num){
   parts.push(`<div class="tafsir-title">${num}. ${d.name}${d.alt ? ` <span class="tafsir-alt">(${d.alt})</span>` : ''}</div>`);
   if(d.meta) parts.push(`<div class="tafsir-meta">${d.meta}</div>`);
   d.ayat.forEach((text, i)=>{
-    parts.push(`<div class="tafsir-ayah"><span class="tafsir-ayah-n">${i+1}</span><span class="tafsir-ayah-text">${tafsirAyahHtml(text)}</span></div>`);
+    parts.push(`<div class="tafsir-ayah" id="tafsirAyah-${i+1}"><span class="tafsir-ayah-n">${i+1}</span><span class="tafsir-ayah-text">${tafsirAyahHtml(text)}</span></div>`);
   });
   // Notes are read one at a time via their inline marker (tafsirNoteSheet
   // below) rather than dumped as a list at the end — quicker to reach from
@@ -15273,6 +15279,20 @@ function tafsirRenderSurah(num){
   document.getElementById('tafsirPageScroll').scrollTop = 0;
   tafsirCurrentNum = num;
   try{ localStorage.setItem('tafsirLastSurah', String(num)); }catch(e){}
+  // Consumed once — a search result jump wants the page to land right on
+  // that ayah instead of at the top of the surah.
+  if(tafsirPendingScrollAyah){
+    const ayahNum = tafsirPendingScrollAyah;
+    tafsirPendingScrollAyah = null;
+    const target = document.getElementById('tafsirAyah-' + ayahNum);
+    if(target){
+      setTimeout(()=>{
+        target.scrollIntoView({block:'center', behavior:'smooth'});
+        target.classList.add('tafsir-ayah-highlight');
+        setTimeout(()=> target.classList.remove('tafsir-ayah-highlight'), 2000);
+      }, 50);
+    }
+  }
 }
 
 async function tafsirGoToSurah(num){
@@ -15335,7 +15355,10 @@ async function openTafsirSurahSheet(){
   document.getElementById('tafsirSurahSheet').classList.add('show');
   document.getElementById('tafsirSurahBackdrop').classList.add('show');
   document.getElementById('tafsirSearchInput').value = '';
+  document.getElementById('tafsirSearchResults').innerHTML = '';
+  document.getElementById('tafsirSearchStatus').style.display = 'none';
   const listEl = document.getElementById('tafsirSurahList');
+  listEl.style.display = '';
   if(tafsirData){ tafsirRenderSurahRows(); return; }
   listEl.innerHTML = '<p class="misc-intro">Загрузка…</p>';
   try{
@@ -15353,7 +15376,104 @@ function closeTafsirSurahSheet(){
 document.getElementById('tafsirSurahBtn').addEventListener('click', openTafsirSurahSheet);
 document.getElementById('tafsirSurahClose').addEventListener('click', closeTafsirSurahSheet);
 document.getElementById('tafsirSurahBackdrop').addEventListener('click', closeTafsirSurahSheet);
-document.getElementById('tafsirSearchInput').addEventListener('input', e=> tafsirRenderSurahRows(e.target.value));
+
+function tafsirJumpToAyah(surahNum, ayahNum){
+  closeTafsirSurahSheet();
+  tafsirPendingScrollAyah = ayahNum;
+  tafsirGoToSurah(surahNum);
+}
+
+// Local full-text search across every ayah's tafsir text — there's no
+// remote search API for our own translation the way api.quran.com covers
+// the Quran search box, but the whole thing is already loaded in
+// tafsirData by the time anyone can type here, so a plain substring scan
+// is instant. Capped at 50 hits so a very common word doesn't render an
+// enormous result list.
+function tafsirSearchAyat(query){
+  const q = query.trim().toLowerCase();
+  const results = [];
+  const nums = Object.keys(tafsirData).map(Number).sort((a,b)=>a-b);
+  outer: for(const num of nums){
+    const d = tafsirData[num];
+    for(let i=0;i<d.ayat.length;i++){
+      const clean = d.ayat[i].replace(/\[\[note:\d+\]\]/g, '');
+      const idx = clean.toLowerCase().indexOf(q);
+      if(idx !== -1){
+        results.push({num, name:d.name, ayah:i+1, text:clean, idx});
+        if(results.length >= 50) break outer;
+      }
+    }
+  }
+  return results;
+}
+function tafsirSnippet(text, idx, qLen){
+  const CONTEXT = 60;
+  const start = Math.max(0, idx - CONTEXT);
+  const end = Math.min(text.length, idx + qLen + CONTEXT);
+  const before = tafsirEscapeHtml(text.slice(start, idx));
+  const match = tafsirEscapeHtml(text.slice(idx, idx + qLen));
+  const after = tafsirEscapeHtml(text.slice(idx + qLen, end));
+  return (start > 0 ? '…' : '') + before + '<em>' + match + '</em>' + after + (end < text.length ? '…' : '');
+}
+
+function tafsirHandleSearchInput(query){
+  const listEl = document.getElementById('tafsirSurahList');
+  const resultsEl = document.getElementById('tafsirSearchResults');
+  const statusEl = document.getElementById('tafsirSearchStatus');
+  const trimmed = query.trim();
+
+  if(!tafsirData) return; // still loading — nothing to search yet
+
+  if(!trimmed){
+    resultsEl.innerHTML = '';
+    statusEl.style.display = 'none';
+    listEl.style.display = '';
+    tafsirRenderSurahRows();
+    return;
+  }
+
+  // Surah name/number match takes priority — same as the Quran search box.
+  const q = trimmed.toLowerCase();
+  const nums = Object.keys(tafsirData || {}).map(Number).sort((a,b)=>a-b);
+  const bySurah = nums.filter(n=>{
+    const d = tafsirData[n];
+    return String(n) === q || d.name.toLowerCase().includes(q) || (d.alt||'').toLowerCase().includes(q);
+  });
+  if(bySurah.length){
+    resultsEl.innerHTML = '';
+    statusEl.style.display = 'none';
+    listEl.style.display = '';
+    tafsirRenderSurahRows(trimmed);
+    return;
+  }
+
+  // No surah matched by name/number — fall back to searching the tafsir
+  // text itself. Skipped for a 1-character query since that's just noise
+  // while someone is mid-typing.
+  listEl.style.display = 'none';
+  if(trimmed.length < 2){
+    resultsEl.innerHTML = '';
+    statusEl.style.display = 'none';
+    return;
+  }
+  const results = tafsirSearchAyat(trimmed);
+  if(!results.length){
+    resultsEl.innerHTML = '';
+    statusEl.textContent = 'Ничего не найдено.';
+    statusEl.style.display = 'block';
+    return;
+  }
+  statusEl.style.display = 'none';
+  resultsEl.innerHTML = results.map(r => `
+    <div class="quran-search-result" data-surah="${r.num}" data-ayah="${r.ayah}">
+      <div class="quran-search-result-ref">${r.num}:${r.ayah} · ${tafsirEscapeHtml(r.name)}</div>
+      <div class="quran-search-result-snippet">${tafsirSnippet(r.text, r.idx, trimmed.length)}</div>
+    </div>`).join('');
+  resultsEl.querySelectorAll('.quran-search-result').forEach(el=>{
+    el.addEventListener('click', ()=> tafsirJumpToAyah(parseInt(el.dataset.surah, 10), parseInt(el.dataset.ayah, 10)));
+  });
+}
+document.getElementById('tafsirSearchInput').addEventListener('input', e=> tafsirHandleSearchInput(e.target.value));
 
 function openTafsirNote(n){
   const d = tafsirData && tafsirData[tafsirCurrentNum];
