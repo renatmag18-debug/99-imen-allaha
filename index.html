@@ -1920,6 +1920,30 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
   background:var(--glass); color:var(--ivory); font-family:var(--font-body); font-size:13.5px; margin-bottom:8px;
 }
 
+/* --- "Будильник" screen --- */
+.alarm-row{
+  display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 16px;
+  border-radius:var(--r-card); background:var(--glass); border:1px solid var(--line); margin-bottom:8px; cursor:pointer;
+}
+.alarm-row-main{ min-width:0; }
+.alarm-row-time{ font-family:var(--font-num); font-size:22px; color:var(--ivory); line-height:1.3; }
+.alarm-row-time.disabled{ color:var(--ivory-dim); }
+.alarm-row-label{ font-size:12px; color:var(--ivory-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.alarm-empty-hint{ font-size:12.5px; color:var(--ivory-dim); padding:4px 0 14px; }
+.alarm-days-row{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:4px; }
+.alarm-day-btn{
+  flex:1; min-width:38px; padding:9px 0; border-radius:var(--r-pill); border:1px solid var(--line);
+  background:var(--glass); color:var(--ivory-dim); font-family:var(--font-body); font-size:12.5px; cursor:pointer;
+}
+.alarm-day-btn.active{ background:var(--gold); border-color:var(--gold); color:var(--on-accent); }
+.alarm-edit-time-input{ font-size:28px; text-align:center; font-family:var(--font-num); }
+.alarm-offset-row{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.alarm-offset-btn{
+  width:28px; height:28px; border-radius:50%; border:1px solid var(--line); background:var(--fill-1);
+  color:var(--ivory); font-size:16px; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;
+}
+.alarm-offset-value{ font-size:11px; color:var(--ivory-dim); min-width:56px; text-align:center; }
+
 /* --- "Направление киблы" screen --- */
 .qibla-map-card{
   border-radius:var(--r-card); border:1px solid var(--line); background:var(--glass); padding:14px; margin:18px 0 10px; text-align:center;
@@ -3473,6 +3497,27 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
       </div>
     </section>
 
+    <section class="screen" data-screen="alarms">
+      <div class="scroll">
+        <div class="settings-head">
+          <button class="nav-arrow" data-nav="home" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <div class="section-title" style="padding:0;">Будильник</div>
+        </div>
+
+        <div class="section-label" style="margin-top:0;">Обычные будильники</div>
+        <div id="alarmCustomList"></div>
+        <button type="button" class="btn btn-ghost" id="alarmAddBtn" style="width:100%;margin-bottom:22px;">+ Добавить будильник</button>
+
+        <div class="section-label">Намазы</div>
+        <p class="section-desc" style="margin-top:0;">Будильник прозвонит точно ко времени намаза — даже в беззвучном режиме.</p>
+        <div id="alarmPrayerList" class="prayer-times-list"></div>
+
+        <div class="section-label">Дополнительные намазы</div>
+        <p class="section-desc" style="margin-top:0;">Тахаджуд — по последней трети ночи, Духа — по времени восхода. Для остальных дополнительных намазов (Витр, Ишрак и т.д.) добавьте обычный будильник со своей подписью.</p>
+        <div id="alarmVoluntaryList" class="prayer-times-list"></div>
+      </div>
+    </section>
+
     <section class="screen" data-screen="qibla">
       <div class="scroll">
         <div class="settings-head">
@@ -4110,6 +4155,34 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
     </div>
   </div>
 
+  <div class="sheet-backdrop" id="alarmEditBackdrop"></div>
+  <div class="sheet" id="alarmEditSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-top">
+      <div class="sheet-idx" id="alarmEditTitle">Новый будильник</div>
+      <button class="sheet-close" id="alarmEditClose"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
+    </div>
+    <div class="sheet-body" style="text-align:left;padding-top:2px;">
+      <input type="time" id="alarmEditTime" class="prayer-select alarm-edit-time-input">
+      <input type="text" id="alarmEditLabel" class="prayer-select" placeholder="Название (необязательно)" style="margin-top:14px;">
+      <div class="section-label" style="margin-top:18px;">Повтор</div>
+      <div class="alarm-days-row" id="alarmEditDays">
+        <button type="button" class="alarm-day-btn" data-day="1">Пн</button>
+        <button type="button" class="alarm-day-btn" data-day="2">Вт</button>
+        <button type="button" class="alarm-day-btn" data-day="3">Ср</button>
+        <button type="button" class="alarm-day-btn" data-day="4">Чт</button>
+        <button type="button" class="alarm-day-btn" data-day="5">Пт</button>
+        <button type="button" class="alarm-day-btn" data-day="6">Сб</button>
+        <button type="button" class="alarm-day-btn" data-day="0">Вс</button>
+      </div>
+      <p class="section-desc" id="alarmEditRepeatHint">Без повтора — прозвонит один раз и выключится.</p>
+      <div class="sheet-actions" style="margin-top:10px;">
+        <button type="button" class="btn btn-ghost" id="alarmEditDeleteBtn" style="flex:1;display:none;">Удалить</button>
+        <button type="button" class="btn btn-primary" id="alarmEditSaveBtn" style="flex:1;">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
   <div class="sheet-backdrop" id="dhikrCounterBackdrop"></div>
   <div class="sheet" id="dhikrCounterSheet">
     <div class="sheet-handle"></div>
@@ -4462,6 +4535,7 @@ window.addEventListener('popstate', (e) => {
     try { closeFriendPicker(); } catch(e){}
     try { closeQuranSurahSheet(); } catch(e){}
     try { closeQuranSettingsSheet(); } catch(e){}
+    try { alarmCloseEdit(); } catch(e){}
     setTimeout(() => { isClosingFromPopstate = false; }, 50);
   }
 });
@@ -7067,6 +7141,10 @@ const SIDE_DRAWER_ITEMS_META = {
     label: 'Время намаза',
     icon: '<svg viewBox="0 0 24 24" fill="none"><path d="M20.5 14.2A8.5 8.5 0 019.8 3.5a8.5 8.5 0 108.5 8.5c0 .74-.09 1.46-.26 2.15z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>'
   },
+  alarms: {
+    label: 'Будильник',
+    icon: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="13" r="7.5" stroke="currentColor" stroke-width="1.6"/><path d="M12 9v4l2.8 1.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.5 4.5l2.8 2.3M19.5 4.5l-2.8 2.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>'
+  },
   listen: {
     label: 'Слушать Коран',
     icon: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 15v-3a8 8 0 0116 0v3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M4 15a2 2 0 012-2h1a1 1 0 011 1v4a1 1 0 01-1 1H6a2 2 0 01-2-2v-2zM20 15a2 2 0 00-2-2h-1a1 1 0 00-1 1v4a1 1 0 001 1h1a2 2 0 002-2v-2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>'
@@ -7088,7 +7166,7 @@ const SIDE_DRAWER_ITEMS_META = {
     icon: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 6.5c-2-1.6-4.7-2.2-7-1.7v13c2.3-.5 5 .1 7 1.7 2-1.6 4.7-2.2 7-1.7v-13c-2.3-.5-5 .1-7 1.7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 6.5v13" stroke="currentColor" stroke-width="1.5"/></svg>'
   }
 };
-const SIDE_DRAWER_DEFAULT_ORDER = ['favorites', 'quran', 'tafsir', 'listen', 'mecca_live', 'tajweed', 'chats', 'prayer', 'qibla', 'sira', 'settings'];
+const SIDE_DRAWER_DEFAULT_ORDER = ['favorites', 'quran', 'tafsir', 'listen', 'mecca_live', 'tajweed', 'chats', 'prayer', 'alarms', 'qibla', 'sira', 'settings'];
 
 function loadSideDrawerOrder(){
   try{
@@ -7118,8 +7196,11 @@ function renderSideDrawer(){
   const list = document.getElementById('sideDrawerList');
   // 'chats' stays in SIDE_DRAWER_ITEMS_META/DEFAULT_ORDER untouched — the
   // whole messaging section (Друзья/Сообщения) is only hidden from
-  // navigation, not removed, in case it comes back later.
-  const visible = sideDrawerOrder.filter(k => !sideDrawerHidden.has(k) && k !== 'chats');
+  // navigation, not removed, in case it comes back later. 'alarms' is
+  // hidden outright (not just from navigation) when there's no native
+  // AlarmManager behind it to actually ring — showing it on the plain
+  // website would just be a menu item that does nothing.
+  const visible = sideDrawerOrder.filter(k => !sideDrawerHidden.has(k) && k !== 'chats' && (k !== 'alarms' || alarmsAvailable()));
   list.innerHTML = visible.map(k =>
     `<button type="button" class="side-drawer-item" data-drawer-key="${k}">${SIDE_DRAWER_ITEMS_META[k].icon}<span>${SIDE_DRAWER_ITEMS_META[k].label}</span></button>`
   ).join('');
@@ -7169,6 +7250,10 @@ function navigateToSection(key){
   } else if(key === 'prayer'){
     go('prayer');
     if(typeof openPrayerScreen === 'function') openPrayerScreen();
+  } else if(key === 'alarms'){
+    if(!alarmsAvailable()) return;
+    go('alarms');
+    if(typeof openAlarmsScreen === 'function') openAlarmsScreen();
   } else if(key === 'qibla'){
     go('qibla');
     if(typeof openQiblaScreen === 'function') openQiblaScreen();
@@ -16659,6 +16744,261 @@ function openPrayerScreen(){
   // First-ever visit with no location saved yet — ask right away instead of
   // showing Mecca's times with no explanation why.
   if(isFirstVisit) locatePrayerCity();
+}
+
+/* =====================================================
+   БУДИЛЬНИК — real ringing alarms (native AlarmManager.setAlarmClock(),
+   see AlarmScheduler.kt), not just the silent/notification-only reminders
+   above. Only meaningful inside the packaged app — a browser tab can't ring
+   an alarm while closed or the phone locked — so this whole screen and its
+   drawer entry are hidden on the plain website (see alarmsAvailable() and
+   its use in renderSideDrawer()).
+===================================================== */
+function alarmsAvailable(){
+  return typeof AndroidApp !== 'undefined' && typeof AndroidApp.getAlarms === 'function';
+}
+
+const ALARM_PRAYER_IDS = { fajr:0, dhuhr:2, asr:3, maghrib:4, isha:5 };
+const ALARM_PRAYER_LABELS = { fajr:'Фаджр', dhuhr:'Зухр', asr:'Аср', maghrib:'Магриб', isha:'Иша' };
+
+let alarmsList = [];
+let alarmPreviewTimes = {};
+let alarmEditingId = null;
+let alarmEditDays = new Set();
+
+function alarmAddMinutesToTimeStr(hhmm, minutes){
+  const [h, m] = hhmm.split(':').map(Number);
+  let total = ((h * 60 + m + minutes) % 1440 + 1440) % 1440;
+  return String(Math.floor(total/60)).padStart(2,'0') + ':' + String(total%60).padStart(2,'0');
+}
+
+function alarmLoadState(){
+  if(!alarmsAvailable()) return;
+  try{ alarmsList = JSON.parse(AndroidApp.getAlarms()) || []; }catch(e){ alarmsList = []; }
+  try{ alarmPreviewTimes = JSON.parse(AndroidApp.getAlarmPreviewTimes()) || {}; }catch(e){ alarmPreviewTimes = {}; }
+}
+
+// Prayer/tahajjud/duha alarms aren't created by the user pressing "add" —
+// they always exist conceptually (toggleable rows), so this either finds
+// the one already saved for that kind/prayer or hands back an unsaved
+// default (id:'') that saveAlarm() below will create on first toggle-on.
+function alarmFindSpecial(kind, prayerId){
+  const existing = alarmsList.find(a => a.kind === kind && (kind !== 'prayer' || a.prayerId === prayerId));
+  if(existing) return existing;
+  return { id:'', enabled:false, label:'', kind, hour:0, minute:0, repeatDays:0, prayerId: prayerId==null?-1:prayerId, offsetMinutes: kind==='duha' ? 20 : 0 };
+}
+
+function alarmSave(alarm, onDone){
+  AndroidApp.saveAlarm(JSON.stringify(alarm));
+  alarmLoadState();
+  if(onDone) onDone();
+}
+
+function alarmFormatDays(mask){
+  if(!mask) return 'Один раз';
+  const names = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+  const days = [];
+  for(let i=0;i<7;i++) if((mask >> i) & 1) days.push(names[i]);
+  if(days.length === 7) return 'Каждый день';
+  return days.join(', ');
+}
+
+function renderAlarmCustomList(){
+  const wrap = document.getElementById('alarmCustomList');
+  if(!wrap) return;
+  const custom = alarmsList.filter(a => a.kind === 'custom').sort((a,b) => (a.hour*60+a.minute) - (b.hour*60+b.minute));
+  if(!custom.length){
+    wrap.innerHTML = '<p class="alarm-empty-hint">Пока нет ни одного будильника — добавьте первый ниже.</p>';
+    return;
+  }
+  wrap.innerHTML = custom.map(a => `
+    <div class="alarm-row" data-id="${a.id}">
+      <div class="alarm-row-main">
+        <div class="alarm-row-time${a.enabled?'':' disabled'}">${String(a.hour).padStart(2,'0')}:${String(a.minute).padStart(2,'0')}</div>
+        <div class="alarm-row-label">${alarmEscapeHtml(a.label || alarmFormatDays(a.repeatDays))}</div>
+      </div>
+      <label style="position:relative;display:inline-block;width:40px;height:24px;flex-shrink:0;">
+        <input type="checkbox" class="alarm-toggle" style="opacity:0;width:0;height:0;"${a.enabled ? ' checked' : ''}>
+        <span class="slider" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:var(--fill-3);transition:.4s;border-radius:24px;border:1px solid var(--line);"></span>
+        <span class="slider-knob" style="position:absolute;content:'';height:18px;width:18px;left:2px;bottom:2px;background-color:var(--ivory);transition:.4s;border-radius:50%;"></span>
+      </label>
+    </div>
+  `).join('');
+  wrap.querySelectorAll('.alarm-toggle').forEach(applyDrawerToggleStyle);
+}
+
+function alarmEscapeHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderAlarmPrayerList(){
+  const wrap = document.getElementById('alarmPrayerList');
+  if(!wrap) return;
+  wrap.innerHTML = Object.keys(ALARM_PRAYER_IDS).map(key => {
+    const alarm = alarmFindSpecial('prayer', ALARM_PRAYER_IDS[key]);
+    const base = alarmPreviewTimes[key] || '--:--';
+    const time = alarmAddMinutesToTimeStr(base, alarm.offsetMinutes || 0);
+    return alarmSpecialRowHtml(alarm, ALARM_PRAYER_LABELS[key], time);
+  }).join('');
+  wrap.querySelectorAll('.alarm-toggle').forEach(applyDrawerToggleStyle);
+}
+
+function renderAlarmVoluntaryList(){
+  const wrap = document.getElementById('alarmVoluntaryList');
+  if(!wrap) return;
+  const rows = [
+    ['tahajjud', 'Тахаджуд (последняя треть ночи)'],
+    ['duha', 'Духа (после восхода)'],
+  ].map(([kind, label]) => {
+    const alarm = alarmFindSpecial(kind, null);
+    const base = alarmPreviewTimes[kind] || '--:--';
+    const time = alarmAddMinutesToTimeStr(base, alarm.offsetMinutes || 0);
+    return alarmSpecialRowHtml(alarm, label, time);
+  });
+  wrap.innerHTML = rows.join('');
+  wrap.querySelectorAll('.alarm-toggle').forEach(applyDrawerToggleStyle);
+}
+
+function alarmSpecialRowHtml(alarm, label, time){
+  const key = JSON.stringify(alarm).replace(/"/g, '&quot;');
+  return `
+    <div class="prayer-time-row" data-alarm="${key}">
+      <span class="prayer-time-name">${alarmEscapeHtml(label)}</span>
+      <div class="alarm-offset-row">
+        <button type="button" class="alarm-offset-btn" data-offset="-5">−</button>
+        <span class="alarm-offset-value">${time}${alarm.offsetMinutes ? ` (${alarm.offsetMinutes>0?'+':''}${alarm.offsetMinutes} мин)` : ''}</span>
+        <button type="button" class="alarm-offset-btn" data-offset="5">+</button>
+        <label style="position:relative;display:inline-block;width:40px;height:24px;flex-shrink:0;">
+          <input type="checkbox" class="alarm-toggle" style="opacity:0;width:0;height:0;"${alarm.enabled ? ' checked' : ''}>
+          <span class="slider" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:var(--fill-3);transition:.4s;border-radius:24px;border:1px solid var(--line);"></span>
+          <span class="slider-knob" style="position:absolute;content:'';height:18px;width:18px;left:2px;bottom:2px;background-color:var(--ivory);transition:.4s;border-radius:50%;"></span>
+        </label>
+      </div>
+    </div>
+  `;
+}
+
+function alarmOpenEdit(id){
+  alarmEditingId = id || null;
+  const alarm = id ? alarmsList.find(a => a.id === id) : null;
+  document.getElementById('alarmEditTitle').textContent = alarm ? 'Будильник' : 'Новый будильник';
+  document.getElementById('alarmEditDeleteBtn').style.display = alarm ? '' : 'none';
+  const now = new Date();
+  document.getElementById('alarmEditTime').value = alarm
+    ? `${String(alarm.hour).padStart(2,'0')}:${String(alarm.minute).padStart(2,'0')}`
+    : `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  document.getElementById('alarmEditLabel').value = alarm ? alarm.label : '';
+  alarmEditDays = new Set(alarm ? [...Array(7).keys()].filter(i => (alarm.repeatDays >> i) & 1) : []);
+  alarmRenderEditDays();
+  pushSheetHistory();
+  document.getElementById('alarmEditBackdrop').classList.add('show');
+  document.getElementById('alarmEditSheet').classList.add('show');
+}
+function alarmCloseEdit(){
+  popSheetHistory();
+  document.getElementById('alarmEditBackdrop').classList.remove('show');
+  document.getElementById('alarmEditSheet').classList.remove('show');
+}
+function alarmRenderEditDays(){
+  document.querySelectorAll('#alarmEditDays .alarm-day-btn').forEach(btn => {
+    btn.classList.toggle('active', alarmEditDays.has(parseInt(btn.dataset.day, 10)));
+  });
+  document.getElementById('alarmEditRepeatHint').textContent = alarmEditDays.size
+    ? 'Повтор: ' + alarmFormatDays([...alarmEditDays].reduce((m,d) => m | (1<<d), 0))
+    : 'Без повтора — прозвонит один раз и выключится.';
+}
+
+let alarmsScreenWired = false;
+function wireAlarmsScreenOnce(){
+  if(alarmsScreenWired) return;
+  alarmsScreenWired = true;
+
+  document.getElementById('alarmCustomList').addEventListener('click', e => {
+    const toggle = e.target.closest('.alarm-toggle');
+    const row = e.target.closest('.alarm-row');
+    if(!row) return;
+    const alarm = alarmsList.find(a => a.id === row.dataset.id);
+    if(!alarm) return;
+    if(toggle){
+      alarm.enabled = toggle.checked;
+      alarmSave(alarm, renderAlarmCustomList);
+    } else if(!e.target.closest('label')){
+      // A tap on the toggle's own label/slider bubbles up as a click here
+      // too (target = the label, toggle = null, since the checkbox is a
+      // descendant of the label, not an ancestor of the click target) —
+      // the browser then separately dispatches a second, real click at the
+      // checkbox itself, which the `if(toggle)` branch above handles. This
+      // guard is what stops that first, non-toggle bubble from also
+      // opening the edit sheet.
+      alarmOpenEdit(alarm.id);
+    }
+  });
+
+  document.getElementById('alarmAddBtn').addEventListener('click', () => alarmOpenEdit(null));
+  document.getElementById('alarmEditClose').addEventListener('click', alarmCloseEdit);
+  document.getElementById('alarmEditBackdrop').addEventListener('click', alarmCloseEdit);
+
+  document.getElementById('alarmEditDays').addEventListener('click', e => {
+    const btn = e.target.closest('.alarm-day-btn');
+    if(!btn) return;
+    const day = parseInt(btn.dataset.day, 10);
+    if(alarmEditDays.has(day)) alarmEditDays.delete(day); else alarmEditDays.add(day);
+    alarmRenderEditDays();
+  });
+
+  document.getElementById('alarmEditSaveBtn').addEventListener('click', () => {
+    const [h, m] = document.getElementById('alarmEditTime').value.split(':').map(Number);
+    if(isNaN(h) || isNaN(m)){ showToast('Укажите время'); return; }
+    const repeatDays = [...alarmEditDays].reduce((mask,d) => mask | (1<<d), 0);
+    const alarm = {
+      id: alarmEditingId || '',
+      enabled: true,
+      label: document.getElementById('alarmEditLabel').value.trim(),
+      kind: 'custom',
+      hour: h, minute: m, repeatDays,
+      prayerId: -1, offsetMinutes: 0,
+    };
+    alarmSave(alarm, () => { renderAlarmCustomList(); alarmCloseEdit(); showToast('Будильник сохранён'); });
+  });
+
+  document.getElementById('alarmEditDeleteBtn').addEventListener('click', () => {
+    if(!alarmEditingId) return;
+    AndroidApp.deleteAlarm(alarmEditingId);
+    alarmLoadState();
+    renderAlarmCustomList();
+    alarmCloseEdit();
+    showToast('Будильник удалён');
+  });
+
+  // Delegated once for both the prayer and voluntary lists — each row
+  // carries its own full alarm state as a data attribute (there's no
+  // stable DOM id for one until it's actually been saved once) rather than
+  // looking it up by kind/prayerId again here.
+  const specialHandler = (renderFn) => (e) => {
+    const row = e.target.closest('.prayer-time-row[data-alarm]');
+    if(!row) return;
+    const alarm = JSON.parse(row.dataset.alarm.replace(/&quot;/g, '"'));
+    const toggle = e.target.closest('.alarm-toggle');
+    const offsetBtn = e.target.closest('.alarm-offset-btn');
+    if(toggle){
+      alarm.enabled = toggle.checked;
+      alarmSave(alarm, renderFn);
+    } else if(offsetBtn){
+      alarm.offsetMinutes = (alarm.offsetMinutes || 0) + parseInt(offsetBtn.dataset.offset, 10);
+      alarmSave(alarm, renderFn);
+    }
+  };
+  document.getElementById('alarmPrayerList').addEventListener('click', specialHandler(renderAlarmPrayerList));
+  document.getElementById('alarmVoluntaryList').addEventListener('click', specialHandler(renderAlarmVoluntaryList));
+}
+
+function openAlarmsScreen(){
+  if(!alarmsAvailable()) return;
+  wireAlarmsScreenOnce();
+  alarmLoadState();
+  renderAlarmCustomList();
+  renderAlarmPrayerList();
+  renderAlarmVoluntaryList();
 }
 
 /* =====================================================
