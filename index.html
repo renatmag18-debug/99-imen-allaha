@@ -1943,6 +1943,15 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
   color:var(--ivory); font-size:16px; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;
 }
 .alarm-offset-value{ font-size:11px; color:var(--ivory-dim); min-width:56px; text-align:center; }
+.alarm-warn{
+  display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+  padding:12px 14px; border-radius:var(--r-card); background:var(--rose-soft); border:1px solid var(--rose);
+  margin-bottom:10px; font-size:12.5px; color:var(--ivory);
+}
+.alarm-warn-btn{
+  flex-shrink:0; padding:8px 14px; border-radius:var(--r-pill); border:1px solid var(--rose);
+  background:transparent; color:var(--rose); font-family:var(--font-body); font-size:12.5px; cursor:pointer;
+}
 
 /* --- "Направление киблы" screen --- */
 .qibla-map-card{
@@ -3503,6 +3512,8 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
           <button class="nav-arrow" data-nav="home" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           <div class="section-title" style="padding:0;">Будильник</div>
         </div>
+
+        <div id="alarmWarnings"></div>
 
         <div class="section-label" style="margin-top:0;">Обычные будильники</div>
         <div id="alarmCustomList"></div>
@@ -16913,6 +16924,13 @@ function wireAlarmsScreenOnce(){
   if(alarmsScreenWired) return;
   alarmsScreenWired = true;
 
+  document.getElementById('alarmWarnings').addEventListener('click', e => {
+    const btn = e.target.closest('.alarm-warn-btn');
+    if(!btn) return;
+    if(btn.dataset.act === 'fullscreen' && AndroidApp.openFullScreenIntentSettings) AndroidApp.openFullScreenIntentSettings();
+    else if(btn.dataset.act === 'battery' && AndroidApp.requestIgnoreBatteryOptimizations) AndroidApp.requestIgnoreBatteryOptimizations();
+  });
+
   document.getElementById('alarmCustomList').addEventListener('click', e => {
     const toggle = e.target.closest('.alarm-toggle');
     const row = e.target.closest('.alarm-row');
@@ -16992,10 +17010,45 @@ function wireAlarmsScreenOnce(){
   document.getElementById('alarmVoluntaryList').addEventListener('click', specialHandler(renderAlarmVoluntaryList));
 }
 
+// Two device-level settings that silently keep an otherwise-correctly-
+// scheduled alarm from ever ringing: on Android 14+, USE_FULL_SCREEN_INTENT
+// isn't auto-granted to an app without a system calling/alarm role (no
+// runtime dialog for it — only a Settings screen), and OEM battery
+// optimizers can kill the app before AlarmManager ever fires it. Shown as a
+// dismissible-once-fixed banner rather than blocking anything, since the
+// alarm still gets scheduled either way — this is just explaining why it
+// might not actually go off.
+function renderAlarmWarnings(){
+  const wrap = document.getElementById('alarmWarnings');
+  if(!wrap || !window.AndroidApp || typeof AndroidApp.checkAlarmPermissions !== 'function'){ if(wrap) wrap.innerHTML = ''; return; }
+  let perms;
+  try{ perms = JSON.parse(AndroidApp.checkAlarmPermissions()); }catch(e){ wrap.innerHTML = ''; return; }
+  const warnings = [];
+  if(!perms.fullScreenIntentOk){
+    warnings.push({
+      text: 'Разрешите будильнику показываться поверх экрана блокировки — иначе он может не прозвонить.',
+      act: 'fullscreen', btn: 'Разрешить',
+    });
+  }
+  if(!perms.batteryOk){
+    warnings.push({
+      text: 'Отключите ограничение батареи для приложения — иначе система может остановить будильник до звонка.',
+      act: 'battery', btn: 'Настроить',
+    });
+  }
+  wrap.innerHTML = warnings.map(w => `
+    <div class="alarm-warn">
+      <span>${alarmEscapeHtml(w.text)}</span>
+      <button type="button" class="alarm-warn-btn" data-act="${w.act}">${alarmEscapeHtml(w.btn)}</button>
+    </div>
+  `).join('');
+}
+
 function openAlarmsScreen(){
   if(!alarmsAvailable()) return;
   wireAlarmsScreenOnce();
   alarmLoadState();
+  renderAlarmWarnings();
   renderAlarmCustomList();
   renderAlarmPrayerList();
   renderAlarmVoluntaryList();
