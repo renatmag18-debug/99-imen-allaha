@@ -13179,11 +13179,16 @@ window.onOpenChatFromNotification = function(username){
   state.pendingChatUsername = username;
 };
 // Tapping the home-screen prayer-times widget lands here (see
-// PrayerWidgetProvider's own PendingIntent).
+// PrayerWidgetProvider's own PendingIntent) — currently sends "alarms" so
+// people can quickly get to their prayer alarms, but the "prayer" case
+// stays supported here too in case that ever changes back.
 window.onOpenScreenFromWidget = function(screen){
   if(screen === 'prayer'){
     go('prayer');
     if(typeof openPrayerScreen === 'function') openPrayerScreen();
+  } else if(screen === 'alarms' && typeof alarmsAvailable === 'function' && alarmsAvailable()){
+    go('alarms');
+    if(typeof openAlarmsScreen === 'function') openAlarmsScreen();
   }
 };
 
@@ -16793,10 +16798,15 @@ function alarmLoadState(){
 // they always exist conceptually (toggleable rows), so this either finds
 // the one already saved for that kind/prayer or hands back an unsaved
 // default (id:'') that saveAlarm() below will create on first toggle-on.
+// Default offsets when a special-kind alarm hasn't been saved yet — ishraq
+// and duha are both "sunrise + offset" but conventionally at different
+// points in the morning, so they need different starting offsets even
+// though they share the same underlying native calculation.
+const ALARM_SPECIAL_DEFAULT_OFFSET = { ishraq: 15, duha: 45 };
 function alarmFindSpecial(kind, prayerId){
   const existing = alarmsList.find(a => a.kind === kind && (kind !== 'prayer' || a.prayerId === prayerId));
   if(existing) return existing;
-  return { id:'', enabled:false, label:'', kind, hour:0, minute:0, repeatDays:0, prayerId: prayerId==null?-1:prayerId, offsetMinutes: kind==='duha' ? 20 : 0 };
+  return { id:'', enabled:false, label:'', kind, hour:0, minute:0, repeatDays:0, prayerId: prayerId==null?-1:prayerId, offsetMinutes: ALARM_SPECIAL_DEFAULT_OFFSET[kind] || 0 };
 }
 
 function alarmSave(alarm, onDone){
@@ -16857,12 +16867,16 @@ function renderAlarmPrayerList(){
 function renderAlarmVoluntaryList(){
   const wrap = document.getElementById('alarmVoluntaryList');
   if(!wrap) return;
+  // ishraq's preview time reuses the 'duha' key from getAlarmPreviewTimes()
+  // — both are just sunrise + offset natively, so there's only one raw
+  // sunrise baseline to fetch; each row adds its own offset on top of it.
   const rows = [
-    ['tahajjud', 'Тахаджуд (последняя треть ночи)'],
-    ['duha', 'Духа (после восхода)'],
-  ].map(([kind, label]) => {
+    ['tahajjud', 'Тахаджуд (последняя треть ночи)', 'tahajjud'],
+    ['ishraq', 'Ишрак (вскоре после восхода)', 'duha'],
+    ['duha', 'Духа (позже утром)', 'duha'],
+  ].map(([kind, label, previewKey]) => {
     const alarm = alarmFindSpecial(kind, null);
-    const base = alarmPreviewTimes[kind] || '--:--';
+    const base = alarmPreviewTimes[previewKey] || '--:--';
     const time = alarmAddMinutesToTimeStr(base, alarm.offsetMinutes || 0);
     return alarmSpecialRowHtml(alarm, label, time);
   });
