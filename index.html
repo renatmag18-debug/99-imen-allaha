@@ -16931,6 +16931,18 @@ function wireAlarmsScreenOnce(){
     else if(btn.dataset.act === 'battery' && AndroidApp.requestIgnoreBatteryOptimizations) AndroidApp.requestIgnoreBatteryOptimizations();
   });
 
+  // Granting either permission happens in a system Settings screen outside
+  // the app — coming back only resumes this same page, it doesn't re-run
+  // openAlarmsScreen(), so without this the banner would keep showing an
+  // already-fixed warning until the user happened to leave and reopen this
+  // screen. Re-checks whenever the app returns to the foreground, but only
+  // bothers touching the DOM if this screen is actually the one showing.
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState !== 'visible') return;
+    const screenEl = document.querySelector('[data-screen="alarms"]');
+    if(screenEl && screenEl.classList.contains('active')) renderAlarmWarnings();
+  });
+
   document.getElementById('alarmCustomList').addEventListener('click', e => {
     const toggle = e.target.closest('.alarm-toggle');
     const row = e.target.closest('.alarm-row');
