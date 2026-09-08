@@ -840,27 +840,11 @@ body{
 .drawer-listen-name{ font-size:13px; color:var(--ivory); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .drawer-listen-sub{ font-size:11px; color:var(--gold-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-/* One-time "there's a side menu" hint for new users — see
-   maybeShowSideDrawerOnboardingHint() near the end of the script. Peeks
-   the drawer's edge into view (no backdrop, so it reads as a nudge, not
-   an actual open) while a small callout names what's in it. */
+/* One-time "there's a side menu" peek for new users — see
+   maybeShowSideDrawerPeek() near the end of the script. Just the drawer's
+   edge sliding into view and back out (no backdrop, so it reads as a
+   nudge, not an actual open) — no tooltip, no button glow, just the peek. */
 #sideDrawer.peek{ transform:translateX(calc(-100% + 64px)); }
-#sideDrawerBtn.hint-pulse{ animation:sideDrawerHintPulse 1s ease-in-out 2; }
-@keyframes sideDrawerHintPulse{
-  0%,100%{ box-shadow:0 0 0 0 rgba(var(--accent-rgb),0); }
-  50%{ box-shadow:0 0 0 8px rgba(var(--accent-rgb),0.28); }
-}
-.side-drawer-hint-tip{
-  position:fixed; z-index:22; max-width:210px; padding:11px 14px; border-radius:var(--r-input);
-  background:var(--panel); border:1px solid var(--gold); color:var(--ivory); font-family:var(--font-body);
-  font-size:12.5px; line-height:1.4; box-shadow:0 12px 30px -8px rgba(0,0,0,0.4);
-  opacity:0; transform:translateY(-6px); transition:opacity .3s var(--ease), transform .3s var(--ease); pointer-events:none;
-}
-.side-drawer-hint-tip.show{ opacity:1; transform:translateY(0); }
-.side-drawer-hint-tip::before{
-  content:""; position:absolute; top:-6px; right:16px; width:11px; height:11px;
-  background:var(--panel); border-left:1px solid var(--gold); border-top:1px solid var(--gold); transform:rotate(45deg);
-}
 .drawer-cfg-row{ display:flex; align-items:center; gap:8px; padding:11px 0; border-bottom:1px solid var(--line); }
 .drawer-cfg-row:last-child{ border-bottom:none; }
 .drawer-cfg-name{ flex:1; font-size:14px; color:var(--ivory); }
@@ -17388,89 +17372,31 @@ function openQiblaScreen(){
 }
 
 /* =====================================================
-   ONE-TIME HINT — points new users at the side drawer, then never again.
+   ONE-TIME PEEK — nudges new users toward the side drawer, then never
+   again. No tooltip text, no button glow — just the drawer's edge
+   sliding briefly into view (see #sideDrawer.peek above) so someone who's
+   never opened it notices it's there, without explaining what's in it.
 ===================================================== */
-// Shared by both hints below — a tooltip pointing at the drawer button,
-// plus the drawer's edge peeking into view twice like a nudge (no
-// backdrop, closeSideDrawer isn't involved at all). Returns a promise
-// resolving once fully faded out, so a second hint can wait its turn
-// instead of overlapping the first one's animation.
-function showDrawerHintTip(text){
-  const btn = document.getElementById('sideDrawerBtn');
-  const drawer = document.getElementById('sideDrawer');
-  if(!btn || !drawer) return Promise.resolve();
-
-  const tip = document.createElement('div');
-  tip.className = 'side-drawer-hint-tip';
-  tip.textContent = text;
-  document.body.appendChild(tip);
-  const rect = btn.getBoundingClientRect();
-  tip.style.top = (rect.bottom + 10) + 'px';
-  tip.style.right = (window.innerWidth - rect.right) + 'px';
-
-  btn.classList.add('hint-pulse');
-  requestAnimationFrame(()=> tip.classList.add('show'));
-
-  const peekOnce = (delayMs, holdMs) => new Promise(resolve => {
-    setTimeout(()=>{
-      drawer.classList.add('peek');
-      setTimeout(()=>{ drawer.classList.remove('peek'); resolve(); }, holdMs);
-    }, delayMs);
-  });
-  return peekOnce(300, 900).then(()=> peekOnce(260, 700)).then(()=> new Promise(resolve => {
-    setTimeout(()=>{
-      tip.classList.remove('show');
-      btn.classList.remove('hint-pulse');
-      setTimeout(()=>{ tip.remove(); resolve(); }, 350);
-    }, 400);
-  }));
-}
-function showSideDrawerOnboardingHint(){
-  return showDrawerHintTip('Здесь боковое меню: Коран, время намаза, друзья и другие разделы');
-}
-function maybeShowSideDrawerOnboardingHint(){
-  return new Promise(resolve => {
-    try{
-      if(localStorage.getItem('sideDrawerHintShown')) return resolve();
-    }catch(e){ return resolve(); }
-    // Delayed rather than immediate so it doesn't compete with the home
-    // screen's own entrance, and re-checked against the active screen once
-    // the delay elapses — a chat/prayer deep link that took over in the
-    // meantime means this wasn't really seen, so the flag stays unset and
-    // it's still owed on the next genuine home-screen visit.
-    setTimeout(()=>{
-      const homeScreen = document.querySelector('.screen[data-screen="home"]');
-      if(!homeScreen || !homeScreen.classList.contains('active')) return resolve();
-      try{ localStorage.setItem('sideDrawerHintShown', '1'); }catch(e){}
-      showSideDrawerOnboardingHint().then(resolve);
-    }, 1400);
-  });
-}
-// One-time notice pointing out the "Поддержка" link at the bottom of the
-// side drawer — a separate flag from sideDrawerHintShown above so it
-// still reaches everyone who already has that older flag set from before
-// support existed, not just brand-new installs. Waits for the drawer
-// intro hint to finish first (it resolves immediately if that one was
-// already shown or isn't due), so the two never overlap on-screen.
-function maybeShowSupportHint(){
+function maybeShowSideDrawerPeek(){
   try{
-    if(localStorage.getItem('supportHintShown')) return;
+    if(localStorage.getItem('sideDrawerPeekShown')) return;
   }catch(e){ return; }
-  maybeShowSideDrawerOnboardingHint().then(()=>{
-    // Same entrance-avoidance delay as the drawer-intro hint uses — without
-    // it, an existing user (whose sideDrawerHintShown is already set, so
-    // the promise above resolves immediately) would see this pop up the
-    // instant the page loads, before anything else on the home screen has
-    // even settled in.
-    setTimeout(()=>{
-      const homeScreen = document.querySelector('.screen[data-screen="home"]');
-      if(!homeScreen || !homeScreen.classList.contains('active')) return;
-      try{ localStorage.setItem('supportHintShown', '1'); }catch(e){}
-      showDrawerHintTip('Внизу бокового меню — «Поддержка»: там можно написать, если нужна помощь');
-    }, 1400);
-  });
+  // Delayed rather than immediate so it doesn't compete with the home
+  // screen's own entrance, and re-checked against the active screen once
+  // the delay elapses — a chat/prayer deep link that took over in the
+  // meantime means this wasn't really seen, so the flag stays unset and
+  // it's still owed on the next genuine home-screen visit.
+  setTimeout(()=>{
+    const homeScreen = document.querySelector('.screen[data-screen="home"]');
+    if(!homeScreen || !homeScreen.classList.contains('active')) return;
+    const drawer = document.getElementById('sideDrawer');
+    if(!drawer) return;
+    try{ localStorage.setItem('sideDrawerPeekShown', '1'); }catch(e){}
+    drawer.classList.add('peek');
+    setTimeout(()=> drawer.classList.remove('peek'), 900);
+  }, 1400);
 }
-maybeShowSupportHint();
+maybeShowSideDrawerPeek();
 
 </script>
 </body>
