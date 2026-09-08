@@ -2021,10 +2021,15 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
   flex-shrink:0; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center;
   background:var(--glass); color:var(--gold-soft); font-family:var(--font-num); font-size:11px; margin-top:2px;
 }
+.listen-karaoke-ayah-content{ flex:1; min-width:0; }
 .listen-karaoke-ayah-text{
-  flex:1; font-family:var(--font-ar); font-size:23px; line-height:2; color:var(--ivory); direction:rtl; text-align:right;
+  font-family:var(--font-ar); font-size:23px; line-height:2; color:var(--ivory); direction:rtl; text-align:right;
 }
 .listen-karaoke-ayah.active .listen-karaoke-ayah-text{ color:var(--gold-soft); }
+.listen-karaoke-ayah-translation{
+  font-family:var(--font-body); font-size:13.5px; line-height:1.5; color:var(--ivory-dim); margin-top:8px;
+}
+.listen-translation-toggle.active{ border-color:var(--gold); color:var(--gold); background:var(--accent-tint); }
 .friend-empty-hint{ font-size:12.5px; color:var(--ivory-dim); text-align:center; padding:18px 10px; opacity:.75; }
 
 .friend-row{
@@ -3728,7 +3733,10 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
           <div style="flex:1;text-align:center;padding:0;">
             <div class="section-title" style="padding:0;" id="listenKaraokeTitle">Сура</div>
           </div>
-          <button type="button" class="listen-player-play" id="listenKaraokePlayBtn" style="width:38px;height:38px;flex-shrink:0;" aria-label="Пауза"></button>
+          <button type="button" class="nav-arrow listen-translation-toggle" id="listenKaraokeTranslationBtn" style="width:38px;height:38px;" aria-label="Показать перевод">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h11M4 18h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
+          <button type="button" class="listen-player-play" id="listenKaraokePlayBtn" style="width:38px;height:38px;flex-shrink:0;margin-left:8px;" aria-label="Пауза"></button>
         </div>
         <div class="listen-karaoke-disclaimer" id="listenKaraokeDisclaimer" style="display:none;"></div>
         <div class="scroll listen-karaoke-scroll" id="listenKaraokeScroll"></div>
@@ -14395,8 +14403,43 @@ function listenHasExactKaraoke(reciterId){ return !!LISTEN_KARAOKE_RECITATION_ID
 // 'timeupdate' listener below, independent of whether the text overlay is
 // actually open. `pendingApproxVerses` holds verse texts waiting on the
 // audio element's duration to become known, for the estimate to run off of.
-const listenAyah = { active:false, approximate:false, timings:[], currentIndex:-1, pendingApproxVerses:null };
+const listenAyah = { active:false, approximate:false, timings:[], currentIndex:-1, pendingApproxVerses:null, translations:[] };
 let listenKaraokeOverlayOpen = false;
+
+// Per-ayah translation under the Arabic text in the "show text" overlay —
+// off by default, toggled from listenKaraokeTranslationBtn. Абу Адель
+// (resource_id 79 on api.quran.com, the same API this whole screen already
+// uses for verse text and timings) — chosen with the user rather than
+// picked unilaterally, since which translation to show is exactly the
+// kind of call that isn't ours to make alone.
+const LISTEN_TRANSLATION_RESOURCE_ID = 79;
+let listenTranslationOn = false;
+try{ listenTranslationOn = localStorage.getItem('listenShowTranslation') === '1'; }catch(e){}
+const listenTranslationCache = new Map();
+async function listenFetchTranslationTexts(surahNum){
+  if(listenTranslationCache.has(surahNum)) return listenTranslationCache.get(surahNum);
+  try{
+    const data = await fetch(`https://api.quran.com/api/v4/quran/translations/${LISTEN_TRANSLATION_RESOURCE_ID}?chapter_number=${surahNum}`).then(r => r.json());
+    const texts = (data.translations || []).map(t => t.text || '');
+    listenTranslationCache.set(surahNum, texts);
+    return texts;
+  }catch(e){
+    console.warn('listenFetchTranslationTexts failed:', e);
+    return [];
+  }
+}
+// Fire-and-forget: fetches (or reuses the cache for) the given surah's
+// translation and re-renders the overlay once it lands, but only if
+// nothing's moved on since the call went out — a surah change or the
+// overlay closing in the meantime means this result is stale.
+function listenLoadTranslationIfOn(surahNum){
+  if(!listenTranslationOn) return;
+  listenFetchTranslationTexts(surahNum).then(texts => {
+    if(listenState.currentSurah !== surahNum) return;
+    listenAyah.translations = texts;
+    if(listenKaraokeOverlayOpen) renderListenKaraokeAyahs();
+  });
+}
 
 function listenPad3(n){ return String(n).padStart(3,'0'); }
 function listenTrackUrl(reciter, surahNum){ return reciter.server + listenPad3(surahNum) + '.mp3'; }
@@ -14627,6 +14670,8 @@ async function listenPlaySurah(surahNum){
   listenAyah.timings = [];
   listenAyah.currentIndex = -1;
   listenAyah.pendingApproxVerses = null;
+  listenAyah.translations = [];
+  listenLoadTranslationIfOn(surahNum);
   showListenPlayerBar(surahNum);
   renderListenSurahList();
   if(listenCurrentObjectUrl){ URL.revokeObjectURL(listenCurrentObjectUrl); listenCurrentObjectUrl = null; }
@@ -14879,12 +14924,18 @@ async function listenDownloadAllSurahs(){
    right now; open/close never touches listenAudioEl. ---- */
 function renderListenKaraokeAyahs(){
   const wrap = document.getElementById('listenKaraokeScroll');
-  wrap.innerHTML = listenAyah.timings.map((a, i) => `
+  wrap.innerHTML = listenAyah.timings.map((a, i) => {
+    const translation = listenTranslationOn ? listenAyah.translations[i] : null;
+    return `
     <div class="listen-karaoke-ayah${i === listenAyah.currentIndex ? ' active' : ''}" data-index="${i}">
       <div class="listen-karaoke-ayah-num">${i + 1}</div>
-      <div class="listen-karaoke-ayah-text">${a.text}</div>
+      <div class="listen-karaoke-ayah-content">
+        <div class="listen-karaoke-ayah-text">${a.text}</div>
+        ${translation ? `<div class="listen-karaoke-ayah-translation">${escapeHtml(translation)}</div>` : ''}
+      </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 function listenSeekToAyah(i){
   if(!listenAyah.timings[i]) return;
@@ -14898,6 +14949,8 @@ function listenOpenKaraoke(){
   if(!listenState.reciter || !listenState.currentSurah){ showToast('Сначала включите суру'); return; }
   listenKaraokeOverlayOpen = true;
   document.getElementById('listenKaraokeOverlay').style.display = 'flex';
+  document.getElementById('listenKaraokeTranslationBtn').classList.toggle('active', listenTranslationOn);
+  if(listenTranslationOn && !listenAyah.translations.length) listenLoadTranslationIfOn(listenState.currentSurah);
   const disclaimerEl = document.getElementById('listenKaraokeDisclaimer');
   if(listenHasExactKaraoke(listenState.reciter.id)){
     disclaimerEl.style.display = 'none';
@@ -14926,6 +14979,16 @@ function listenExitKaraoke(){
   document.getElementById('listenKaraokeOverlay').style.display = 'none';
 }
 document.getElementById('listenPlayerTextBtn').addEventListener('click', listenOpenKaraoke);
+document.getElementById('listenKaraokeTranslationBtn').addEventListener('click', () => {
+  listenTranslationOn = !listenTranslationOn;
+  try{ localStorage.setItem('listenShowTranslation', listenTranslationOn ? '1' : '0'); }catch(e){}
+  document.getElementById('listenKaraokeTranslationBtn').classList.toggle('active', listenTranslationOn);
+  if(listenTranslationOn && listenState.currentSurah && !listenAyah.translations.length){
+    listenLoadTranslationIfOn(listenState.currentSurah);
+  } else {
+    renderListenKaraokeAyahs();
+  }
+});
 document.getElementById('listenKaraokeCloseBtn').addEventListener('click', listenExitKaraoke);
 document.getElementById('listenKaraokePlayBtn').addEventListener('click', ()=>{
   if(listenAudioEl.paused) listenAudioEl.play().catch(()=>{});
