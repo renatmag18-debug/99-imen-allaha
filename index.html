@@ -516,13 +516,6 @@ body{
 .hero-bismillah{
   width:min(340px,78vw); aspect-ratio:1636/548; margin:14px auto 30px;
   background-color:var(--ivory);
-  /* A soft gold band, wider than the element itself (background-size
-     300%), swept slowly across by animating its position — see
-     @keyframes bismillahWave below. The ivory base color (above) always
-     shows through everywhere the band currently isn't. */
-  background-image:linear-gradient(90deg, transparent 0%, transparent 28%, rgba(255,196,110,0.75) 38%, rgba(255,247,214,0.98) 50%, rgba(255,196,110,0.75) 62%, transparent 72%, transparent 100%);
-  background-size:300% 100%; background-repeat:no-repeat; background-position:220% 0;
-  animation:bismillahWave 6s ease-in-out infinite;
   /* Inlined as a data: URI rather than referencing img/bismillah.png (or
      even an absolute https://99ism.ru/... URL) for two independent reasons:
      (1) the app's live-content refresh keeps the WebView's base URL pinned
@@ -538,17 +531,6 @@ body{
   -webkit-mask-size:contain; mask-size:contain;
   -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
   -webkit-mask-position:center; mask-position:center;
-}
-/* Right-to-left, matching the text's own reading direction: background-
-   position starts past the right edge, sweeps to past the left edge, then
-   holds there until the next loop — a slow, occasional shimmer rather than
-   continuous motion. */
-@keyframes bismillahWave{
-  0%, 10%{ background-position:220% 0; }
-  55%, 100%{ background-position:-120% 0; }
-}
-@media (prefers-reduced-motion: reduce){
-  .hero-bismillah{ animation:none; background-image:none; }
 }
 .hero h1 em{ font-style:normal; font-weight:400; color:var(--gold); }
 .cta-row{ display:flex; gap:10px; width:100%; max-width:420px; margin:0 auto; }
