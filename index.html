@@ -14996,7 +14996,7 @@ function listenSeekToAyah(i){
   if(listenAudioEl.paused) listenAudioEl.play().catch(()=>{});
 }
 function listenExactKaraokeReciterNames(){
-  return LISTEN_RECITERS.filter(r => listenHasReliableTiming(r.id)).map(r => r.name).join(', ');
+  return LISTEN_RECITERS.filter(r => listenHasExactKaraoke(r.id)).map(r => r.name).join(', ');
 }
 function listenOpenKaraoke(){
   if(!listenState.reciter || !listenState.currentSurah){ showToast('Сначала включите суру'); return; }
@@ -15005,8 +15005,11 @@ function listenOpenKaraoke(){
   document.getElementById('listenKaraokeTranslationBtn').classList.toggle('active', listenTranslationOn);
   if(listenTranslationOn && !listenAyah.translations.length) listenLoadTranslationIfOn(listenState.currentSurah);
   const disclaimerEl = document.getElementById('listenKaraokeDisclaimer');
-  if(listenHasReliableTiming(listenState.reciter.id)){
+  if(listenHasExactKaraoke(listenState.reciter.id)){
     disclaimerEl.style.display = 'none';
+  } else if(listenHasPrecomputedTiming(listenState.reciter.id)){
+    disclaimerEl.style.display = 'block';
+    disclaimerEl.textContent = `У чтеца «${listenState.reciter.name}» синхронизация текста рассчитана автоматически и в редких местах может немного не совпадать с чтением.`;
   } else {
     disclaimerEl.style.display = 'block';
     disclaimerEl.textContent = `У чтеца «${listenState.reciter.name}» текст подстраивается приблизительно и может не совпадать с чтением. Точный текст без расхождений — у чтецов: ${listenExactKaraokeReciterNames()}.`;
