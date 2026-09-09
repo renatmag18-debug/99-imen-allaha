@@ -2395,11 +2395,6 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
               Викторина
             </button>
           </div>
-          <div class="stat-row">
-            <div class="stat"><b id="learnedCount">0</b><span>изучено</span></div>
-            <div class="stat"><b id="zikrLifetimeStat">0</b><span>зикров</span></div>
-            <div class="stat"><b id="quranReadStat">0</b><span>прочитано Корана</span></div>
-          </div>
         </div>
 
         <button type="button" class="home-prayer-card" id="homePrayerPreview"></button>
@@ -4780,7 +4775,6 @@ function reconcileLearnedNames(serverLearnedNames){
   if(serverHadExtra){
     saveLearned();
     if(typeof renderGrid === 'function') renderGrid();
-    if(typeof updateHomeStats === 'function') updateHomeStats();
   }
   if(localHadExtra || serverHadExtra) syncStats();
 }
@@ -4895,12 +4889,6 @@ document.querySelectorAll('[data-nav-section]').forEach(el=>{
 /* =====================================================
    HOME
 ===================================================== */
-function updateHomeStats(){
-  document.getElementById('learnedCount').textContent = state.learned.size;
-  document.getElementById('zikrLifetimeStat').textContent = (typeof getZikrLifetimeTotal === 'function' ? (getZikrLifetimeTotal()||0) : 0).toLocaleString('ru-RU');
-  document.getElementById('quranReadStat').textContent = quranState.readPages.size+' стр.';
-}
-
 let leaderboardScope = 'global';
 document.querySelectorAll('#leaderboardScopeChoice .len-chip').forEach(chip=>{
   chip.addEventListener('click', ()=>{
@@ -5198,7 +5186,7 @@ document.getElementById('pracKnowBtn').addEventListener('click', ()=>{
   saveLearned();
   syncStats();
   practiceQueue.shift();
-  renderGrid(); updateHomeStats();
+  renderGrid();
   showPracticeCard();
 });
 document.getElementById('pracAgainBtn').addEventListener('click', ()=>{
@@ -7081,7 +7069,7 @@ document.getElementById('learnedBtn').addEventListener('click', ()=>{
   if(state.learned.has(i)) state.learned.delete(i); else state.learned.add(i);
   saveLearned();
   syncStats();
-  renderSheet(); renderGrid(); updateHomeStats();
+  renderSheet(); renderGrid();
 });
 // swipe on sheet body
 (function(){
@@ -7762,7 +7750,6 @@ function finishQuiz(){
 
   const pct = Math.round(q.score/q.len*100);
   if(!state.bestScore || pct > state.bestScore.pct){ state.bestScore = {pct, score:q.score, len:q.len}; saveBestScore(); }
-  updateHomeStats();
 
   document.getElementById('scoreNum').textContent = q.score+'/'+q.len;
   const circ = document.getElementById('scoreCircle');
@@ -14196,7 +14183,6 @@ function quranMarkPageRead(pageNum){
   if(quranState.readPages.has(pageNum)) return;
   quranState.readPages.add(pageNum);
   try{ localStorage.setItem(QURAN_READ_PAGES_KEY, JSON.stringify(Array.from(quranState.readPages))); }catch(e){}
-  if(typeof updateHomeStats === 'function') updateHomeStats();
   scheduleQuranPagesSync();
 }
 
@@ -16310,8 +16296,6 @@ async function quranHandleSearchInput(query){
   stageEl.addEventListener('touchcancel', () => { tracking = false; axis = null; }, {passive:true});
 })();
 
-updateHomeStats();
-
 /* iOS standalone apps report an unreliable viewport height — sometimes
    short, sometimes correct, seemingly not a fixed offset (confirmed by
    direct measurement across launches). A static CSS compensation can't
@@ -17087,8 +17071,8 @@ document.getElementById('homePrayerPreview').addEventListener('click', ()=>{
 });
 // Populates the home screen's card right away on first load — everything
 // this depends on (PRAYER_DEFAULT_LAT etc.) is declared above this point,
-// unlike the top-of-file initial-render calls (updateHomeStats() and co.)
-// which run before these prayer consts exist.
+// unlike the top-of-file initial-render calls which run before these
+// prayer consts exist.
 renderSideDrawerPrayerPreview();
 
 /* =====================================================
