@@ -1961,16 +1961,18 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 .listen-dl-progress-track{ height:5px; border-radius:3px; background:var(--fill-1); overflow:hidden; }
 .listen-dl-progress-fill{ height:100%; width:0%; border-radius:3px; background:var(--gold); transition:width .3s var(--ease); }
 .listen-dl-progress-label{ margin-top:6px; font-size:11.5px; color:var(--ivory-dim); text-align:center; }
-.listen-surah-row .listen-icon-btn{
+.listen-surah-row .listen-icon-btn, .quran-surah-row .listen-icon-btn{
   flex-shrink:0; width:32px; height:32px; border-radius:50%; border:none; background:var(--glass);
   color:var(--ivory-dim); display:flex; align-items:center; justify-content:center; cursor:pointer;
   margin-left:6px; transition:background .15s, color .15s;
 }
-.listen-surah-row .listen-icon-btn svg{ width:16px; height:16px; }
+.listen-surah-row .listen-icon-btn svg, .quran-surah-row .listen-icon-btn svg{ width:16px; height:16px; }
 .listen-surah-row .listen-play-btn{ color:var(--gold-soft); }
 .listen-surah-row.active .listen-play-btn{ background:var(--gold); color:var(--on-accent); }
 .listen-surah-row .listen-dl-btn.downloaded{ color:var(--jade); }
 .listen-surah-row .listen-dl-btn.loading{ opacity:.5; pointer-events:none; }
+.listen-fav-btn{ margin-left:0; margin-right:6px; color:var(--ivory-dim); }
+.listen-fav-btn.active{ color:var(--gold); }
 .listen-surah-row .name{ flex:1; min-width:0; }
 .listen-player-bar{
   /* Floats above the pill-shaped .tabbar (which is position:absolute over
@@ -3551,7 +3553,23 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
           <div class="section-title" style="padding:0;">Слушать Коран</div>
         </div>
         <p class="section-desc" style="margin-top:0;">Выберите чтеца, чтобы слушать любую суру онлайн или скачать её для прослушивания без интернета.</p>
+        <div class="quran-surah-row" id="listenSavedEntryBtn">
+          <svg viewBox="0 0 24 24" fill="none" style="width:20px;height:20px;flex-shrink:0;color:var(--gold);"><path d="M7 3.5h10a1 1 0 011 1V21l-6-3.6-6 3.6V4.5a1 1 0 011-1z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+          <span class="name"><span class="ru">Сохранённые записи</span></span>
+          <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;flex-shrink:0;color:var(--ivory-dim);"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
         <div id="listenReciterList"></div>
+      </div>
+    </section>
+
+    <section class="screen" data-screen="listenSaved">
+      <div class="settings-head">
+        <button class="nav-arrow" data-nav="listen" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <div class="section-title" style="padding:0;">Сохранённые записи</div>
+      </div>
+      <div class="scroll">
+        <div class="listen-status" id="listenSavedEmpty" style="display:none;">Здесь появятся суры, которые вы скачали для прослушивания без интернета.</div>
+        <div id="listenSavedList"></div>
       </div>
     </section>
 
@@ -14570,18 +14588,116 @@ async function listenRefreshDownloadedSet(){
   }catch(e){}
 }
 
+// Favorite reciters float to the top of the list (in the order they were
+// starred) so a reciter the user actually listens to doesn't need hunting
+// for among all thirty every time — persisted so it survives a restart.
+let listenFavoriteReciters = [];
+try{ listenFavoriteReciters = JSON.parse(localStorage.getItem('listenFavoriteReciters') || '[]'); }catch(e){}
+function listenIsFavoriteReciter(id){ return listenFavoriteReciters.includes(id); }
+function listenToggleFavoriteReciter(id){
+  const idx = listenFavoriteReciters.indexOf(id);
+  if(idx === -1) listenFavoriteReciters.push(id);
+  else listenFavoriteReciters.splice(idx, 1);
+  try{ localStorage.setItem('listenFavoriteReciters', JSON.stringify(listenFavoriteReciters)); }catch(e){}
+  renderListenReciters();
+}
+const LISTEN_ICON_STAR_FILLED = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.5l2.6 5.4 5.9.7-4.4 4.1 1.1 5.9-5.2-2.9-5.2 2.9 1.1-5.9-4.4-4.1 5.9-.7z"/></svg>';
+const LISTEN_ICON_STAR_OUTLINE = '<svg viewBox="0 0 24 24" fill="none"><path d="M12 3.5l2.6 5.4 5.9.7-4.4 4.1 1.1 5.9-5.2-2.9-5.2 2.9 1.1-5.9-4.4-4.1 5.9-.7z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+
+// Every downloaded track lives in one flat IndexedDB store keyed
+// "<reciterId>_<surahNum>" (listenTrackKey) — since a handful of reciter
+// ids themselves contain underscores (s_gmd, bu_khtr, frs_a…), splitting
+// on the LAST underscore is what correctly separates the two, since the
+// surah number is always the trailing all-digits segment.
+function listenParseTrackKey(key){
+  const idx = key.lastIndexOf('_');
+  return { reciterId: key.slice(0, idx), surahNum: Number(key.slice(idx + 1)) };
+}
+async function listenGetAllSavedKeys(){
+  const keys = [];
+  try{
+    const db = await listenOpenDb();
+    await new Promise(resolve=>{
+      const req = db.transaction(LISTEN_DB_STORE, 'readonly').objectStore(LISTEN_DB_STORE).openCursor();
+      req.onsuccess = ()=>{
+        const cursor = req.result;
+        if(cursor){ keys.push(String(cursor.key)); cursor.continue(); }
+        else resolve();
+      };
+      req.onerror = ()=> resolve();
+    });
+  }catch(e){}
+  return keys;
+}
+async function openListenSaved(){
+  go('listenSaved');
+  document.getElementById('listenSavedList').innerHTML = '<div class="listen-status">Загрузка…</div>';
+  document.getElementById('listenSavedEmpty').style.display = 'none';
+  await renderListenSavedList();
+}
+async function renderListenSavedList(){
+  const listEl = document.getElementById('listenSavedList');
+  const emptyEl = document.getElementById('listenSavedEmpty');
+  const keys = await listenGetAllSavedKeys();
+  if(!keys.length){
+    listEl.innerHTML = '';
+    emptyEl.style.display = '';
+    return;
+  }
+  emptyEl.style.display = 'none';
+  let chapters = listenState.chapters;
+  if(!chapters){
+    try{ chapters = listenState.chapters = await quranFetchChapters(); }catch(e){ chapters = []; }
+  }
+  const items = keys.map(listenParseTrackKey)
+    .map(({reciterId, surahNum}) => ({
+      reciterId, surahNum,
+      reciter: LISTEN_RECITERS.find(r => r.id === reciterId),
+      chapter: chapters.find(c => c.id === surahNum),
+    }))
+    .filter(it => it.reciter)
+    .sort((a, b) => a.reciter.name.localeCompare(b.reciter.name, 'ru') || a.surahNum - b.surahNum);
+  listEl.innerHTML = items.map(it => `
+    <div class="quran-surah-row listen-surah-row">
+      <span class="name">
+        <span class="ru">${it.chapter ? quranSurahDisplayName(it.chapter) : ('Сура ' + it.surahNum)}</span>
+        <span class="translit">${it.reciter.name}</span>
+      </span>
+      <button type="button" class="listen-icon-btn listen-play-btn" data-action="play" data-reciter="${it.reciterId}" data-surah="${it.surahNum}" aria-label="Слушать">${LISTEN_ICON_PLAY}</button>
+      <button type="button" class="listen-icon-btn listen-dl-btn downloaded" data-action="delete" data-reciter="${it.reciterId}" data-surah="${it.surahNum}" aria-label="Удалить загрузку">${LISTEN_ICON_TRASH}</button>
+    </div>`).join('');
+}
+async function listenPlaySavedItem(reciterId, surahNum){
+  await openListenReciter(reciterId);
+  listenPlaySurah(surahNum);
+}
+async function listenDeleteSavedItem(reciterId, surahNum, btnEl){
+  const row = btnEl.closest('.quran-surah-row');
+  if(row) row.style.opacity = '0.5';
+  await listenDeleteBlob(reciterId, surahNum);
+  if(listenState.reciter && listenState.reciter.id === reciterId) listenState.downloaded.delete(String(surahNum));
+  await renderListenSavedList();
+}
+
 function openListenScreen(){
   renderListenReciters();
 }
 function renderListenReciters(){
   const list = document.getElementById('listenReciterList');
   if(!list) return;
-  list.innerHTML = LISTEN_RECITERS.map(r => `
+  const ordered = [
+    ...listenFavoriteReciters.map(id => LISTEN_RECITERS.find(r => r.id === id)).filter(Boolean),
+    ...LISTEN_RECITERS.filter(r => !listenIsFavoriteReciter(r.id)),
+  ];
+  list.innerHTML = ordered.map(r => {
+    const fav = listenIsFavoriteReciter(r.id);
+    return `
     <div class="quran-surah-row" data-reciter="${r.id}">
+      <button type="button" class="listen-icon-btn listen-fav-btn ${fav ? 'active' : ''}" data-action="favorite" data-reciter="${r.id}" aria-label="${fav ? 'Убрать из избранного' : 'В избранное'}">${fav ? LISTEN_ICON_STAR_FILLED : LISTEN_ICON_STAR_OUTLINE}</button>
       <span class="name"><span class="ru">${r.name}</span></span>
       <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;flex-shrink:0;color:var(--ivory-dim);"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 async function openListenReciter(reciterId){
   const reciter = LISTEN_RECITERS.find(r => r.id === reciterId);
@@ -15086,9 +15202,20 @@ listenAudioEl.addEventListener('timeupdate', ()=>{
 });
 
 document.getElementById('listenReciterList').addEventListener('click', e=>{
+  const favBtn = e.target.closest('[data-action="favorite"]');
+  if(favBtn){ listenToggleFavoriteReciter(favBtn.dataset.reciter); return; }
   const row = e.target.closest('[data-reciter]');
   if(!row) return;
   openListenReciter(row.dataset.reciter);
+});
+document.getElementById('listenSavedEntryBtn').addEventListener('click', openListenSaved);
+document.getElementById('listenSavedList').addEventListener('click', e=>{
+  const btn = e.target.closest('.listen-icon-btn');
+  if(!btn) return;
+  const reciterId = btn.dataset.reciter;
+  const surahNum = Number(btn.dataset.surah);
+  if(btn.dataset.action === 'play') listenPlaySavedItem(reciterId, surahNum);
+  else if(btn.dataset.action === 'delete') listenDeleteSavedItem(reciterId, surahNum, btn);
 });
 document.getElementById('listenSurahList').addEventListener('click', e=>{
   const btn = e.target.closest('.listen-icon-btn');
