@@ -516,7 +516,12 @@ body{
 .hero-bismillah{
   width:min(340px,78vw); aspect-ratio:405/133; margin:14px auto 30px;
   background-color:var(--ivory);
-  -webkit-mask-image:url('img/bismillah.png'); mask-image:url('img/bismillah.png');
+  /* Absolute URL, not relative: the app's live-content refresh keeps the
+     WebView's base URL pinned to its bundled file:///android_asset/www/
+     (for localStorage/IndexedDB continuity), so a relative path here would
+     resolve against the APK's bundled assets — which this new image was
+     never built into — instead of the live site that actually has it. */
+  -webkit-mask-image:url('https://99ism.ru/img/bismillah.png'); mask-image:url('https://99ism.ru/img/bismillah.png');
   -webkit-mask-size:contain; mask-size:contain;
   -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
   -webkit-mask-position:center; mask-position:center;
@@ -2362,6 +2367,106 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
         </div>
 
         <button type="button" class="home-prayer-card" id="homePrayerPreview"></button>
+        <script>
+        // Minimal, self-contained duplicate of the prayer-time math defined
+        // much further down this file (calculatePrayerTimes/PRAYER_NAMES/
+        // etc.) — placed here, right after the button, so it runs the
+        // instant the parser reaches this point instead of waiting for the
+        // rest of this very large script to finish executing, which is what
+        // was making the card sit empty for a moment on first paint. The
+        // full module further down re-renders this same button once it
+        // loads, from the same localStorage settings — an idempotent
+        // overwrite when nothing changed in between, not a visible flicker.
+        (function(){
+          try{
+            var el = document.getElementById('homePrayerPreview');
+            if(!el) return;
+            var s = {};
+            try{ s = JSON.parse(localStorage.getItem('prayerSettings') || '{}'); }catch(e){}
+            var lat = typeof s.lat === 'number' ? s.lat : 21.4225;
+            var lon = typeof s.lon === 'number' ? s.lon : 39.8262;
+            var method = s.method || 0;
+            var madhab = s.madhab || 0;
+            var offsets = s.offsets || {};
+            var ANGLES = {0:[18,17],1:[15,15],2:[19.5,17.5],3:[18.5,17],4:[18,18],5:[18,17.5],6:[18,17],7:[20,18],8:[18,17],9:[16,15],10:[18,18]};
+            var ISHA_FIXED = {3:90,6:90};
+            var angles = ANGLES[method] || ANGLES[0];
+            var asrFactor = madhab === 1 ? 2 : 1;
+            var NAMES = {fajr:'Фаджр',sunrise:'Восход',dhuhr:'Зухр',asr:'Аср',maghrib:'Магриб',isha:'Иша'};
+            function hourAngle(elevDeg, latRad, decl){
+              var elevRad = elevDeg*Math.PI/180;
+              var cosH = (Math.sin(elevRad)-Math.sin(latRad)*Math.sin(decl))/(Math.cos(latRad)*Math.cos(decl));
+              if(cosH<-1||cosH>1) return NaN;
+              return (Math.acos(cosH)*180/Math.PI)/15;
+            }
+            function calcTimes(date, fajrAngle, ishaAngle){
+              var utcOffsetHours = -date.getTimezoneOffset()/60;
+              var start = new Date(date.getFullYear(),0,0);
+              var dayOfYear = Math.floor((date-start)/86400000);
+              var gamma = 2*Math.PI/365*(dayOfYear-1+12/24);
+              var eqTimeMinutes = 229.18*(0.000075+0.001868*Math.cos(gamma)-0.032077*Math.sin(gamma)-0.014615*Math.cos(2*gamma)-0.040849*Math.sin(2*gamma));
+              var decl = 0.006918-0.399912*Math.cos(gamma)+0.070257*Math.sin(gamma)-0.006758*Math.cos(2*gamma)+0.000907*Math.sin(2*gamma)-0.002697*Math.cos(3*gamma)+0.00148*Math.sin(3*gamma);
+              var timeOffsetMinutes = 4*(lon-utcOffsetHours*15)+eqTimeMinutes;
+              var solarNoon = 12-timeOffsetMinutes/60;
+              var latRad = lat*Math.PI/180;
+              var t = {dhuhr:solarNoon};
+              var sunriseH = hourAngle(-0.833, latRad, decl);
+              t.sunrise = solarNoon-sunriseH;
+              t.maghrib = solarNoon+sunriseH;
+              var nightLength = 24-2*sunriseH;
+              var fajrH = hourAngle(-fajrAngle, latRad, decl);
+              t.fajr = isNaN(fajrH) ? t.sunrise-(fajrAngle/60)*nightLength : solarNoon-fajrH;
+              var ishaH = hourAngle(-ishaAngle, latRad, decl);
+              t.isha = isNaN(ishaH) ? t.maghrib+(ishaAngle/60)*nightLength : solarNoon+ishaH;
+              var asrShadowAngle = Math.atan(1/(asrFactor+Math.tan(Math.abs(latRad-decl))))*180/Math.PI;
+              var asrH = hourAngle(asrShadowAngle, latRad, decl);
+              t.asr = isNaN(asrH) ? solarNoon+nightLength/4 : solarNoon+asrH;
+              return t;
+            }
+            function fmt(hoursIn){
+              var hours = hoursIn;
+              while(hours<0) hours+=24;
+              while(hours>=24) hours-=24;
+              var h = Math.floor(hours), m = Math.round((hours-h)*60);
+              if(m===60){ m=0; h=(h+1)%24; }
+              return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');
+            }
+            var ishaFixed = ISHA_FIXED[method];
+            var todayTimes = calcTimes(new Date(), angles[0], angles[1]);
+            if(ishaFixed) todayTimes.isha = todayTimes.maghrib + ishaFixed/60;
+            var times = {};
+            ['fajr','sunrise','dhuhr','asr','maghrib','isha'].forEach(function(key){
+              times[key] = fmt(todayTimes[key] + (offsets[key]||0)/60);
+            });
+            var order = ['fajr','dhuhr','asr','maghrib','isha'];
+            var now = Date.now();
+            var next = null;
+            for(var d=0; d<=1 && !next; d++){
+              var day = new Date();
+              day.setDate(day.getDate()+d);
+              var t = calcTimes(day, angles[0], angles[1]);
+              if(ishaFixed) t.isha = t.maghrib + ishaFixed/60;
+              var dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+              for(var i=0;i<order.length;i++){
+                var key = order[i];
+                var hrs = t[key] + (offsets[key]||0)/60;
+                var at = new Date(dayStart.getTime() + Math.round(hrs*3600000));
+                if(at.getTime() > now){ next = {key:key, at:at}; break; }
+              }
+            }
+            var isToday = next && new Date().toDateString() === next.at.toDateString();
+            var totalMin = next ? Math.max(0, Math.round((next.at.getTime()-now)/60000)) : 0;
+            var hh = Math.floor(totalMin/60), mm = totalMin%60;
+            var countdown = hh>0 ? (hh+' ч '+mm+' мин') : (mm+' мин');
+            var nextLabel = next ? (NAMES[next.key]+' через '+countdown) : 'Время намаза';
+            var cols = order.map(function(key){
+              var active = isToday && next.key === key;
+              return '<div class="drawer-prayer-col'+(active?' active':'')+'"><span class="v">'+times[key]+'</span><span class="bar"></span><span class="l">'+NAMES[key]+'</span></div>';
+            }).join('');
+            el.innerHTML = '<div class="drawer-prayer-top"><svg viewBox="0 0 24 24" fill="none"><path d="M20.5 14.2A8.5 8.5 0 019.8 3.5a8.5 8.5 0 108.5 8.5c0 .74-.09 1.46-.26 2.15z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>'+nextLabel+'</span></div><div class="drawer-prayer-row">'+cols+'</div>';
+          }catch(e){}
+        })();
+        </script>
 
         <div class="hadith-card">
           <p class="hadith-quote" id="hadithOfDayQuote">У Аллаха <em>девяносто девять имён</em>, сто без одного, и всякий, кто сосчитает их <em>[запомнит их наизусть, осознает их смысл]</em>, войдёт в рай. Поистине, Аллах — Единственный и любит нечётное.</p>
