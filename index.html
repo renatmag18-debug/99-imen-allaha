@@ -514,8 +514,12 @@ body{
   line-height:1.18; margin:0 0 26px; color:var(--ivory); letter-spacing:-.01em;
 }
 .hero-bismillah{
-  font-family:var(--font-ar); font-weight:400; font-size:clamp(38px,11vw,56px);
-  line-height:1.5; margin:4px 0 30px; color:var(--ivory); direction:rtl; text-shadow:var(--ink-halo);
+  width:min(340px,78vw); aspect-ratio:405/133; margin:14px auto 30px;
+  background-color:var(--ivory);
+  -webkit-mask-image:url('img/bismillah.png'); mask-image:url('img/bismillah.png');
+  -webkit-mask-size:contain; mask-size:contain;
+  -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
+  -webkit-mask-position:center; mask-position:center;
 }
 .hero h1 em{ font-style:normal; font-weight:400; color:var(--gold); }
 .cta-row{ display:flex; gap:10px; width:100%; max-width:420px; margin:0 auto; }
@@ -2354,7 +2358,7 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 
         <div class="hero">
           <div class="hero-star">٩٩</div>
-          <h1 class="hero-bismillah">بِسْمِ اللَّهِ</h1>
+          <h1 class="hero-bismillah" role="img" aria-label="Бисмиллях"></h1>
         </div>
 
         <button type="button" class="home-prayer-card" id="homePrayerPreview"></button>
