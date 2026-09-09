@@ -710,6 +710,19 @@ body{
   cursor:pointer; text-align:left; font-family:var(--font-body);
 }
 .home-prayer-card:active{ transform:scale(.96); }
+.home-listen-card{
+  width:100%; margin:0 0 20px; padding:14px 18px; border-radius:var(--r-card);
+  border:1px solid var(--gold); background:linear-gradient(160deg, var(--accent-tint), var(--accent-tint-soft));
+  font-family:var(--font-body); cursor:pointer;
+}
+.home-listen-row{ display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+.home-listen-row .listen-player-play{ width:40px; height:40px; }
+.home-listen-row .listen-player-play svg{ width:19px; height:19px; }
+.home-listen-info{ flex:1; min-width:0; }
+.home-listen-name{ font-size:14px; color:var(--ivory); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.home-listen-sub{ font-size:12px; color:var(--gold-soft); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.home-listen-time{ flex-shrink:0; font-family:var(--font-num); font-size:11.5px; color:var(--ivory-dim); }
+.home-listen-card .listen-player-seek{ width:100%; display:block; accent-color:var(--gold); }
 
 /* ---------- detail sheet ---------- */
 .sheet-backdrop{
@@ -2467,6 +2480,18 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
           }catch(e){}
         })();
         </script>
+
+        <div class="home-listen-card" id="homeListenCard" style="display:none;">
+          <div class="home-listen-row">
+            <button type="button" class="listen-player-play" id="homeListenPlayBtn" aria-label="Пауза"></button>
+            <div class="home-listen-info">
+              <div class="home-listen-name" id="homeListenName"></div>
+              <div class="home-listen-sub" id="homeListenSub"></div>
+            </div>
+            <div class="home-listen-time" id="homeListenTime">0:00</div>
+          </div>
+          <input type="range" class="listen-player-seek" id="homeListenSeek" min="0" max="1000" value="0">
+        </div>
 
         <div class="hadith-card">
           <p class="hadith-quote" id="hadithOfDayQuote">У Аллаха <em>девяносто девять имён</em>, сто без одного, и всякий, кто сосчитает их <em>[запомнит их наизусть, осознает их смысл]</em>, войдёт в рай. Поистине, Аллах — Единственный и любит нечётное.</p>
@@ -14373,6 +14398,15 @@ window.onListenNativeEvent = function(data){
   }
 };
 const listenAudioEl = listenNativeBridge ? new NativeAudioShim() : new Audio();
+// Populates the home screen's player card (and the side drawer's own
+// preview) right away if a surah+reciter was restored from a previous
+// session — otherwise, since both are normally only (re-)rendered when the
+// drawer opens or playback starts/stops, the home card would sit hidden
+// until one of those happened, even though there's already something to
+// show. Placed here rather than right after listenRestoreLastPlayed()
+// itself because this depends on listenAudioEl, only just defined above.
+if(typeof renderSideDrawerListenPreview === 'function') renderSideDrawerListenPreview();
+if(typeof listenUpdatePlayButtons === 'function') listenUpdatePlayButtons();
 function listenSetTrackMeta(reciter, surahNum){
   if(typeof listenAudioEl.setTrackMeta !== 'function') return;
   const chapter = quranChapterFor(surahNum);
@@ -14724,6 +14758,8 @@ function listenUpdatePlayButtons(){
   if(miniBtn) miniBtn.innerHTML = icon;
   const karaokeBtn = document.getElementById('listenKaraokePlayBtn');
   if(karaokeBtn) karaokeBtn.innerHTML = icon;
+  const homeBtn = document.getElementById('homeListenPlayBtn');
+  if(homeBtn) homeBtn.innerHTML = icon;
 }
 function listenUpdatePlayerLabel(){
   const chapter = quranChapterFor(listenState.currentSurah);
@@ -14747,17 +14783,29 @@ function showListenPlayerBar(surahNum){
 // exists mid-playback.
 function renderSideDrawerListenPreview(){
   const el = document.getElementById('sideDrawerListenPreview');
-  if(!el) return;
-  if(!listenState.currentSurah || !listenState.reciter){ el.style.display = 'none'; return; }
-  el.style.display = 'flex';
+  const homeCard = document.getElementById('homeListenCard');
+  if(!el && !homeCard) return;
+  if(!listenState.currentSurah || !listenState.reciter){
+    if(el) el.style.display = 'none';
+    if(homeCard) homeCard.style.display = 'none';
+    return;
+  }
   // quranState.chapters may not be fetched yet this session (e.g. right
   // after an app restart, before the Quran/Listen screen has been opened)
   // — the local transliteration array needs no network and covers that gap.
   const chapter = quranChapterFor(listenState.currentSurah);
   const name = chapter ? quranSurahDisplayName(chapter) : (QURAN_SURAH_TRANSLIT[listenState.currentSurah - 1] || ('Сура ' + listenState.currentSurah));
-  document.getElementById('sideDrawerListenName').textContent = name;
-  document.getElementById('sideDrawerListenSub').textContent = listenState.reciter.name;
-  document.getElementById('sideDrawerListenPlayIcon').innerHTML = listenAudioEl.paused ? LISTEN_ICON_PLAY : LISTEN_ICON_PAUSE;
+  if(el){
+    el.style.display = 'flex';
+    document.getElementById('sideDrawerListenName').textContent = name;
+    document.getElementById('sideDrawerListenSub').textContent = listenState.reciter.name;
+    document.getElementById('sideDrawerListenPlayIcon').innerHTML = listenAudioEl.paused ? LISTEN_ICON_PLAY : LISTEN_ICON_PAUSE;
+  }
+  if(homeCard){
+    homeCard.style.display = 'block';
+    document.getElementById('homeListenName').textContent = name;
+    document.getElementById('homeListenSub').textContent = listenState.reciter.name;
+  }
 }
 document.getElementById('sideDrawerListenPreview').addEventListener('click', e=>{
   if(e.target.closest('#sideDrawerListenPlayIcon')){
@@ -15157,6 +15205,10 @@ listenAudioEl.addEventListener('timeupdate', ()=>{
   if(seek && !seek.dataset.dragging) seek.value = String(Math.round((listenAudioEl.currentTime / listenAudioEl.duration) * 1000));
   const timeEl = document.getElementById('listenPlayerTime');
   if(timeEl) timeEl.textContent = listenFormatTime(listenAudioEl.currentTime) + ' / ' + listenFormatTime(listenAudioEl.duration);
+  const homeSeek = document.getElementById('homeListenSeek');
+  if(homeSeek && !homeSeek.dataset.dragging) homeSeek.value = String(Math.round((listenAudioEl.currentTime / listenAudioEl.duration) * 1000));
+  const homeTimeEl = document.getElementById('homeListenTime');
+  if(homeTimeEl) homeTimeEl.textContent = listenFormatTime(listenAudioEl.currentTime) + ' / ' + listenFormatTime(listenAudioEl.duration);
   if(listenAyah.active){
     const t = listenAudioEl.currentTime;
     const newIndex = listenAyah.timings.findIndex(seg => t >= seg.fromSec && t < seg.toSec);
@@ -15211,6 +15263,20 @@ listenPlayerSeekEl.addEventListener('input', ()=>{ listenPlayerSeekEl.dataset.dr
 listenPlayerSeekEl.addEventListener('change', ()=>{
   if(listenAudioEl.duration) listenAudioEl.currentTime = (Number(listenPlayerSeekEl.value) / 1000) * listenAudioEl.duration;
   delete listenPlayerSeekEl.dataset.dragging;
+});
+const homeListenSeekEl = document.getElementById('homeListenSeek');
+homeListenSeekEl.addEventListener('input', ()=>{ homeListenSeekEl.dataset.dragging = '1'; });
+homeListenSeekEl.addEventListener('change', ()=>{
+  if(listenAudioEl.duration) listenAudioEl.currentTime = (Number(homeListenSeekEl.value) / 1000) * listenAudioEl.duration;
+  delete homeListenSeekEl.dataset.dragging;
+});
+document.getElementById('homeListenCard').addEventListener('click', e=>{
+  if(e.target.closest('#homeListenPlayBtn')){
+    if(listenState.reciter && listenState.currentSurah) listenPlaySurah(listenState.currentSurah);
+    return;
+  }
+  if(e.target.closest('#homeListenSeek')) return;
+  if(listenState.reciter) openListenReciter(listenState.reciter.id);
 });
 
 async function quranFetchPage(pageNum){
