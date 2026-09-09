@@ -14397,6 +14397,31 @@ let listenDbPromise = null;
 // which is why listenOpenKaraoke shows a standing disclaimer for them.
 const LISTEN_KARAOKE_RECITATION_IDS = { afs:7, sds:3, shatri:4, hani:5, husr:6, minsh:9, shur:10, basit:2, yasser:97 };
 function listenHasExactKaraoke(reciterId){ return !!LISTEN_KARAOKE_RECITATION_IDS[reciterId]; }
+// For reciters quran.com has no segment timing for, per-ayah timestamps were
+// computed offline (forced alignment: a synthesized reading of each ayah's
+// text matched against the reciter's own recording, snapped to actual pauses
+// in the audio) and verified against independently-detected silence gaps.
+// Only reciters whose alignment held up under that check (~90%+ of ayah
+// boundaries landing on a real pause) are listed here — the rest keep using
+// the proportional-by-text-length estimate below, unchanged.
+const LISTEN_PRECOMPUTED_TIMING_RECITERS = new Set(['s_gmd','ayyub','ajm','hthfi','tblawi','mustafa','akdr','jbrl','balilah','abkr','zahrani']);
+const LISTEN_TIMINGS_BASE_URL = 'https://99ism.ru/timings/';
+function listenHasPrecomputedTiming(reciterId){ return LISTEN_PRECOMPUTED_TIMING_RECITERS.has(reciterId); }
+// A reciter whose ayah timing can be trusted enough to skip the "approximate"
+// disclaimer and follow the highlighted ayah down the screen automatically —
+// true segment timing (quran.com) or our own verified offline alignment.
+function listenHasReliableTiming(reciterId){ return listenHasExactKaraoke(reciterId) || listenHasPrecomputedTiming(reciterId); }
+const listenPrecomputedTimingCache = new Map();
+async function listenFetchPrecomputedTimings(reciterId, surahNum){
+  let allSurahs = listenPrecomputedTimingCache.get(reciterId);
+  if(!allSurahs){
+    allSurahs = await fetch(LISTEN_TIMINGS_BASE_URL + reciterId + '.json').then(r => { if(!r.ok) throw new Error('http ' + r.status); return r.json(); });
+    listenPrecomputedTimingCache.set(reciterId, allSurahs);
+  }
+  const rows = allSurahs[String(surahNum)];
+  if(!rows) throw new Error('no timing for surah ' + surahNum);
+  return rows; // [[verse_key, start_ms, end_ms], ...]
+}
 // Per-ayah timing for the currently loaded track — `active` once timings
 // (exact or estimated) are ready; `approximate` flags the estimated case;
 // `currentIndex` is kept live off listenAudioEl.currentTime via the
@@ -14711,10 +14736,38 @@ async function listenPlaySurah(surahNum){
     }
     listenSetTrackMeta(reciter, surahNum);
     listenAudioEl.src = cachedBlob ? (listenCurrentObjectUrl = URL.createObjectURL(cachedBlob)) : audioUrl;
+  } else if(listenHasPrecomputedTiming(reciter.id)){
+    // Verified offline alignment for this reciter — same audio file as the
+    // approximate path below, just with real per-ayah timestamps instead of
+    // a text-length guess. Falls through to that guess if the fetch fails
+    // (offline, or this surah/reciter missing from the hosted data).
+    listenFetchPrecomputedTimings(reciter.id, surahNum).then(async rows => {
+      if(listenState.currentSurah !== surahNum || listenState.loadedReciterId !== reciter.id) return;
+      const verses = await listenFetchVerseTexts(surahNum);
+      listenAyah.timings = rows.map((row, i) => ({ fromSec: row[1] / 1000, toSec: row[2] / 1000, text: verses[i] ? verses[i].text_uthmani : '' }));
+      listenAyah.active = true;
+      listenAyah.approximate = false;
+      if(listenKaraokeOverlayOpen) renderListenKaraokeAyahs();
+    }).catch(e => {
+      console.warn('listenFetchPrecomputedTimings failed, falling back to estimate:', e);
+      if(listenState.currentSurah !== surahNum || listenState.loadedReciterId !== reciter.id) return;
+      listenFetchVerseTexts(surahNum).then(verses => {
+        if(listenState.currentSurah !== surahNum || listenState.loadedReciterId !== reciter.id) return;
+        listenAyah.pendingApproxVerses = verses;
+        if(listenAudioEl.readyState >= 1) listenComputeApproxTimings();
+      });
+    });
+    listenSetTrackMeta(reciter, surahNum);
+    if(cachedBlob){
+      listenCurrentObjectUrl = URL.createObjectURL(cachedBlob);
+      listenAudioEl.src = listenCurrentObjectUrl;
+    } else {
+      listenAudioEl.src = listenTrackUrl(reciter, surahNum);
+    }
   } else {
-    // No exact timing source for this reciter — queue up the estimate to
-    // run as soon as the audio element reports a real duration (either
-    // right away below, if it's already known, or via 'loadedmetadata').
+    // No exact or precomputed timing source for this reciter — queue up the
+    // estimate to run as soon as the audio element reports a real duration
+    // (either right away below, if known, or via 'loadedmetadata').
     listenFetchVerseTexts(surahNum).then(verses => {
       if(listenState.currentSurah !== surahNum || listenState.loadedReciterId !== reciter.id) return;
       listenAyah.pendingApproxVerses = verses;
@@ -14943,7 +14996,7 @@ function listenSeekToAyah(i){
   if(listenAudioEl.paused) listenAudioEl.play().catch(()=>{});
 }
 function listenExactKaraokeReciterNames(){
-  return LISTEN_RECITERS.filter(r => listenHasExactKaraoke(r.id)).map(r => r.name).join(', ');
+  return LISTEN_RECITERS.filter(r => listenHasReliableTiming(r.id)).map(r => r.name).join(', ');
 }
 function listenOpenKaraoke(){
   if(!listenState.reciter || !listenState.currentSurah){ showToast('Сначала включите суру'); return; }
@@ -14952,7 +15005,7 @@ function listenOpenKaraoke(){
   document.getElementById('listenKaraokeTranslationBtn').classList.toggle('active', listenTranslationOn);
   if(listenTranslationOn && !listenAyah.translations.length) listenLoadTranslationIfOn(listenState.currentSurah);
   const disclaimerEl = document.getElementById('listenKaraokeDisclaimer');
-  if(listenHasExactKaraoke(listenState.reciter.id)){
+  if(listenHasReliableTiming(listenState.reciter.id)){
     disclaimerEl.style.display = 'none';
   } else {
     disclaimerEl.style.display = 'block';
@@ -14962,10 +15015,10 @@ function listenOpenKaraoke(){
   document.getElementById('listenKaraokeTitle').textContent = chapter ? quranSurahDisplayName(chapter) : ('Сура ' + listenState.currentSurah);
   if(listenAyah.active && listenAyah.timings.length){
     renderListenKaraokeAyahs();
-    // Only jump to the marked ayah on open for exact-timing reciters —
+    // Only jump to the marked ayah on open for reliable-timing reciters —
     // for an estimate, auto-scrolling the screen around to chase a mark
     // that can itself be off is more distracting than useful.
-    if(listenHasExactKaraoke(listenState.reciter.id)){
+    if(listenHasReliableTiming(listenState.reciter.id)){
       const el = document.querySelector(`.listen-karaoke-ayah[data-index="${listenAyah.currentIndex}"]`);
       if(el) el.scrollIntoView({ block:'center' });
     }
@@ -15017,10 +15070,10 @@ listenAudioEl.addEventListener('timeupdate', ()=>{
       listenUpdatePlayerLabel();
       if(listenKaraokeOverlayOpen){
         renderListenKaraokeAyahs();
-        // Exact-timing reciters follow the mark down the screen as it
+        // Reliable-timing reciters follow the mark down the screen as it
         // advances; an estimate only highlights in place (see the same
         // check in listenOpenKaraoke for why).
-        if(listenHasExactKaraoke(listenState.reciter.id)){
+        if(listenHasReliableTiming(listenState.reciter.id)){
           const el = document.querySelector(`.listen-karaoke-ayah[data-index="${newIndex}"]`);
           if(el) el.scrollIntoView({ block:'center', behavior:'smooth' });
         }
