@@ -37,7 +37,7 @@ try {
   // notification gets created.
   messaging.onBackgroundMessage((payload) => {
     const d = payload.data || {};
-    self.registration.showNotification(d.title || '99 имён Аллаха', {
+    self.registration.showNotification(d.title || '99', {
       body: d.body || '',
       icon: 'icons/icon-192.png',
       tag: d.tag || 'ism-notify',

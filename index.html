@@ -10216,7 +10216,7 @@ async function addFriendByUsername(){
     return;
   }
 
-  notifyFriend(friendUsername, '99 имён Аллаха', state.profile.username+' хочет добавить вас в друзья', 'friend-request', baseUrl()+'?screen=friends');
+  notifyFriend(friendUsername, '99', state.profile.username+' хочет добавить вас в друзья', 'friend-request', baseUrl()+'?screen=friends');
 
   input.value = '';
   showToast('Запрос отправлен: '+friendUsername);
@@ -10226,7 +10226,7 @@ async function acceptFriendRequest(fromUid, fromName){
   if(!state.profile || !state.profile.authenticated) return;
   const result = await apiAcceptFriendRequest(fromUid);
   if(result.error){ showToast('Не удалось принять запрос'); return; }
-  notifyFriend(fromUid, '99 имён Аллаха', state.profile.username+' принял(а) вашу заявку в друзья', 'friend-accept', baseUrl()+'?screen=friends');
+  notifyFriend(fromUid, '99', state.profile.username+' принял(а) вашу заявку в друзья', 'friend-accept', baseUrl()+'?screen=friends');
   showToast('Теперь вы друзья: '+(fromName||fromUid));
   state.incomingRequests = state.incomingRequests.filter(r => r.uid !== fromUid);
   if(!state.friendsList.some(f => f.uid === fromUid)) state.friendsList.push({ uid: fromUid, name: fromName || fromUid });
@@ -14073,7 +14073,7 @@ document.getElementById('profileViewAddFriendBtn').addEventListener('click', asy
     return;
   }
 
-  notifyFriend(username, '99 имён Аллаха', state.profile.username+' хочет добавить вас в друзья', 'friend-request', baseUrl()+'?screen=friends');
+  notifyFriend(username, '99', state.profile.username+' хочет добавить вас в друзья', 'friend-request', baseUrl()+'?screen=friends');
   btn.textContent = 'Заявка отправлена ✓';
   showToast('Запрос отправлен: '+username);
 });
@@ -14199,11 +14199,11 @@ function sendDuelInvite(friendUid){
     len: duel.len, timerSeconds: duel.timerSeconds, direction: duel.direction, orderMode: duel.orderMode,
     at: firebase.database.ServerValue.TIMESTAMP
   });
-  notifyFriend(friendUid, '99 имён Аллаха', fromName+' приглашает вас на live-дуэль', 'duel-invite', baseUrl()+'?room='+duel.roomId);
+  notifyFriend(friendUid, '99', fromName+' приглашает вас на live-дуэль', 'duel-invite', baseUrl()+'?room='+duel.roomId);
 }
 function sendChallengeToFriend(friendUid, q){
   if(!fbDb || !state.profile) return;
-  notifyFriend(friendUid, '99 имён Аллаха', (state.profile.username||'Друг')+' вызывает вас: '+q.score+'/'+q.len, 'challenge', baseUrl()+'?screen=friends');
+  notifyFriend(friendUid, '99', (state.profile.username||'Друг')+' вызывает вас: '+q.score+'/'+q.len, 'challenge', baseUrl()+'?screen=friends');
   fbDb.ref('users/'+fbKey(friendUid)+'/challenges').push({
     fromUid: state.profile.username,
     fromName: state.profile.username || 'Друг',
@@ -14441,7 +14441,7 @@ function sendDhikrRoomInvite(friendUid){
     zikrTr: dhikrRoom.zikr ? dhikrRoom.zikr.tr : '',
     at: firebase.database.ServerValue.TIMESTAMP
   });
-  notifyFriend(friendUid, '99 имён Аллаха', fromName+' приглашает вас читать зикр вместе', 'dhikr-invite', baseUrl()+'?zroom='+dhikrRoom.roomId);
+  notifyFriend(friendUid, '99', fromName+' приглашает вас читать зикр вместе', 'dhikr-invite', baseUrl()+'?zroom='+dhikrRoom.roomId);
 }
 
 /* read ?zroom= dhikr-room-invite param on load — same async-Firebase race as
