@@ -2444,10 +2444,10 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
               <svg viewBox="0 0 24 24" fill="none"><path d="M12 2l2 7h7l-5.5 4.5L17.5 21 12 16.5 6.5 21l2-7.5L3 9h7z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
             </div>
             <div class="update-banner-text">
-              <div class="update-banner-title">Новое в приложении</div>
-              <div class="update-banner-sub">Слушать Коран офлайн с подсветкой текста, время намаза на главном экране и виджет для рабочего стола</div>
+              <div class="update-banner-title">Крупное обновление для Android</div>
+              <div class="update-banner-sub" id="whatsNewBannerSub">Новое приложение «99»: главный экран с временем намаза, профили друзей и их рейтинг, свои аватарки, статус «в сети», будильник и виджеты</div>
             </div>
-            <button class="update-banner-action" id="whatsNewBannerActionBtn">Смотреть</button>
+            <button class="update-banner-action" id="whatsNewBannerActionBtn">Скачать</button>
             <button class="update-banner-close" id="whatsNewBannerCloseBtn" title="Закрыть" aria-label="Закрыть">
               <svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
             </button>
@@ -6590,7 +6590,7 @@ document.getElementById('zikrSyncBannerPassword').addEventListener('keydown', (e
 // WHATS_NEW_VERSION, a plain label bumped whenever there's something new to
 // announce, not an app version number) and never again after being seen or
 // dismissed. Same show/hide mechanics as updateBanner/zikrSyncBanner above.
-const WHATS_NEW_VERSION = '2026-09-listen-prayer-widget';
+const WHATS_NEW_VERSION = '2026-10-big-android-update';
 function updateWhatsNewBannerVisibility(){
   const banner = document.getElementById('whatsNewBanner');
   if(!banner) return;
@@ -6604,10 +6604,24 @@ function dismissWhatsNewBanner(){
   if(banner) banner.classList.remove('show');
 }
 document.getElementById('whatsNewBannerCloseBtn').addEventListener('click', dismissWhatsNewBanner);
+// Объявление про крупное обновление Android: на Android кнопка скачивает новое приложение
+// (внутри старого приложения оно само предложит обновиться через баннер выше), на остальных
+// устройствах — просто «Понятно».
+const whatsNewIsAndroid = /Android/i.test(navigator.userAgent) || !!window.AndroidApp;
+(function(){
+  const btn = document.getElementById('whatsNewBannerActionBtn');
+  if(!whatsNewIsAndroid && btn) btn.textContent = 'Понятно';
+})();
 document.getElementById('whatsNewBannerActionBtn').addEventListener('click', ()=>{
   dismissWhatsNewBanner();
-  go('listen');
-  if(typeof openListenScreen === 'function') openListenScreen();
+  if(whatsNewIsAndroid && !window.AndroidApp){
+    const a = document.createElement('a');
+    a.href = '99ism.apk'; a.download = '99ism.apk';
+    document.body.appendChild(a); a.click(); a.remove();
+  } else if(window.AndroidApp && typeof checkForAppUpdate === 'function'){
+    try{ localStorage.removeItem('lastAppUpdateCheck'); localStorage.removeItem('ignoredUpdateVersion'); }catch(e){}
+    checkForAppUpdate();
+  }
 });
 updateWhatsNewBannerVisibility();
 
