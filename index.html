@@ -39,7 +39,7 @@
 <meta name="robots" content="index, follow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Manrope:wght@200;300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Jost:wght@300;400;500;600;700&family=Rubik:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Marcellus&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Scheherazade+New:wght@400;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Lateef:wght@400;700&family=Aref+Ruqaa:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Amiri+Quran&family=Manrope:wght@200;300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Jost:wght@300;400;500;600;700&family=Rubik:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Marcellus&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Scheherazade+New:wght@400;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Lateef:wght@400;700&family=Aref+Ruqaa:wght@400;700&display=swap" rel="stylesheet">
 <script>
 // Applied before any CSS paints, so a returning user who chose dark mode
 // never sees a flash of the (now-default) light theme first.
@@ -1015,6 +1015,7 @@ body{
   color:var(--ivory); text-shadow:var(--ink-halo);
 }
 .quran-page[data-font="amiri"], .quran-font-preview[data-font="amiri"]{ font-family:'Amiri', serif; }
+.quran-page[data-font="amiriquran"], .quran-font-preview[data-font="amiriquran"]{ font-family:'Amiri Quran', serif; }
 .quran-page[data-font="scheherazade"], .quran-font-preview[data-font="scheherazade"]{ font-family:'Scheherazade New', serif; }
 .quran-page[data-font="notonaskh"], .quran-font-preview[data-font="notonaskh"]{ font-family:'Noto Naskh Arabic', serif; }
 .quran-page[data-font="lateef"], .quran-font-preview[data-font="lateef"]{ font-family:'Lateef', serif; }
@@ -2401,90 +2402,86 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
    Баннеры обновления на этом экране сохранены — меняются только
    фон и цвета переменных внутри экрана.
    =========================================================== */
-.screen[data-screen="home"]{
-  --bg:#06171C; --bg2:#0A2228; --panel:#0E2429; --panel-2:#123036;
-  --line: rgba(207,237,232,0.15); --glass: rgba(207,237,232,0.08);
-  --gold:#7FE3D6; --gold-soft:#A8EFE4; --on-accent:#04262B;
-  --ivory:#CFEDE8; --ivory-dim: rgba(207,237,232,0.62);
-  --jade:#4FC9BA; --jade-soft: rgba(79,201,186,0.16);
-  --rose:#FF8E7A; --rose-soft: rgba(255,142,122,0.16);
-  --fill-1: rgba(207,237,232,0.04); --fill-2: rgba(207,237,232,0.07); --fill-3: rgba(207,237,232,0.10);
-  --accent-rgb:127,227,214; --accent-tint: rgba(127,227,214,0.13); --accent-tint-soft: rgba(127,227,214,0.03);
-  --brand:#9FD3C7;
-  background:linear-gradient(170deg,#0F5A52 0%,#07302F 55%,#041A1D 100%);
-  color:#CFEDE8;
-}
 #app.on-home .topbar{ display:none; }
 .screen[data-screen="home"] .scroll{ padding-top:calc(14px + var(--safe-top)); }
 .screen[data-screen="home"] .hero,
 .screen[data-screen="home"] #homePrayerPreview,
 .screen[data-screen="home"] .hadith-card{ display:none; }
 
-.day-home{ color:#fff; font-family:var(--font-body); margin-bottom:14px; }
+.day-home{ color:var(--dh-text,#fff); font-family:var(--font-body); margin-bottom:14px; }
 .dh-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:4px 0 0; }
 .dh-place{ min-width:0; cursor:pointer; background:none; border:none; padding:0; text-align:left; color:inherit; font-family:inherit; }
 .dh-place b{ display:block; font-size:21px; font-weight:800; letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:60vw; }
-.dh-place span{ display:block; font-size:12px; color:rgba(255,255,255,.7); margin-top:3px; }
+.dh-place span{ display:block; font-size:12px; color:color-mix(in srgb,var(--dh-text,#fff) 70%,transparent); margin-top:3px; }
 .dh-btns{ display:flex; gap:8px; flex-shrink:0; }
 .dh-btn{
-  position:relative; width:38px; height:38px; border-radius:13px; border:1px solid rgba(255,255,255,.18);
-  background:rgba(255,255,255,.08); color:#fff; display:grid; place-items:center; cursor:pointer; padding:0;
+  position:relative; width:38px; height:38px; border-radius:13px; border:1px solid color-mix(in srgb,var(--dh-text,#fff) 18%,transparent);
+  background:color-mix(in srgb,var(--dh-text,#fff) 8%,transparent); color:var(--dh-text,#fff); display:grid; place-items:center; cursor:pointer; padding:0;
 }
 .dh-btn svg{ width:20px; height:20px; }
 .dh-btn:active{ transform:scale(.92); }
-.dh-dot{ position:absolute; top:6px; right:6px; width:9px; height:9px; border-radius:50%; background:#FF7A5C; border:2px solid #0A403B; }
+.dh-dot{ position:absolute; top:6px; right:6px; width:9px; height:9px; border-radius:50%; background:#FF7A5C; border:2px solid var(--dh-bg,#0A403B); }
 .dh-arc{ margin:8px -6px 0; }
 .dh-arc svg{ width:100%; display:block; overflow:visible; }
 .dh-next{ text-align:center; margin-top:-6px; }
-.dh-next small{ font-size:11px; letter-spacing:.16em; color:rgba(255,255,255,.7); font-weight:700; }
+.dh-next small{ font-size:11px; letter-spacing:.16em; color:color-mix(in srgb,var(--dh-text,#fff) 70%,transparent); font-weight:700; }
 .dh-next .nm{ font-size:28px; font-weight:800; margin-top:2px; }
-.dh-next .tm{ font-size:58px; font-weight:800; letter-spacing:-.02em; color:#F4D98A; line-height:1; font-variant-numeric:tabular-nums; }
+.dh-next .tm{ font-size:58px; font-weight:800; letter-spacing:-.02em; color:var(--dh-acc,#F4D98A); line-height:1; font-variant-numeric:tabular-nums; }
 .dh-next .left{
-  display:inline-flex; margin-top:10px; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.16);
+  display:inline-flex; margin-top:10px; background:color-mix(in srgb,var(--dh-text,#fff) 10%,transparent); border:1px solid color-mix(in srgb,var(--dh-text,#fff) 16%,transparent);
   padding:7px 14px; border-radius:999px; font-size:13px; font-weight:700; font-variant-numeric:tabular-nums;
 }
 .dh-times{ display:flex; gap:6px; padding:16px 0 0; }
 .dh-times::-webkit-scrollbar{ display:none; }
 .dh-times div{
   flex:1 1 0; min-width:0; text-align:center; padding:9px 2px; border-radius:14px;
-  background:rgba(255,255,255,.07); font-size:10px; color:rgba(255,255,255,.72);
+  background:color-mix(in srgb,var(--dh-text,#fff) 7%,transparent); font-size:10px; color:color-mix(in srgb,var(--dh-text,#fff) 72%,transparent);
 }
-.dh-times div b{ display:block; font-size:12.5px; color:#fff; font-weight:800; margin-top:2px; font-variant-numeric:tabular-nums; }
+.dh-times div b{ display:block; font-size:12.5px; color:var(--dh-text,#fff); font-weight:800; margin-top:2px; font-variant-numeric:tabular-nums; }
 .dh-times .past{ opacity:.5; }
-.dh-times .now{ background:#F4D98A; color:#4A3A08; opacity:1; }
-.dh-times .now b{ color:#2D2203; }
+.dh-times .now{ background:var(--dh-acc,#F4D98A); color:var(--dh-onacc,#4A3A08); opacity:1; }
+.dh-times .now b{ color:var(--dh-onacc,#2D2203); }
 .dh-actions{ display:flex; justify-content:center; margin-top:22px; }
 .dh-action{
   flex:0 0 auto; display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer;
-  padding:14px 26px; border-radius:999px; border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.1);
-  color:#fff; font:600 14.5px var(--font-body); white-space:nowrap;
+  padding:14px 26px; border-radius:999px; border:1px solid color-mix(in srgb,var(--dh-text,#fff) 16%,transparent); background:color-mix(in srgb,var(--dh-text,#fff) 10%,transparent);
+  color:var(--dh-text,#fff); font:600 14.5px var(--font-body); white-space:nowrap;
 }
-.dh-action svg{ width:18px; height:18px; color:#F4D98A; flex-shrink:0; }
+.dh-action svg{ width:18px; height:18px; color:var(--dh-acc,#F4D98A); flex-shrink:0; }
 
+.dh-arc svg{ color:var(--dh-text,#fff); }
+.dh-sky{ position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+.dh-sky > div{ position:absolute; inset:0; }
+.dh-star{ position:absolute; border-radius:50%; background:#fff; animation:dhTw 3.6s ease-in-out infinite; }
+@keyframes dhTw{ 0%,100%{opacity:.35} 50%{opacity:1} }
+.dh-halo{ transform-box:fill-box; transform-origin:center; animation:dhBreathe 4.2s ease-in-out infinite; }
+@keyframes dhBreathe{ 0%,100%{transform:scale(.92)} 50%{transform:scale(1.1)} }
+@media (prefers-reduced-motion: reduce){ .dh-halo,.dh-star{ animation:none; } }
+.screen[data-screen="home"] .scroll{ position:relative; z-index:1; }
 /* Док как в приложении: тёмная плавающая панель с подписями, «Главная» — золотой круг по центру. */
 @media (max-width:859px){
   #app .tabbar{
     left:14px; right:14px; bottom:calc(10px + var(--safe-bottom)); transform:none; width:auto; max-width:none;
     display:flex; justify-content:space-between; align-items:center; gap:0;
-    padding:8px 10px; border-radius:26px; background:#0B3A38; border:1px solid rgba(255,255,255,.16);
+    padding:8px 10px; border-radius:26px; background:var(--dk-bg,#0B3A38); border:1px solid color-mix(in srgb,var(--dk-ink,#fff) 16%,transparent);
     backdrop-filter:none; -webkit-backdrop-filter:none; box-shadow:0 14px 30px -12px rgba(0,0,0,.45);
   }
   #app .tab{
     position:relative; flex:0 1 auto; width:auto; min-width:50px; height:auto; padding:6px 8px; border-radius:14px;
-    flex-direction:column; gap:3px; color:rgba(255,255,255,.82); background:none;
+    flex-direction:column; gap:3px; color:color-mix(in srgb,var(--dk-ink,#fff) 82%,transparent); background:none;
   }
   #app .tab svg{ width:22px; height:22px; }
   #app .tab span{
     position:static; width:auto; height:auto; margin:0; overflow:visible; clip-path:none;
     font-size:10px; font-weight:600; line-height:1.1; white-space:nowrap;
   }
-  #app .tab.active{ color:#F4D98A; background:none; }
+  #app .tab.active{ color:var(--dk-acc,#F4D98A); background:none; }
   #app .tab.tab-home{
-    width:52px; height:52px; min-width:52px; padding:0; border-radius:50%; background:#F4D98A; color:#2D2203; justify-content:center;
+    width:52px; height:52px; min-width:52px; padding:0; border-radius:50%; background:var(--dk-acc,#F4D98A); color:var(--dk-onacc,#2D2203); justify-content:center;
   }
   #app .tab.tab-home span{ display:none; }
   #app .tab.tab-home svg{ width:26px; height:26px; }
-  #app .tab.tab-home.active{ background:#F4D98A; color:#2D2203; }
+  #app .tab.tab-home.active{ background:var(--dk-acc,#F4D98A); color:var(--dk-onacc,#2D2203); }
   .scroll{ padding-bottom:calc(104px + var(--safe-bottom)); }
 }
 
@@ -2538,6 +2535,7 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 
     <!-- HOME -->
     <section class="screen active" data-screen="home">
+      <div class="dh-sky" aria-hidden="true"><div id="dhSky"></div><div id="dhStars"></div><div id="dhBloom"></div><div id="dhGlow"></div></div>
       <div class="scroll">
         <div class="ios-app-banner" id="iosAppBanner">
           <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12M12 3l4 4M12 3L8 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 13v6a2 2 0 002 2h10a2 2 0 002-2v-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -2710,6 +2708,137 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
             return d+' '+HM[(mo-1+12)%12]+', '+y;
           }
           var lastArc = '', lastTimes = '', lastKey = '';
+          // ---------- Живая дуга дня ----------
+          var BLACK = [0,0,0];
+          function rgbOf(v){
+            var e = document.createElement('span'); e.style.color = (v||'').trim() || '#000';
+            document.body.appendChild(e); var c = getComputedStyle(e).color; document.body.removeChild(e);
+            var m = c.match(/[\d.]+/g) || [0,0,0]; return [+m[0], +m[1], +m[2]];
+          }
+          function lumOf(c){ function f(v){ v/=255; return v<=0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055,2.4); } return 0.2126*f(c[0])+0.7152*f(c[1])+0.0722*f(c[2]); }
+          function mixc(a,b,t){ return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]; }
+          function css(c,a){ return 'rgba('+Math.round(c[0])+','+Math.round(c[1])+','+Math.round(c[2])+','+(a==null?1:a)+')'; }
+          function hexc(h){ return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]; }
+          var palKey = '', palCache = null;
+          function skyPalette(){
+            var root = document.documentElement, cs = getComputedStyle(root);
+            var key = (root.getAttribute('data-skin')||'nafas')+'|'+cs.getPropertyValue('--bg')+'|'+cs.getPropertyValue('--gold')+'|'+cs.getPropertyValue('--ivory');
+            if(key === palKey && palCache) return palCache;
+            var bg = rgbOf(cs.getPropertyValue('--bg')), acc = rgbOf(cs.getPropertyValue('--gold')), ink = rgbOf(cs.getPropertyValue('--ivory')),
+                panel = rgbOf(cs.getPropertyValue('--panel')), onacc = rgbOf(cs.getPropertyValue('--on-accent'));
+            var dark = lumOf(bg) < 0.5, skin = root.getAttribute('data-skin') || 'nafas', P;
+            if(dark && skin === 'nafas'){
+              P = { dark:true, night:[hexc('#031317'),hexc('#020E10'),hexc('#010809')], day:[hexc('#1F7F71'),hexc('#0F5A52'),hexc('#07302F')],
+                    text:[255,255,255], acc:hexc('#F4D98A'), onacc:hexc('#2D2203'), sun:hexc('#F4D98A'), mint:hexc('#8FD1C6'), dock:hexc('#0B3A38'), bg:hexc('#041A1D') };
+            } else if(dark){
+              P = { dark:true, night:[mixc(bg,BLACK,.55),mixc(bg,BLACK,.7),mixc(bg,BLACK,.8)], day:[mixc(BLACK,acc,.6),mixc(BLACK,acc,.32),mixc(BLACK,acc,.12)],
+                    text:ink, acc:acc, onacc:onacc, sun:acc, mint:acc, dock:panel, bg:bg };
+            } else {
+              P = { dark:false, night:[mixc(bg,acc,.08),mixc(bg,acc,.04),bg], day:[mixc(bg,acc,.28),mixc(bg,acc,.1),bg],
+                    text:ink, acc:acc, onacc:onacc, sun:acc, mint:acc, dock:panel, bg:bg };
+            }
+            palKey = key; palCache = P; return P;
+          }
+          function smooth(u){ u = Math.min(1, Math.max(0, u)); return u*u*(3-2*u); }
+          // Сколько света на небе: 0 — ночь, 1 — полдень. Опорные точки — настоящие времена намазов.
+          function skyLight(h, t){
+            var pts = [[t.fajr-.5,0],[t.fajr,.08],[t.sunrise,.42],[(t.sunrise+t.dhuhr)/2,.86],[t.dhuhr,1],[t.asr,.8],[t.maghrib,.36],[t.isha,.07],[t.isha+1.33,0]];
+            var ok = pts.every(function(p){ return isFinite(p[0]); });
+            for(var i=1;ok && i<pts.length;i++) if(pts[i][0] <= pts[i-1][0]) ok = false;
+            if(!ok) pts = [[4.5,0],[5,.08],[6.23,.42],[9.5,.86],[12.1,1],[15.5,.8],[18,.36],[19.17,.07],[20.5,0]];
+            if(h <= pts[0][0] || h >= pts[pts.length-1][0]) return 0;
+            for(var j=0;j<pts.length-1;j++){
+              var a = pts[j], b = pts[j+1];
+              if(h <= b[0]) return a[1] + (b[1]-a[1]) * smooth((h-a[0])/(b[0]-a[0]));
+            }
+            return 0;
+          }
+          function skyWarm(h, t){
+            function g(x,c,w){ return Math.exp(-Math.pow((x-c)/w,2)); }
+            var sr = (isFinite(t.sunrise)?t.sunrise:6.2)+.3, mg = (isFinite(t.maghrib)?t.maghrib:18)+.07;
+            return Math.max(g(h,sr,1.2), g(h,mg,1.3));
+          }
+          // звёзды
+          var starsEl = document.getElementById('dhStars');
+          if(starsEl){
+            var seed = 7; var rnd = function(){ seed = (seed*16807)%2147483647; return seed/2147483647; };
+            for(var si=0; si<46; si++){
+              var st = document.createElement('div'); st.className = 'dh-star';
+              var sz = rnd()<.2 ? 3 : 2; st.style.width = st.style.height = sz+'px';
+              st.style.left = (rnd()*100)+'%'; st.style.top = (rnd()*52)+'%'; st.style.animationDelay = (rnd()*3.6)+'s';
+              starsEl.appendChild(st);
+            }
+          }
+          // дуга собирается один раз, дальше обновляются только атрибуты (иначе дыхание света сбрасывалось бы каждую секунду)
+          var NS = 'http://www.w3.org/2000/svg', arcRefs = null;
+          function svgEl(name, attrs){ var e = document.createElementNS(NS, name); for(var k in attrs) e.setAttribute(k, attrs[k]); return e; }
+          function buildArc(){
+            el.arc.innerHTML = '<svg viewBox="0 0 340 196" role="img" aria-label="Дуга дня">'
+              + '<defs><linearGradient id="dhProg" x1="0" x2="1" y1="0" y2="0"><stop id="dhPg0" offset="0" stop-color="#8FD1C6"/><stop id="dhPg1" offset="1" stop-color="#F4D98A"/></linearGradient>'
+              + '<radialGradient id="dhHaloG"><stop id="dhH0" offset="0" stop-color="#F4D98A" stop-opacity="1"/><stop id="dhH1" offset=".35" stop-color="#F4D98A" stop-opacity=".5"/><stop id="dhH2" offset="1" stop-color="#F4D98A" stop-opacity="0"/></radialGradient></defs>'
+              + '<path d="M20 178 A150 150 0 0 1 320 178" fill="none" stroke="currentColor" stroke-opacity=".18" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/>'
+              + '<path id="dhProgress" d="M20 178" fill="none" stroke="url(#dhProg)" stroke-width="3.5" stroke-linecap="round"/>'
+              + '<line x1="14" y1="178" x2="326" y2="178" stroke="currentColor" stroke-opacity=".14"/>'
+              + '<g id="dhMarks"></g>'
+              + '<g id="dhSun"><circle class="dh-halo" id="dhHalo" r="46" fill="url(#dhHaloG)"/><circle id="dhCore" r="9" fill="#F4D98A"/></g></svg>';
+            var marks = document.getElementById('dhMarks'); var refs = { marks:{} };
+            FIVE.forEach(function(k){
+              var g = svgEl('g', {}), c = svgEl('circle', {r:5}), tx = svgEl('text', {'text-anchor':'middle','font-size':'10.5','font-weight':'700'});
+              tx.textContent = NAMES[k]; g.appendChild(c); g.appendChild(tx); marks.appendChild(g); refs.marks[k] = {c:c, t:tx};
+            });
+            refs.progress = document.getElementById('dhProgress'); refs.sun = document.getElementById('dhSun'); refs.core = document.getElementById('dhCore');
+            refs.halo = document.getElementById('dhHalo'); refs.svg = el.arc.querySelector('svg');
+            refs.pg1 = document.getElementById('dhPg1'); refs.pg0 = document.getElementById('dhPg0');
+            refs.h = [document.getElementById('dhH0'), document.getElementById('dhH1'), document.getElementById('dhH2')];
+            arcRefs = refs;
+          }
+          function updateSky(P, L, Wm, nowH, today, next){
+            if(!arcRefs) buildArc();
+            var R = arcRefs, home = document.querySelector('.screen[data-screen="home"]');
+            var fajr = today.fajr, isha = today.isha;
+            function frac(h){ return Math.min(1, Math.max(0, (h-fajr)/(isha-fajr))); }
+            function pos(t){ var a = Math.PI*t; return [170-150*Math.cos(a), 178-150*Math.sin(a)]; }
+            var t = frac(nowH), p = pos(t), vis = Math.min(1, L*3.2);
+            // цвета темы для текста, акцента и нижней панели
+            var dh = document.getElementById('dayHome');
+            if(dh){ dh.style.setProperty('--dh-text', css(P.text)); dh.style.setProperty('--dh-acc', css(P.acc)); dh.style.setProperty('--dh-onacc', css(P.onacc)); dh.style.setProperty('--dh-bg', css(P.bg)); }
+            var app = document.getElementById('app');
+            if(app){ app.style.setProperty('--dk-bg', css(P.dock)); app.style.setProperty('--dk-ink', css(P.text)); app.style.setProperty('--dk-acc', css(P.acc)); app.style.setProperty('--dk-onacc', css(P.onacc)); }
+            // небо
+            var sky = document.getElementById('dhSky');
+            var top = mixc(P.night[0], P.day[0], L), mid = mixc(P.night[1], P.day[1], L), bot = mixc(P.night[2], P.day[2], L);
+            sky.style.background = 'linear-gradient(180deg,'+css(top)+' 0%,'+css(mid)+' 55%,'+css(bot)+' 100%)';
+            // положение солнца в координатах экрана
+            var hr = home.getBoundingClientRect(), sr = R.svg.getBoundingClientRect(), k = sr.width/340;
+            var sx = sr.left-hr.left+p[0]*k, sy = sr.top-hr.top+p[1]*k, hy = sr.top-hr.top+178*k;
+            var strength = P.dark ? 1 : .6;
+            document.getElementById('dhBloom').style.background = 'radial-gradient(circle at '+sx+'px '+sy+'px, '+css(P.sun,.30*L*vis*strength)+' 0%, '+css(P.sun,.10*L*vis*strength)+' 38%, '+css(P.sun,0)+' 72%)';
+            document.getElementById('dhGlow').style.background = 'radial-gradient(ellipse 70% 38% at '+sx+'px '+hy+'px, rgba(255,140,70,'+(.55*Wm*Math.min(1,L*4)*strength).toFixed(3)+') 0%, rgba(255,120,60,0) 100%)';
+            starsEl && (starsEl.style.opacity = P.dark ? Math.min(1, Math.max(0,(.4-L)/.4))*.95 : 0);
+            // солнце
+            var sc = mixc(P.sun, [255,138,76], Math.min(.85, Math.max(0, Wm*1.1)));
+            var col = 'rgb('+Math.round(sc[0])+','+Math.round(sc[1])+','+Math.round(sc[2])+')';
+            R.sun.setAttribute('transform','translate('+p[0].toFixed(1)+' '+p[1].toFixed(1)+')');
+            R.core.setAttribute('fill', col); R.core.setAttribute('r', (8+3*Wm+1.5*L).toFixed(1)); R.core.setAttribute('opacity', (.25+.75*vis).toFixed(2));
+            R.h.forEach(function(e){ e.setAttribute('stop-color', col); });
+            R.h[0].setAttribute('stop-opacity', (.9*vis).toFixed(2)); R.h[1].setAttribute('stop-opacity', (.5*vis).toFixed(2));
+            R.halo.setAttribute('r', (20+34*L+10*Wm).toFixed(1)); R.halo.style.opacity = (.2+.8*vis).toFixed(2);
+            R.progress.setAttribute('d', t>0.002 ? 'M20 178 A150 150 0 0 1 '+p[0].toFixed(1)+' '+p[1].toFixed(1) : 'M20 178');
+            R.progress.setAttribute('opacity', (.35+.65*Math.min(1,L*3)).toFixed(2));
+            R.pg0.setAttribute('stop-color', css(P.mint)); R.pg1.setAttribute('stop-color', col);
+            // метки намазов
+            FIVE.forEach(function(kk){
+              var h = today[kk], mp = pos(frac(h)), m = R.marks[kk];
+              var isNext = next && next.key === kk && next.at - dayStartMs(nowH) < 86400000;
+              var past = h < nowH && !isNext;
+              m.c.setAttribute('cx', mp[0].toFixed(1)); m.c.setAttribute('cy', mp[1].toFixed(1)); m.c.setAttribute('r', isNext?7:5);
+              m.c.setAttribute('fill', isNext ? css(P.acc) : (past ? css(P.mint) : 'rgba(0,0,0,.35)'));
+              m.c.setAttribute('stroke', isNext ? css(P.text) : css(P.mint)); m.c.setAttribute('stroke-width', isNext?2:1.6);
+              m.t.setAttribute('x', mp[0].toFixed(1)); m.t.setAttribute('y', (mp[1]-(isNext?7:5)-4).toFixed(1));
+              m.t.setAttribute('fill', isNext ? css(P.acc) : css(P.text,.75));
+            });
+          }
+          function dayStartMs(){ var d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); }
           function render(){
             var S = settings(), now = new Date();
             var today = calc(now, S);
@@ -2728,27 +2857,10 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
             var cityText = S.city || ((S.lat===21.4225 && S.lon===39.8262) ? 'Мекка' : S.lat.toFixed(2)+', '+S.lon.toFixed(2));
             if(el.city.textContent !== cityText) el.city.textContent = cityText;
             var hj = hijri(); if(el.hijri.textContent !== hj) el.hijri.textContent = hj;
-            // дуга
-            var fajr = today.fajr, isha = today.isha;
-            function frac(h){ return Math.min(1, Math.max(0, (h-fajr)/(isha-fajr))); }
-            function pos(t){ var a = Math.PI*t; return [170-150*Math.cos(a), 178-150*Math.sin(a)]; }
-            var marks = '';
-            FIVE.forEach(function(k){
-              var h = today[k], p = pos(frac(h));
-              var isNext = next && next.key===k && next.at-dayStart < 86400000;
-              var past = h < nowH && !isNext;
-              var r = isNext ? 7 : 5;
-              marks += '<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="'+r+'" fill="'+(isNext?'#F4D98A':past?'#8FD1C6':'#06302F')+'" stroke="'+(isNext?'#fff':'#8FD1C6')+'" stroke-width="'+(isNext?2:1.6)+'"/>'
-                + '<text x="'+p[0].toFixed(1)+'" y="'+(p[1]-r-4).toFixed(1)+'" text-anchor="middle" font-size="10.5" font-weight="700" fill="'+(isNext?'#F4D98A':'rgba(255,255,255,.75)')+'">'+NAMES[k]+'</text>';
-            });
-            var f = frac(nowH), sp = pos(f);
-            var arc = '<svg viewBox="0 0 340 196" role="img" aria-label="Дуга дня">'
-              + '<path d="M20 178 A150 150 0 0 1 320 178" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/>'
-              + (f>0.001 ? '<path d="M20 178 A150 150 0 0 1 '+sp[0].toFixed(1)+' '+sp[1].toFixed(1)+'" fill="none" stroke="#8FD1C6" stroke-width="3.5" stroke-linecap="round"/>' : '')
-              + '<line x1="14" y1="178" x2="326" y2="178" stroke="rgba(255,255,255,.14)"/>'
-              + marks
-              + '<circle cx="'+sp[0].toFixed(1)+'" cy="'+sp[1].toFixed(1)+'" r="15" fill="#F4D98A" opacity=".25"/><circle cx="'+sp[0].toFixed(1)+'" cy="'+sp[1].toFixed(1)+'" r="9" fill="#F4D98A"/></svg>';
-            if(arc !== lastArc){ el.arc.innerHTML = arc; lastArc = arc; }
+            // небо и дуга: свет следует за солнцем (как в приложении)
+            var P = skyPalette();
+            var L = skyLight(nowH, today), Wm = skyWarm(nowH, today);
+            updateSky(P, L, Wm, nowH, today, next);
             // ближайший намаз и отсчёт
             var left = next ? Math.max(0, Math.round((next.at-now.getTime())/1000)) : 0;
             var cd = Math.floor(left/3600)+':'+pad(Math.floor(left/60)%60)+':'+pad(left%60);
@@ -4528,6 +4640,7 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
       <div class="section-label" style="margin-top:0;">Шрифт</div>
       <div class="len-choice" id="quranFontChoice" style="justify-content:flex-start;margin-bottom:20px;">
         <div class="len-chip active" data-font="uthmani">Усмани (как в Мусхафе)</div>
+        <div class="len-chip" data-font="amiriquran" style="font-family:'Amiri Quran',serif;">Амири Коран</div>
         <div class="len-chip" data-font="amiri" style="font-family:'Amiri',serif;">Амири</div>
         <div class="len-chip" data-font="scheherazade" style="font-family:'Scheherazade New',serif;">Шахразад</div>
         <div class="len-chip" data-font="notonaskh" style="font-family:'Noto Naskh Arabic',serif;">Naskh</div>
@@ -14640,7 +14753,7 @@ updateSettingsGearVisibility();
    реально открыл этот экран, с кэшем в памяти на время сессии.
 ===================================================== */
 const QURAN_TOTAL_PAGES = 604;
-const QURAN_FONTS = ['uthmani','amiri','scheherazade','notonaskh','lateef','arefruqaa'];
+const QURAN_FONTS = ['uthmani','amiri', 'amiriquran','scheherazade','notonaskh','lateef','arefruqaa'];
 const QURAN_TAJWEED_LEGEND = [
   { color:'#9AA0A6', label:'Не произносится — соединительная хамза, «солнечный» лям и другие непроизносимые буквы' },
   { color:'#18A800', label:'Гунна, идгам и ихфа — везде, где звучит носовой призвук: слияние букв, скрытое произношение «нун»/«мим», переход «нун» в «м» перед «ба»' },
