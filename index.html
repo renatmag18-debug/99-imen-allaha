@@ -2488,18 +2488,15 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
   .scroll{ padding-bottom:calc(104px + var(--safe-bottom)); }
 }
 
-/* Карточка Telegram-канала в настройках */
-.tg-card{ position:relative; display:flex; flex-direction:column; gap:14px; overflow:hidden; margin:4px 0 18px; padding:20px; border-radius:26px; text-decoration:none; color:#fff; background:linear-gradient(135deg,#2AABEE,#1B7FC4); box-shadow:0 10px 28px rgba(27,127,196,.28); -webkit-tap-highlight-color:transparent; }
+/* Карточка Telegram-канала в настройках (компактная) */
+.tg-card{ display:flex; align-items:center; gap:12px; margin:4px 0 16px; padding:12px 14px; border-radius:20px; text-decoration:none; color:#fff; background:linear-gradient(135deg,#2AABEE,#1B7FC4); box-shadow:0 6px 18px rgba(27,127,196,.25); -webkit-tap-highlight-color:transparent; }
 .tg-card:active{ transform:scale(.99); }
-.tg-card-glow{ position:absolute; top:-50px; right:-40px; width:200px; height:200px; border-radius:50%; background:radial-gradient(circle,rgba(255,255,255,.24),rgba(255,255,255,0) 70%); pointer-events:none; }
-.tg-card-top{ position:relative; display:flex; align-items:center; gap:14px; }
-.tg-card-ic{ width:52px; height:52px; border-radius:50%; background:rgba(255,255,255,.2); display:flex; align-items:center; justify-content:center; flex:none; }
-.tg-card-ic svg{ width:28px; height:28px; }
-.tg-card-head{ display:flex; flex-direction:column; gap:2px; }
-.tg-card-title{ font-size:20px; font-weight:700; line-height:1.2; }
-.tg-card-handle{ font-size:14px; opacity:.82; }
-.tg-card-text{ position:relative; font-size:14.5px; line-height:1.45; opacity:.94; }
-.tg-card-btn{ position:relative; align-self:flex-start; padding:11px 22px; border-radius:999px; background:#fff; color:#1B7FC4; font-size:14.5px; font-weight:700; }
+.tg-card-ic{ width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,.2); display:flex; align-items:center; justify-content:center; flex:none; }
+.tg-card-ic svg{ width:22px; height:22px; }
+.tg-card-head{ display:flex; flex-direction:column; gap:1px; min-width:0; flex:1; }
+.tg-card-title{ font-size:16px; font-weight:700; line-height:1.25; }
+.tg-card-handle{ font-size:12px; opacity:.85; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tg-card-btn{ flex:none; padding:7px 14px; border-radius:999px; background:#fff; color:#1B7FC4; font-size:13px; font-weight:700; }
 </style>
 <script src="api.js"></script>
 </head>
@@ -3609,16 +3606,12 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
         </div>
 
         <a class="tg-card" href="https://t.me/ism99ru" target="_blank" rel="noopener">
-          <span class="tg-card-glow" aria-hidden="true"></span>
-          <span class="tg-card-top">
-            <span class="tg-card-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M21 3L3 11l7 3 3 7z" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 14L21 3" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <span class="tg-card-head">
-              <span class="tg-card-title">Канал приложения</span>
-              <span class="tg-card-handle">t.me/ism99ru</span>
-            </span>
+          <span class="tg-card-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M21 3L3 11l7 3 3 7z" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 14L21 3" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span class="tg-card-head">
+            <span class="tg-card-title">Канал приложения</span>
+            <span class="tg-card-handle">Новости и обратная связь</span>
           </span>
-          <span class="tg-card-text">Новости и обновления приложения. Здесь же можно оставить отзыв, рассказать о проблеме или предложить идею — мы читаем всё.</span>
-          <span class="tg-card-btn">Подписаться и написать нам</span>
+          <span class="tg-card-btn">Открыть</span>
         </a>
 
         <div class="settings-group">
