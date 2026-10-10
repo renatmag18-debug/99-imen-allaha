@@ -4005,7 +4005,7 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
         <div class="qibla-map-card">
           <div id="qiblaMapReal" class="qibla-map-real"></div>
           <div class="qibla-status" id="qiblaMapStatus">Загрузка карты…</div>
-          <div class="qibla-map-caption">Прямая линия от вас до Каабы</div>
+          <div class="qibla-map-caption">Линия — кратчайший путь до Каабы. Она кажется изогнутой, потому что Земля круглая: молиться нужно в сторону, куда линия выходит из вашей точки.</div>
         </div>
       </div>
     </section>
@@ -16040,6 +16040,30 @@ function tafsirAyahHtml(text){
     `<sup class="tafsir-note-ref" data-note="${n}">${n}</sup>`);
 }
 
+// Запоминаем не только суру/день/главу, но и место прокрутки в тексте — как в приложении.
+function readingScrollRestore(key, elId, num){
+  const el = document.getElementById(elId); if(!el) return;
+  let top = 0;
+  try{ const o = JSON.parse(localStorage.getItem(key) || 'null'); if(o && o.num === num) top = o.top || 0; }catch(e){}
+  el.scrollTop = top;
+  if(top) setTimeout(()=>{ el.scrollTop = top; }, 80);
+}
+function readingScrollTrack(key, elId, getNum){
+  const el = document.getElementById(elId); if(!el) return;
+  let timer = null;
+  el.addEventListener('scroll', ()=>{
+    if(timer) return;
+    timer = setTimeout(()=>{
+      timer = null;
+      const num = getNum(); if(!num) return;
+      try{ localStorage.setItem(key, JSON.stringify({num: num, top: Math.round(el.scrollTop)})); }catch(e){}
+    }, 400);
+  }, {passive:true});
+}
+readingScrollTrack('tafsirScroll', 'tafsirPageScroll', ()=> tafsirCurrentNum);
+readingScrollTrack('siraScroll', 'siraPageScroll', ()=> siraCurrentDay);
+readingScrollTrack('siraFullScroll', 'siraFullPageScroll', ()=> siraFullCurrentChapter);
+
 function tafsirRenderSurah(num){
   const d = tafsirData[num];
   const parts = [];
@@ -16054,7 +16078,7 @@ function tafsirRenderSurah(num){
   document.getElementById('tafsirPage').innerHTML = parts.join('');
   document.getElementById('tafsirSurahName').textContent = `${num}. ${d.name}`;
   document.getElementById('tafsirSurahNum').textContent = `${num} / 114`;
-  document.getElementById('tafsirPageScroll').scrollTop = 0;
+  readingScrollRestore('tafsirScroll', 'tafsirPageScroll', num);
   tafsirCurrentNum = num;
   try{ localStorage.setItem('tafsirLastSurah', String(num)); }catch(e){}
   // Consumed once — a search result jump wants the page to land right on
@@ -16319,7 +16343,7 @@ function siraRenderDay(num){
   document.getElementById('siraPage').innerHTML = parts.join('');
   document.getElementById('siraDayBtnLabel').textContent = `День ${num}: ${d.title}`;
   document.getElementById('siraDayNum').textContent = `${num} / ${SIRA_TOTAL_DAYS}`;
-  document.getElementById('siraPageScroll').scrollTop = 0;
+  readingScrollRestore('siraScroll', 'siraPageScroll', num);
   siraCurrentDay = num;
   try{ localStorage.setItem('siraLastDay', String(num)); }catch(e){}
 }
@@ -16421,7 +16445,7 @@ function siraFullRenderChapter(num){
   document.getElementById('siraFullPage').innerHTML = parts.join('');
   document.getElementById('siraFullChapterBtnLabel').textContent = `${num}. ${d.title}`;
   document.getElementById('siraFullChapterNum').textContent = `${num} / ${SIRA_FULL_TOTAL_CHAPTERS}`;
-  document.getElementById('siraFullPageScroll').scrollTop = 0;
+  readingScrollRestore('siraFullScroll', 'siraFullPageScroll', num);
   siraFullCurrentChapter = num;
   try{ localStorage.setItem('siraFullLastChapter', String(num)); }catch(e){}
 }
@@ -18102,9 +18126,31 @@ function qiblaMakeLocateControl(){
 }
 
 let qiblaMap = null, qiblaYouMarker = null, qiblaKaabaMarker = null, qiblaMapLine = null;
+// Кратчайший путь по шару (дуга большого круга): на плоской карте он выглядит изогнутым,
+// именно в его сторону и нужно молиться. Так же рисует карта в приложении.
+function qiblaArc(a, b, n){
+  const rad = d => d*Math.PI/180, deg = r => r*180/Math.PI;
+  const f1 = rad(a[0]), l1 = rad(a[1]), f2 = rad(b[0]), l2 = rad(b[1]);
+  const d = 2*Math.asin(Math.sqrt(Math.pow(Math.sin((f2-f1)/2),2) + Math.cos(f1)*Math.cos(f2)*Math.pow(Math.sin((l2-l1)/2),2)));
+  if(!d) return [a, b];
+  const pts = []; let prev = a[1];
+  for(let i=0;i<=n;i++){
+    const t = i/n, A = Math.sin((1-t)*d)/Math.sin(d), B = Math.sin(t*d)/Math.sin(d);
+    const x = A*Math.cos(f1)*Math.cos(l1) + B*Math.cos(f2)*Math.cos(l2);
+    const y = A*Math.cos(f1)*Math.sin(l1) + B*Math.cos(f2)*Math.sin(l2);
+    const z = A*Math.sin(f1) + B*Math.sin(f2);
+    const la = deg(Math.atan2(z, Math.sqrt(x*x+y*y)));
+    let lo = deg(Math.atan2(y, x));
+    while(lo-prev > 180) lo -= 360;
+    while(lo-prev < -180) lo += 360;
+    prev = lo; pts.push([la, lo]);
+  }
+  return pts;
+}
 function qiblaRenderMap(){
   const you = [prayerSettings.lat, prayerSettings.lon];
   const kaaba = [KAABA_LAT, KAABA_LON];
+  const route = qiblaArc(you, kaaba, 120);
   if(!qiblaMap){
     // attributionControl:false + a fresh one with prefix:false drops
     // Leaflet's own default branding link (which bundles in a 🇺🇦 flag
@@ -18122,12 +18168,12 @@ function qiblaRenderMap(){
     // Solid, saturated red rather than the app's own accent color — the
     // map tiles are light regardless of app theme, so gold/jade barely
     // registered against them.
-    qiblaMapLine = L.polyline([you, kaaba], { color: '#e5383b', weight: 4, opacity: 0.95 }).addTo(qiblaMap);
+    qiblaMapLine = L.polyline(route, { color: '#e5383b', weight: 4, opacity: 0.95 }).addTo(qiblaMap);
   } else {
     qiblaYouMarker.setLatLng(you);
-    qiblaMapLine.setLatLngs([you, kaaba]);
+    qiblaMapLine.setLatLngs(route);
   }
-  qiblaMap.fitBounds(L.latLngBounds([you, kaaba]), { padding: [24, 24] });
+  qiblaMap.fitBounds(L.latLngBounds(route), { padding: [24, 24] });
   // A map created while its container was hidden (screen not active yet)
   // gets 0×0 tile math baked in — this is the standard Leaflet fix, needed
   // here because openQiblaScreen() can run before go() finishes revealing
