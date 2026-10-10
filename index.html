@@ -7834,7 +7834,8 @@ function isInDrawerOpenZone(x){
     // is always reachable there regardless. Closing isn't screen-gated: by
     // the time the drawer is open, it's already covering whatever screen
     // was under it.
-    if(!drawerOpen && (state.screen !== 'home' || !isInDrawerOpenZone(t.clientX))) return;
+    // Боковое меню убрано, свайп для его открытия тоже отключён.
+    if(!drawerOpen) return;
     sx = t.clientX; sy = t.clientY;
     tracking = true;
   }, {passive:true});
@@ -16772,6 +16773,8 @@ async function quranHandleSearchInput(query){
    of movement and never revisited, so a swipe can't "convert" mid-scroll).
 ===================================================== */
 (function initStageSwipe(){
+  // Перелистывание разделов свайпом отключено (как в приложении) — переходы только по панели внизу.
+  return;
   const stageEl = document.getElementById('stage');
   if(!stageEl) return;
   const TAB_ORDER = Array.from(tabs).map(t => t.dataset.nav);
