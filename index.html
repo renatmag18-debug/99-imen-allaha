@@ -2298,6 +2298,104 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 :root:not([data-skin]) .icon-btn{ backdrop-filter:none; -webkit-backdrop-filter:none; }
 
 /* ===========================================================
+   ИНТЕРФЕЙС КАК В ПРИЛОЖЕНИИ: заголовки, строки, плитки, чипы
+   =========================================================== */
+.app-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 0 12px; }
+.app-eyebrow{ font-size:13px; font-weight:600; color:var(--ivory-dim); }
+.app-title{ margin:0; font-family:var(--font-display); font-size:32px; font-weight:700; letter-spacing:-.01em; color:var(--ivory); line-height:1.15; }
+.round-btn{
+  width:44px; height:44px; border-radius:50%; border:none; background:var(--panel); color:var(--ivory);
+  display:grid; place-items:center; cursor:pointer; padding:0; flex-shrink:0;
+}
+.round-btn svg{ width:22px; height:22px; }
+.round-btn.on{ background:color-mix(in srgb, var(--panel) 78%, var(--gold)); color:var(--gold-soft); }
+
+.hub-tile{
+  display:flex; align-items:center; gap:14px; width:100%; text-align:left; cursor:pointer;
+  background:var(--panel); border:none; border-radius:24px; padding:18px 16px; color:var(--ivory);
+  font-family:var(--font-body); min-height:78px;
+}
+.hub-tile:active{ transform:scale(.98); }
+.hub-ico{
+  width:52px; height:52px; border-radius:16px; flex-shrink:0; display:grid; place-items:center;
+  background:color-mix(in srgb, var(--panel) 76%, var(--gold)); color:var(--gold-soft);
+}
+.hub-ico svg{ width:26px; height:26px; }
+.hub-txt{ min-width:0; }
+.hub-txt b{ display:block; font-size:16px; font-weight:700; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hub-txt span{ display:block; font-size:13px; color:var(--ivory-dim); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hub-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+.hub-grid .hub-tile{ min-width:0; }
+.hub-grid .hub-ico{ width:46px; height:46px; border-radius:14px; }
+.hub-grid .hub-ico svg{ width:23px; height:23px; }
+.hub-grid .hub-txt{ flex:1; }
+
+/* Имена: строки как в приложении */
+.screen[data-screen="study"] .segmented-wrap{ display:none; }
+.listen-root-back{ display:none !important; }
+.nod-card{
+  display:block; width:100%; text-align:left; cursor:pointer; border:none; color:#fff; margin:0 0 14px;
+  background:linear-gradient(135deg,#16806F,#0A4745); border-radius:28px; padding:18px 20px; font-family:var(--font-body);
+}
+.nod-eyebrow{ font-size:12px; letter-spacing:.14em; font-weight:700; color:rgba(255,255,255,.78); }
+.nod-ar{ font-family:var(--font-ar); font-size:52px; text-align:center; padding:10px 0; line-height:1.3; }
+.nod-row{ display:flex; align-items:center; gap:10px; }
+.nod-row > div{ flex:1; min-width:0; }
+.nod-tr{ font-size:20px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.nod-m{ font-size:14px; color:rgba(255,255,255,.82); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.nod-open{ background:rgba(255,255,255,.18); border-radius:999px; padding:8px 14px; font-size:13px; font-weight:700; flex:none !important; }
+.names-progress{ margin:0 0 14px; }
+.names-progress .row{ display:flex; justify-content:space-between; font-size:14px; font-weight:700; margin-bottom:6px; }
+.names-progress .row span:last-child{ color:var(--gold-soft); }
+.names-progress .bar{ height:8px; border-radius:99px; background:var(--fill-2); overflow:hidden; }
+.names-progress .bar i{ display:block; height:100%; width:0; background:var(--gold); border-radius:99px; transition:width .4s var(--ease); }
+.quiz-entry{
+  display:flex; align-items:center; gap:12px; width:100%; text-align:left; cursor:pointer; border:none; margin:0 0 14px;
+  background:color-mix(in srgb, var(--panel) 78%, var(--gold)); color:var(--ivory); border-radius:20px; padding:14px 16px; font-family:var(--font-body);
+}
+.quiz-entry div{ flex:1; }
+.quiz-entry b{ display:block; font-size:16px; font-weight:700; }
+.quiz-entry span{ display:block; font-size:13px; opacity:.75; margin-top:2px; }
+.quiz-entry svg{ width:22px; height:22px; flex:none; }
+.chip-row{ display:flex; gap:8px; margin:0 0 14px; }
+.chip{
+  border:1px solid var(--line); background:none; color:var(--ivory); border-radius:10px; padding:8px 14px;
+  font:600 13px var(--font-body); cursor:pointer;
+}
+.chip.on{ background:color-mix(in srgb, var(--panel) 70%, var(--gold)); border-color:transparent; color:var(--gold-soft); }
+.screen[data-screen="study"] .search-wrap{ margin:0 0 14px; }
+#browseWrap .grid{
+  display:block; background:var(--panel); border-radius:24px; overflow:hidden; padding:0;
+}
+#browseWrap .grid .card{
+  display:flex; align-items:center; gap:12px; text-align:left; border:none; border-radius:0; background:none;
+  padding:10px 14px; animation:none; border-top:1px solid var(--line);
+}
+#browseWrap .grid .card:first-child{ border-top:none; }
+#browseWrap .grid .card .nr-idx{
+  width:32px; height:32px; border-radius:10px; flex-shrink:0; display:grid; place-items:center; font-size:13px; font-weight:700;
+  background:var(--fill-2); color:var(--ivory-dim);
+}
+#browseWrap .grid .card.learned .nr-idx{ background:color-mix(in srgb, var(--panel) 70%, var(--gold)); color:var(--gold-soft); }
+#browseWrap .grid .card .nr-idx svg{ width:18px; height:18px; }
+#browseWrap .grid .card .nr-main{ flex:1; min-width:0; }
+#browseWrap .grid .card .nr-tr{ font-size:16px; font-weight:700; color:var(--ivory); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#browseWrap .grid .card .nr-m{ font-size:13px; color:var(--ivory-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#browseWrap .grid .card .nr-ar{ font-family:var(--font-ar); font-size:24px; color:var(--ivory); }
+#browseWrap .grid .card.learned{ background:none; }
+
+/* В приложении нет верхней панели — на сайте тоже (меню разделов теперь в «Учёбе»). */
+#app .topbar{ display:none; }
+#app .screen{ top:calc(8px + var(--safe-top)); }
+#app .screen[data-screen="home"]{ top:0; }
+
+.screen[data-screen="settings"] .settings-head .nav-arrow{ display:none; }
+.settings-head .section-title{ font-weight:600; font-size:22px; }
+.misc-top-head{ margin-bottom:8px; }
+
+#sideDrawer, #sideDrawerBackdrop{ display:none !important; }
+
+/* ===========================================================
    ГЛАВНЫЙ ЭКРАН «ДУГА ДНЯ» И ДОК КАК В ПРИЛОЖЕНИИ
    Главная всегда тёмно-бирюзовая (в любой теме), как в приложении.
    Баннеры обновления на этом экране сохранены — меняются только
@@ -2767,6 +2865,26 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
       </div>
     </section>
 
+    <!-- УЧЁБА: плитки разделов, как в приложении -->
+    <section class="screen" data-screen="hub">
+      <div class="scroll">
+        <div class="app-head"><div><div class="app-eyebrow">Читать и учиться</div><h1 class="app-title">Учёба</h1></div></div>
+        <button type="button" class="hub-tile hub-wide" data-hub="quran"><span class="hub-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5C10 5 7 4.5 4 5v13c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5V5c-3-.5-6 0-8 1.5z"/><path d="M12 6.5v13"/><path d="M6.5 9h3M6.5 12h3M14.5 9h3M14.5 12h3"/></svg></span><span class="hub-txt"><b>Коран</b><span>Читать постранично, с таджвидом</span></span></button>
+        <div class="hub-grid">
+          <button type="button" class="hub-tile " data-hub="prophets"><span class="hub-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 8a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0 -7 0"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/></svg></span><span class="hub-txt"><b>Имена пророков</b><span>25 пророков и тест</span></span></button>
+          <button type="button" class="hub-tile " data-hub="misc"><span class="hub-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 4.0a1.7 1.7 0 1 0 3.4 0a1.7 1.7 0 1 0 -3.4 0"/><path d="M15.2 6.1a1.7 1.7 0 1 0 3.4 0a1.7 1.7 0 1 0 -3.4 0"/><path d="M17.3 11.0a1.7 1.7 0 1 0 3.4 0a1.7 1.7 0 1 0 -3.4 0"/><path d="M15.2 15.9a1.7 1.7 0 1 0 3.4 0a1.7 1.7 0 1 0 -3.4 0"/><path d="M10.3 18.0a1.7 1.7 0 1 0 3.4 0a1.7 1.7 0 1 0 -3.4 0"/><path d="M5.4 15.9a1.7 1.7 0 1 0 3.4 0a1.7 1.7 0 1 0 -3.4 0"/><path d="M3.3 11.0a1.7 1.7 0 1 0 3.4 0a1.7 1.7 0 1 0 -3.4 0"/><path d="M5.4 6.1a1.7 1.7 0 1 0 3.4 0a1.7 1.7 0 1 0 -3.4 0"/><path d="M12 18v3.5"/></svg></span><span class="hub-txt"><b>Зикры и дуа</b><span>Азкары, дуа, слова намаза</span></span></button>
+          <button type="button" class="hub-tile " data-hub="alarms"><span class="hub-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13a8 8 0 1 0 16 0a8 8 0 1 0 -16 0"/><path d="M12 9v4l3 2"/><path d="M4 5l3-2M20 5l-3-2"/></svg></span><span class="hub-txt"><b>Будильник</b><span>На молитву и не только</span></span></button>
+          <button type="button" class="hub-tile " data-hub="qibla"><span class="hub-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></span><span class="hub-txt"><b>Кибла</b><span>Компас на Каабу</span></span></button>
+          <button type="button" class="hub-tile " data-hub="tafsir"><span class="hub-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/><path d="M9 8h6"/></svg></span><span class="hub-txt"><b>Тафсир</b><span>114 сур</span></span></button>
+          <button type="button" class="hub-tile " data-hub="sira"><span class="hub-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h10v14a2 2 0 0 1-2 2H7"/><path d="M8 4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2"/><path d="M11 9h4M11 13h4"/></svg></span><span class="hub-txt"><b>Сира за 30 дней</b><span>По дню в сутки</span></span></button>
+          <button type="button" class="hub-tile " data-hub="siraFull"><span class="hub-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h10v14a2 2 0 0 1-2 2H7"/><path d="M8 4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2"/><path d="M11 9h4M11 13h4"/></svg></span><span class="hub-txt"><b>Сира полностью</b><span>25 глав</span></span></button>
+          <button type="button" class="hub-tile " data-hub="favorites"><span class="hub-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg></span><span class="hub-txt"><b>Избранное</b><span>Отмеченное</span></span></button>
+          <button type="button" class="hub-tile " data-hub="room"><span class="hub-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 8a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0 -7 0"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/></svg></span><span class="hub-txt"><b>Зикр с друзьями</b><span>Считать вместе</span></span></button>
+          <button type="button" class="hub-tile " data-hub="weekly"><span class="hub-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v14H4z"/><path d="M4 10h16"/><path d="M8 3v4M16 3v4"/><path d="M12 13l1 2 2 .3-1.5 1.4.4 2-1.9-1-1.9 1 .4-2L9 15.3l2-.3z"/></svg></span><span class="hub-txt"><b>Зикр недели</b><span>Салават и истигфар</span></span></button>
+        </div>
+      </div>
+    </section>
+
     <!-- STUDY LIST -->
     <section class="screen" data-screen="study">
       <div class="segmented-wrap">
@@ -2777,13 +2895,24 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
       </div>
 
       <div id="browseWrap" style="display:contents">
-        <div class="search-wrap">
-          <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-          <input id="searchInput" type="search" inputmode="search" placeholder="Поиск по имени или номеру…" autocomplete="off">
-        </div>
         <div class="scroll">
-          <button class="btn btn-primary" id="browseTrainBtn" style="width:100%;margin-bottom:16px;">Тестирование</button>
-          <div class="section-title">99 имён</div>
+          <div class="app-head">
+            <div><div class="app-eyebrow">Ас-саляму алейкум</div><h1 class="app-title">99 Имён</h1></div>
+            <button type="button" class="round-btn" id="namesSearchToggle" aria-label="Поиск"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M20 20l-3.5-3.5"/></svg></button>
+          </div>
+          <div class="search-wrap" id="namesSearchWrap" style="display:none">
+            <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            <input id="searchInput" type="search" inputmode="search" placeholder="Имя или смысл" autocomplete="off">
+          </div>
+          <button type="button" class="nod-card" id="nameOfDayCard"></button>
+          <div class="names-progress" id="namesProgress"></div>
+          <button type="button" class="quiz-entry" data-nav="quiz"><div><b>Викторина</b><span>Проверьте, как вы знаете имена</span></div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
+          <button class="btn btn-primary" id="browseTrainBtn" style="display:none">Тестирование</button>
+          <div class="chip-row" id="namesFilterChips">
+            <button type="button" class="chip on" data-f="all">Все</button>
+            <button type="button" class="chip" data-f="learning">Учу</button>
+            <button type="button" class="chip" data-f="learned">Выучено</button>
+          </div>
           <div class="grid" id="grid"></div>
           <div class="empty-hint" id="emptyHint" style="display:none">Ничего не найдено. Попробуйте другой запрос.</div>
           <div class="names-source-note">Толкования имён основаны на книге «Толкование прекрасных имён Аллаха» (Шарх аль-Асма аль-Хусна), автор — Шейхуль Ислам Абу Абдуллах Мухаммад ибн Юсуф ас-Сануси, перевод — Мухаммад Абу Алия.</div>
@@ -3089,6 +3218,10 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 
     <!-- MISC: ЗИКРЫ / АЗКАРЫ / ДУА -->
     <section class="screen" data-screen="misc">
+      <div class="settings-head misc-top-head" style="padding:0 20px;">
+        <button class="nav-arrow" data-nav="hub" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <div class="section-title" style="padding:0;">Зикры и дуа</div>
+      </div>
       <!-- Two weekly challenge cards side by side — relocated into whichever
            category's own .scroll is active (see moveWeeklyChallengeCardInto)
            the instant scripts run, so its position here is only ever seen
@@ -3212,6 +3345,11 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
     <!-- FRIENDS -->
     <section class="screen" data-screen="friends">
       <div class="scroll">
+        <div class="settings-head">
+          <button class="nav-arrow" data-nav="home" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <div class="section-title" style="padding:0;">Друзья</div>
+        </div>
+
 
 
         <div class="profile-card" id="authCard">
@@ -3796,7 +3934,7 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
     <section class="screen" data-screen="alarms">
       <div class="scroll">
         <div class="settings-head">
-          <button class="nav-arrow" data-nav="home" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="nav-arrow" data-nav="hub" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           <div class="section-title" style="padding:0;">Будильник</div>
         </div>
 
@@ -3819,7 +3957,7 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
     <section class="screen" data-screen="qibla">
       <div class="scroll">
         <div class="settings-head">
-          <button class="nav-arrow" data-nav="home" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="nav-arrow" data-nav="hub" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           <div class="section-title" style="padding:0;">Направление киблы</div>
         </div>
 
@@ -3844,7 +3982,7 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
     <section class="screen" data-screen="listen">
       <div class="scroll">
         <div class="settings-head">
-          <button class="nav-arrow" data-nav="home" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="nav-arrow listen-root-back" data-nav="home" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           <div class="section-title" style="padding:0;">Слушать Коран</div>
         </div>
         <p class="section-desc" style="margin-top:0;">Выберите чтеца, чтобы слушать любую суру онлайн или скачать её для прослушивания без интернета.</p>
@@ -3890,7 +4028,7 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 
     <section class="screen" data-screen="tafsir">
       <div class="quran-head">
-        <button class="nav-arrow" data-nav="home" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="nav-arrow" data-nav="hub" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button class="quran-surah-btn" id="tafsirSurahBtn">
           <span id="tafsirSurahName">Тафсир Корана</span>
           <svg viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -3940,7 +4078,7 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
     <!-- SIRA (30 дней с Посланником Аллаха) -->
     <section class="screen" data-screen="sira">
       <div class="quran-head">
-        <button class="nav-arrow" data-nav="home" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="nav-arrow" data-nav="hub" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button class="quran-surah-btn" id="siraDayBtn">
           <span id="siraDayBtnLabel">Сира Пророка</span>
           <svg viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -4058,7 +4196,7 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 
     <section class="screen" data-screen="quran">
       <div class="quran-head">
-        <button class="nav-arrow" data-nav="misc" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="nav-arrow" data-nav="hub" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button class="quran-surah-btn" id="quranSurahBtn">
           <span id="quranSurahName">Коран</span>
           <svg viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -4088,7 +4226,7 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 
     <section class="screen" data-screen="chats">
       <div class="quran-head">
-        <button class="nav-arrow" data-nav="friends" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="nav-arrow" data-nav="home" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <div style="flex:1;text-align:center;padding:0;">
           <div class="section-title" style="padding:0;">Сообщения</div>
           <div class="chats-connection-status" id="chatsConnectionStatus">Подключение…</div>
@@ -4537,26 +4675,11 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
   </button>
 
   <div class="tabbar">
-    <button class="tab" data-nav="listen">
-      <svg viewBox="0 0 24 24" fill="none"><path d="M4 14v-2a8 8 0 0116 0v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M4 14h3v6H5a1 1 0 01-1-1zM20 14h-3v6h2a1 1 0 001-1z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
-      <span>Слушать</span>
-    </button>
-    <button class="tab" data-nav="misc">
-      <svg viewBox="0 0 24 24" fill="none"><path d="M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5V6a2 2 0 012-2h12a2 2 0 012 2v13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-      <span>Учёба</span>
-    </button>
-    <button class="tab tab-home active" data-nav="home" aria-label="Главная">
-      <svg viewBox="0 0 24 24" fill="none"><path d="M4 11.5L12 4l8 7.5M6 9.5V20h12V9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span>Главная</span>
-    </button>
-    <button class="tab" data-nav="study">
-      <svg viewBox="0 0 24 24" fill="none"><path d="M12 2l2 7h7l-5.5 4.5L17.5 21 12 16.5 6.5 21l2-7.5L3 9h7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
-      <span>Имена</span>
-    </button>
-    <button class="tab" data-nav="settings">
-      <svg viewBox="0 0 24 24" fill="none"><path d="M5 7h9M18 7h1M5 17h1M10 17h9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="16" cy="7" r="2" stroke="currentColor" stroke-width="1.7"/><circle cx="8" cy="17" r="2" stroke="currentColor" stroke-width="1.7"/></svg>
-      <span>Настройки</span>
-    </button>
+    <button class="tab" data-nav="listen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><path d="M4 14h3v6H5a1 1 0 0 1-1-1z"/><path d="M20 14h-3v6h2a1 1 0 0 0 1-1z"/></svg><span>Слушать</span></button>
+    <button class="tab" data-nav="hub"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 19V5M9 7h6"/></svg><span>Учёба</span></button>
+    <button class="tab tab-home active" data-nav="home" aria-label="Главная"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Главная</span></button>
+    <button class="tab" data-nav="study" id="tabNames"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><span>Имена</span></button>
+    <button class="tab" data-nav="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h8M18 7h2M4 17h2M12 17h8"/><path d="M12 7a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M6 17a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/></svg><span>Настройки</span></button>
   </div>
 
   <div class="sheet-backdrop" id="sheetBackdrop"></div>
@@ -5323,18 +5446,83 @@ function renderGrid(){
   const list = state.filtered;
   gridEl.innerHTML = list.map((i,pos)=>{
     const n = NAMES[i];
-    return `<div class="card ${state.learned.has(i)?'learned':''}" data-i="${i}" style="animation-delay:${Math.min(pos*14,300)}ms">
-      <div class="idx">${i+1}</div>
-      <div class="ar">${n.ar}</div>
-      <div class="tr">${n.tr}</div>
+    const learned = state.learned.has(i);
+    return `<div class="card name-row ${learned?'learned':''}" data-i="${i}">
+      <div class="nr-idx">${learned ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : (i+1)}</div>
+      <div class="nr-main"><div class="nr-tr">${n.tr}</div><div class="nr-m">${n.m}</div></div>
+      <div class="nr-ar">${n.ar}</div>
     </div>`;
   }).join('');
   document.getElementById('emptyHint').style.display = list.length? 'none':'block';
   gridEl.querySelectorAll('.card').forEach(c=>{
     c.addEventListener('click', ()=>openSheet(parseInt(c.dataset.i)));
   });
+  if(typeof renderNamesExtras === 'function') renderNamesExtras();
 }
 renderGrid();
+
+
+/* ---- Имена как в приложении: имя дня, прогресс, фильтры, поиск по кнопке ---- */
+function renderNamesExtras(){
+  const total = NAMES.length;
+  const learned = state.learned.size;
+  const prog = document.getElementById('namesProgress');
+  if(prog) prog.innerHTML = '<div class="row"><span>Выучено</span><span>'+learned+' из '+total+'</span></div><div class="bar"><i style="width:'+Math.round(learned/total*100)+'%"></i></div>';
+  const card = document.getElementById('nameOfDayCard');
+  if(card){
+    const day = Math.floor((new Date() - new Date(new Date().getFullYear(),0,0))/86400000);
+    const idx = (day-1) % total;
+    const n = NAMES[idx];
+    card.dataset.i = idx;
+    card.innerHTML = '<div class="nod-eyebrow">ИМЯ ДНЯ</div><div class="nod-ar">'+n.ar+'</div><div class="nod-row"><div><div class="nod-tr">'+n.tr+'</div><div class="nod-m">'+String(n.m).split(',')[0]+'</div></div><div class="nod-open">Открыть</div></div>';
+  }
+}
+(function(){
+  const card = document.getElementById('nameOfDayCard');
+  if(card) card.addEventListener('click', ()=>openSheet(parseInt(card.dataset.i)));
+  document.querySelectorAll('#namesFilterChips .chip').forEach(ch=>{
+    ch.addEventListener('click', ()=>{
+      document.querySelectorAll('#namesFilterChips .chip').forEach(c=>c.classList.remove('on'));
+      ch.classList.add('on');
+      namesFilterMode = ch.dataset.f;
+      applyNamesFilter();
+    });
+  });
+  const tog = document.getElementById('namesSearchToggle'), wrap = document.getElementById('namesSearchWrap'), inp = document.getElementById('searchInput');
+  if(tog && wrap) tog.addEventListener('click', ()=>{
+    const open = wrap.style.display === 'none';
+    wrap.style.display = open ? '' : 'none';
+    tog.classList.toggle('on', open);
+    if(open){ inp.focus(); } else { inp.value=''; applyNamesFilter(); }
+  });
+  // Вкладка «Имена» всегда открывает список 99 имён (а не имена пророков).
+  const namesTab = document.getElementById('tabNames');
+  if(namesTab) namesTab.addEventListener('click', ()=>{
+    const b = document.querySelector('#studySegment .seg-btn[data-mode="browse"]');
+    if(b && !b.classList.contains('active')) b.click();
+  });
+  // Плитки «Учёбы».
+  document.querySelectorAll('[data-hub]').forEach(t=>{
+    t.addEventListener('click', ()=>{
+      const k = t.dataset.hub;
+      if(k === 'quran') navigateToSection('quran');
+      else if(k === 'tafsir') navigateToSection('tafsir');
+      else if(k === 'qibla') navigateToSection('qibla');
+      else if(k === 'alarms') navigateToSection('alarms');
+      else if(k === 'sira') navigateToSection('sira');
+      else if(k === 'siraFull'){ go('siraFull'); if(typeof openSiraFullScreen === 'function') openSiraFullScreen(); }
+      else if(k === 'favorites') navigateToSection('favorites');
+      else if(k === 'misc') go('misc');
+      else if(k === 'prophets'){
+        go('study');
+        const b = document.querySelector('#studySegment .seg-btn[data-mode="prophets"]');
+        if(b) b.click();
+      }
+      else if(k === 'room'){ if(typeof openDhikrRoomSheet === 'function') openDhikrRoomSheet(); }
+      else if(k === 'weekly'){ if(typeof openWeeklyChallengeSheet === 'function') openWeeklyChallengeSheet('salavat'); }
+    });
+  });
+})();
 
 /* =====================================================
    STUDY: ИМЕНА ПРОРОКОВ
@@ -5429,17 +5617,19 @@ document.getElementById('prophetsQuizExitBtn').addEventListener('click', showPro
 document.getElementById('prophetsBackToListBtn').addEventListener('click', showProphetsList);
 document.getElementById('prophetsRetryBtn').addEventListener('click', startProphetsQuiz);
 
-document.getElementById('searchInput').addEventListener('input', (e)=>{
-  const q = e.target.value.trim().toLowerCase();
-  if(!q){ state.filtered = NAMES.map((n,i)=>i); }
-  else {
-    state.filtered = NAMES.map((n,i)=>i).filter(i=>{
-      const n = NAMES[i];
-      return n.tr.toLowerCase().includes(q) || n.m.toLowerCase().includes(q) || String(i+1)===q || n.ar.includes(q);
-    });
-  }
+let namesFilterMode = 'all';
+function applyNamesFilter(){
+  const q = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+  state.filtered = NAMES.map((n,i)=>i).filter(i=>{
+    if(namesFilterMode === 'learning' && state.learned.has(i)) return false;
+    if(namesFilterMode === 'learned' && !state.learned.has(i)) return false;
+    if(!q) return true;
+    const n = NAMES[i];
+    return n.tr.toLowerCase().includes(q) || n.m.toLowerCase().includes(q) || String(i+1)===q || n.ar.includes(q);
+  });
   renderGrid();
-});
+}
+document.getElementById('searchInput').addEventListener('input', applyNamesFilter);
 
 /* =====================================================
    STUDY: PRACTICE MODE (случайные имена для угадывания)
