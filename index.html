@@ -5298,7 +5298,14 @@ window.addEventListener('popstate', (e) => {
 });
 history.replaceState({screen: 'home'}, '', '#home');
 document.querySelectorAll('[data-nav]').forEach(el=>{
-  el.addEventListener('click', ()=>go(el.dataset.nav));
+  // Экраны, которым при открытии нужно ещё и наполнить себя (список чтецов, время намаза,
+  // список чатов), открываем через navigateToSection — как это делали пункты бокового меню.
+  const needsOpen = {listen:1, prayer:1, chats:1};
+  el.addEventListener('click', ()=>{
+    const nav = el.dataset.nav;
+    if(needsOpen[nav] && typeof navigateToSection === 'function') navigateToSection(nav);
+    else go(nav);
+  });
 });
 // Sections whose "open X" is more than a plain screen switch (opening the
 // tafsir/tajweed screen at the right spot, handing mecca_live off to an
