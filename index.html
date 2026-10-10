@@ -2287,6 +2287,16 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 }
 
 
+/* ===== Цвета как в приложении (оформление «Нафас», по умолчанию) =====
+   В приложении фон ровный, а карточки — сплошные цвета поверхности без
+   «стекла» и без цветных затёков. Здесь то же: затёки убраны, «стекло»
+   заменено на сплошную поверхность. Остальные оформления не затронуты. */
+:root:not([data-skin]){ --glass:var(--panel); --wash-a:transparent; --wash-b:transparent; --wash-c:transparent; }
+:root:not([data-skin]) #app{ background:var(--bg); }
+:root:not([data-skin]) .card,
+:root:not([data-skin]) .segmented,
+:root:not([data-skin]) .icon-btn{ backdrop-filter:none; -webkit-backdrop-filter:none; }
+
 /* ===========================================================
    ГЛАВНЫЙ ЭКРАН «ДУГА ДНЯ» И ДОК КАК В ПРИЛОЖЕНИИ
    Главная всегда тёмно-бирюзовая (в любой теме), как в приложении.
