@@ -2451,7 +2451,8 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 
 .dh-arc svg{ color:var(--dh-text,#fff); }
 .dh-sky{ position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
-.dh-sky > div{ position:absolute; inset:0; }
+.dh-sky > div, .dh-top > div{ position:absolute; inset:0; }
+.dh-top{ overflow:hidden; }
 .dh-star{ position:absolute; border-radius:50%; background:#fff; animation:dhTw 3.6s ease-in-out infinite; }
 @keyframes dhTw{ 0%,100%{opacity:.35} 50%{opacity:1} }
 .dh-halo{ transform-box:fill-box; transform-origin:center; animation:dhBreathe 4.2s ease-in-out infinite; }
@@ -2535,7 +2536,7 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 
     <!-- HOME -->
     <section class="screen active" data-screen="home">
-      <div class="dh-sky" aria-hidden="true"><div id="dhSky"></div><div id="dhStars"></div><div id="dhBloom"></div><div id="dhGlow"></div></div>
+      <div class="dh-sky" id="dhBase" aria-hidden="true"><div class="dh-top" id="dhTop"><div id="dhSky"></div><div id="dhStars"></div><div id="dhBloom"></div><div id="dhGlow"></div></div></div>
       <div class="scroll">
         <div class="ios-app-banner" id="iosAppBanner">
           <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12M12 3l4 4M12 3L8 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 13v6a2 2 0 002 2h10a2 2 0 002-2v-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -2729,10 +2730,10 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
             var dark = lumOf(bg) < 0.5, skin = root.getAttribute('data-skin') || 'nafas', P;
             if(dark && skin === 'nafas'){
               P = { dark:true, night:[hexc('#031317'),hexc('#020E10'),hexc('#010809')], day:[hexc('#1F7F71'),hexc('#0F5A52'),hexc('#07302F')],
-                    text:[255,255,255], acc:hexc('#F4D98A'), onacc:hexc('#2D2203'), sun:hexc('#F4D98A'), mint:hexc('#8FD1C6'), dock:hexc('#0B3A38'), bg:hexc('#041A1D') };
+                    text:[255,255,255], acc:hexc('#F4D98A'), onacc:hexc('#2D2203'), sun:hexc('#F4D98A'), mint:hexc('#8FD1C6'), dock:hexc('#0B3A38'), bg:hexc('#041A1D'), rest:[hexc('#0F5A52'),hexc('#07302F'),hexc('#041A1D')] };
             } else if(dark){
               P = { dark:true, night:[mixc(bg,BLACK,.55),mixc(bg,BLACK,.7),mixc(bg,BLACK,.8)], day:[mixc(BLACK,acc,.6),mixc(BLACK,acc,.32),mixc(BLACK,acc,.12)],
-                    text:ink, acc:acc, onacc:onacc, sun:acc, mint:acc, dock:panel, bg:bg };
+                    text:ink, acc:acc, onacc:onacc, sun:acc, mint:acc, dock:panel, bg:bg, rest:[mixc(bg,acc,.38),mixc(bg,acc,.12),bg] };
             } else {
               P = { dark:false, night:[mixc(bg,acc,.08),mixc(bg,acc,.04),bg], day:[mixc(bg,acc,.28),mixc(bg,acc,.1),bg],
                     text:ink, acc:acc, onacc:onacc, sun:acc, mint:acc, dock:panel, bg:bg };
@@ -2807,9 +2808,21 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
             // небо
             var sky = document.getElementById('dhSky');
             var top = mixc(P.night[0], P.day[0], L), mid = mixc(P.night[1], P.day[1], L), bot = mixc(P.night[2], P.day[2], L);
-            sky.style.background = 'linear-gradient(180deg,'+css(top)+' 0%,'+css(mid)+' 55%,'+css(bot)+' 100%)';
-            // положение солнца в координатах экрана
             var hr = home.getBoundingClientRect(), sr = R.svg.getBoundingClientRect(), k = sr.width/340;
+            var topEl = document.getElementById('dhTop'), baseEl = document.getElementById('dhBase');
+            if(P.dark && P.rest){
+              // тёмные темы: небо только до надписи «Следующий намаз», ниже — обычный цвет темы
+              var skyH = Math.max(120, sr.bottom - hr.top), m = 'linear-gradient(180deg,#000 0%,#000 58%,transparent 100%)';
+              baseEl.style.background = 'linear-gradient(180deg,'+css(P.rest[0])+' 0%,'+css(P.rest[1])+' 55%,'+css(P.rest[2])+' 100%)';
+              topEl.style.bottom = 'auto'; topEl.style.height = skyH+'px';
+              topEl.style.webkitMaskImage = topEl.style.maskImage = m;
+              sky.style.background = 'linear-gradient(180deg,'+css(top)+' 0%,'+css(mid)+' 100%)';
+            } else {
+              baseEl.style.background = ''; topEl.style.height = ''; topEl.style.bottom = '0';
+              topEl.style.webkitMaskImage = topEl.style.maskImage = 'none';
+              sky.style.background = 'linear-gradient(180deg,'+css(top)+' 0%,'+css(mid)+' 55%,'+css(bot)+' 100%)';
+            }
+            // положение солнца в координатах экрана
             var sx = sr.left-hr.left+p[0]*k, sy = sr.top-hr.top+p[1]*k, hy = sr.top-hr.top+178*k;
             var strength = P.dark ? 1 : .6;
             document.getElementById('dhBloom').style.background = 'radial-gradient(circle at '+sx+'px '+sy+'px, '+css(P.sun,.30*L*vis*strength)+' 0%, '+css(P.sun,.10*L*vis*strength)+' 38%, '+css(P.sun,0)+' 72%)';
