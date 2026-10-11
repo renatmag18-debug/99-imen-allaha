@@ -52,6 +52,7 @@ try{
   const isReturning = localStorage.getItem('learnedNames') || localStorage.getItem('bestScore') ||
     localStorage.getItem('username') || savedTheme || savedSkin;
   let theme = savedTheme;
+  if(theme === 'system') theme = (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
   if(!isReturning && !savedTheme){
     // Совсем новый пользователь — «Нафас» (тема по умолчанию, то есть без
     // data-skin) в тёмном варианте, а не светлом. Сохраняем сразу, а не
@@ -944,6 +945,35 @@ body{
 .settings-group-body.open{ max-height:2400px; }
 .settings-group-body-inner{ padding:2px 16px 18px; border-top:1px solid var(--line); }
 
+/* Настройки как в приложении: разделы с заголовками и карточки, ничего не сворачивается. */
+.screen[data-screen="settings"] .settings-group{ border:none; background:none; border-radius:0; margin:20px 0 0; overflow:visible; }
+.screen[data-screen="settings"] .settings-group-header{ pointer-events:none; cursor:default; padding:0 4px 8px; }
+.screen[data-screen="settings"] .settings-group-icon,
+.screen[data-screen="settings"] .settings-group-sub,
+.screen[data-screen="settings"] .settings-group-chevron{ display:none; }
+.screen[data-screen="settings"] .settings-group-title{ font-family:var(--font-body); font-size:15px; font-weight:600; color:var(--ivory-dim); }
+.screen[data-screen="settings"] .settings-group-body{ max-height:none !important; overflow:visible; }
+.screen[data-screen="settings"] .settings-group-body-inner{
+  border:1px solid var(--line); border-radius:var(--r-card); background:var(--glass); padding:6px 16px 16px;
+}
+.screen[data-screen="settings"] .settings-group-body-inner > .section-label:first-child{ display:none; }
+/* Тема: три равные кнопки в ряд, как в приложении */
+.screen[data-screen="settings"] .theme-picker{ gap:8px; margin:10px 0 6px; }
+.screen[data-screen="settings"] .theme-picker-opt{ flex-direction:row; justify-content:center; gap:6px; padding:11px 8px; border-radius:var(--r-pill); }
+.screen[data-screen="settings"] .theme-picker-opt svg{ width:16px; height:16px; }
+/* Скины списком, с разделителями и галочкой справа */
+.screen[data-screen="settings"] .skin-picker{ gap:0; margin:0 -16px 8px; }
+.screen[data-screen="settings"] .skin-picker-opt{
+  border:none; border-radius:0; background:none; padding:12px 16px; border-bottom:1px solid var(--line);
+}
+.screen[data-screen="settings"] .skin-picker-opt:last-child{ border-bottom:none; }
+.screen[data-screen="settings"] .skin-picker-opt.active{ background:none; }
+.screen[data-screen="settings"] .skin-picker-name, .screen[data-screen="settings"] .skin-picker-desc{ display:block; }
+.screen[data-screen="settings"] #themeSectionLabel{ display:none; }
+.screen[data-screen="settings"] .theme-picker + .section-label{ display:none; }
+.screen[data-screen="settings"] .skin-picker{ margin-top:6px; }
+.screen[data-screen="settings"] .skin-picker-opt.active .skin-picker-name{ color:var(--gold); }
+
 /* Tajweed lesson accordion — same collapsed-by-default idea as the
    settings groups above, but for long-form reading content (a lesson's
    full text) instead of controls, so its own class names and a taller
@@ -1024,6 +1054,25 @@ body{
 .quran-page[data-font="scheherazadebold"], .quran-font-preview[data-font="scheherazadebold"]{ font-family:'Scheherazade New', serif; font-weight:700; }
 .quran-page[data-font="notonaskhbold"], .quran-font-preview[data-font="notonaskhbold"]{ font-family:'Noto Naskh Arabic', serif; font-weight:700; }
 .quran-page[data-font="amiribold"], .quran-font-preview[data-font="amiribold"]{ font-family:'Amiri', serif; font-weight:700; }
+.quran-head.q2{ gap:4px; padding:12px 12px 8px; }
+.q2-title{ flex:1; min-width:0; display:flex; flex-direction:column; align-items:flex-start; gap:1px; }
+.q2-name{ font-size:17px; font-weight:600; color:var(--ivory); max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.q2-page{ background:none; border:none; padding:0; font-size:12.5px; color:var(--gold-soft); cursor:pointer; font-family:inherit; }
+.q2-ic{ width:44px; height:44px; flex-shrink:0; border-radius:50%; border:none; background:none; color:var(--ivory); display:flex; align-items:center; justify-content:center; cursor:pointer; font-family:inherit; }
+.q2-ic svg{ width:22px; height:22px; }
+.q2-ic.aa span{ font-size:18px; font-weight:600; }
+/* Подвал со стрелками остаётся только там, где нет сенсорного экрана; на телефоне листают свайпом, как в приложении */
+@media (pointer:coarse){ .screen[data-screen="quran"] .quran-foot{ display:none; } }
+.qv-pills{ display:flex; justify-content:center; gap:8px; margin:2px 0 12px; direction:ltr; }
+.qv-pills span{ display:inline-flex; align-items:center; gap:8px; padding:7px 14px 7px 8px; border-radius:14px; background:var(--glass); border:1px solid var(--line); font-size:13px; font-weight:600; color:var(--ivory); text-shadow:none; }
+.qv-pills span::before{ content:''; width:5px; height:22px; border-radius:3px; background:var(--gold); }
+.quran-verse-row{ margin:0 0 6px; }
+.qv-label{ display:flex; align-items:center; gap:10px; direction:ltr; margin:14px 0 2px; font-size:12.5px; color:var(--ivory-dim); text-shadow:none; }
+.qv-label .quran-verse-play, .qv-label .quran-verse-copy{ font-size:15px; width:auto; height:auto; opacity:.7; margin:0; }
+.quran-page:not(.mushaf) span.end{ display:none; }
+.quran-page:not(.mushaf) .quran-verse{ display:block; }
+.quran-page:not(.mushaf){ line-height:2.05; }
+.quran-hint{ text-align:center; font-size:12px; color:var(--ivory-dim); padding:14px 0 6px; text-shadow:none; }
 .quran-status{ text-align:center; color:var(--ivory-dim); font-size:13.5px; padding:60px 20px; line-height:1.7; }
 .quran-set-note{ font-size:12px; color:var(--ivory-dim); line-height:1.55; margin:-10px 0 18px; text-align:left; }
 .quran-set-note.info{ font-size:13px; color:var(--ivory); }
@@ -1055,10 +1104,11 @@ body{
 .mushaf-foot{ text-align:center; font-size:12px; color:var(--ivory-dim); padding-top:4px; }
 
 .quran-surah-title{
-  display:flex; align-items:center; justify-content:center; gap:10px;
-  margin:22px 0 14px; padding:10px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line);
-  font-family:var(--font-display); font-size:16px; font-weight:300; color:var(--gold); text-align:center;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+  margin:18px 0 10px; padding:12px 8px; border-radius:16px; background:var(--accent-tint);
+  font-family:var(--font-display); font-size:16px; font-weight:500; color:var(--gold); text-align:center; text-shadow:none;
 }
+.quran-surah-title small{ font-size:12.5px; font-weight:400; color:var(--ivory-dim); font-family:var(--font-body); }
 .quran-surah-title:first-child{ margin-top:0; }
 .quran-bismillah{
   display:block; text-align:center; font-family:var(--font-ar); font-size:26px; color:var(--gold-soft);
@@ -3823,6 +3873,22 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
           </button>
           <div class="settings-group-body" data-settings-group-body="appearance">
             <div class="settings-group-body-inner">
+              <div class="section-label" id="themeSectionLabel">Тема</div>
+              <div class="theme-picker" id="themePicker">
+                <button class="theme-picker-opt" data-theme-choice="system">
+                  <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M8 20h8M12 16v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                  Система
+                </button>
+                <button class="theme-picker-opt" data-theme-choice="light">
+                  <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.6"/><path d="M12 2.5v2.5M12 19v2.5M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2.5 12H5M19 12h2.5M4.2 19.8L6 18M18 6l1.8-1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                  День
+                </button>
+                <button class="theme-picker-opt" data-theme-choice="dark">
+                  <svg viewBox="0 0 24 24" fill="none"><path d="M20.2 13.1A8.2 8.2 0 1110.9 3.8a6.3 6.3 0 009.3 9.3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>
+                  Ночь
+                </button>
+              </div>
+
               <div class="section-label" style="margin-top:14px;">Оформление</div>
               <div class="skin-picker" id="skinPicker">
                 <button class="skin-picker-opt" data-skin-choice="nafas" style="--sw-a:#06171C;--sw-b:#7FE3D6;--sw-c:#0A2228;">
@@ -3864,18 +3930,6 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
                     <span class="skin-picker-desc">Технический справочник — сетка, вермильон, день и ночь</span>
                   </span>
                   <svg class="skin-picker-check" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </button>
-              </div>
-
-              <div class="section-label" id="themeSectionLabel">Тема</div>
-              <div class="theme-picker" id="themePicker">
-                <button class="theme-picker-opt" data-theme-choice="light">
-                  <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.6"/><path d="M12 2.5v2.5M12 19v2.5M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2.5 12H5M19 12h2.5M4.2 19.8L6 18M18 6l1.8-1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-                  День
-                </button>
-                <button class="theme-picker-opt" data-theme-choice="dark">
-                  <svg viewBox="0 0 24 24" fill="none"><path d="M20.2 13.1A8.2 8.2 0 1110.9 3.8a6.3 6.3 0 009.3 9.3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>
-                  Ночь
                 </button>
               </div>
             </div>
@@ -4432,19 +4486,23 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
     </section>
 
     <section class="screen" data-screen="quran">
-      <div class="quran-head">
+      <div class="quran-head q2">
         <button class="nav-arrow" data-nav="hub" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-        <button class="quran-surah-btn" id="quranSurahBtn">
-          <span id="quranSurahName">Коран</span>
-          <svg viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="q2-title">
+          <span class="q2-name" id="quranSurahName">Коран</span>
+          <button type="button" class="q2-page" id="quranPageNum">Страница 1 из 604</button>
+        </div>
+        <button type="button" class="q2-ic" id="quranSurahBtn" aria-label="Суры" title="Суры">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 3h12a1 1 0 011 1v17l-7-4-7 4V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
         </button>
-        <button class="quran-tajweed-btn" id="quranSettingsBtn" aria-label="Настройки Корана" title="Настройки">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="1.5"/><path d="M19.4 13.5a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V19.5a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1.08-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H4.5a2 2 0 110-4h.09a1.65 1.65 0 001.51-1.08 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33h.09A1.65 1.65 0 0011.5 4.6V4.5a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v.09a1.65 1.65 0 001.51 1H19.5a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+        <button class="q2-ic aa" id="quranSettingsBtn" aria-label="Настройки Корана" title="Настройки">
+          <span>Aa</span>
+          <svg style="display:none" viewBox="0 0 24 24" fill="none"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="1.5"/><path d="M19.4 13.5a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V19.5a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1.08-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H4.5a2 2 0 110-4h.09a1.65 1.65 0 001.51-1.08 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33h.09A1.65 1.65 0 0011.5 4.6V4.5a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v.09a1.65 1.65 0 001.51 1H19.5a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
         </button>
       </div>
       <div class="quran-mode-bar" id="quranModeBar">
-        <span>Режим просмотра — прогресс не отмечается</span>
-        <button type="button" id="quranBackToReadingBtn">Вернуться к чтению</button>
+        <span>Вы просматриваете, это не считается чтением</span>
+        <button type="button" id="quranBackToReadingBtn">К чтению</button>
       </div>
       <div class="quran-page-scroll" id="quranPageScroll">
         <div class="quran-page" id="quranPage" dir="rtl"></div>
@@ -4456,7 +4514,6 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
       </div>
       <div class="quran-foot">
         <button class="quran-nav-btn" id="quranPrevBtn" aria-label="Предыдущая страница"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-        <button class="quran-page-num" id="quranPageNum">1 / 604</button>
         <button class="quran-nav-btn" id="quranNextBtn" aria-label="Следующая страница"><svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       </div>
     </section>
@@ -4711,6 +4768,11 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 
       <div class="quran-font-preview" id="quranFontPreview" dir="rtl">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div>
 
+      <div id="quranSizeBlock" style="margin-bottom:20px;">
+        <div class="section-label" style="margin-top:0;">Размер текста: <span id="quranSizeVal">26</span></div>
+        <input type="range" id="quranSizeRange" min="18" max="50" step="1" style="width:100%;accent-color:var(--gold);">
+      </div>
+
       <div class="section-label" style="margin-top:0;">Вид</div>
       <div class="len-choice" id="quranViewChoice" style="justify-content:flex-start;margin-bottom:20px;">
         <div class="len-chip" data-view="list">Список аятов</div>
@@ -4745,16 +4807,6 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
         <div class="len-chip" data-font="scheherazadebold" style="font-family:'Scheherazade New',serif;font-weight:700;">Шахразад жирный</div>
         <div class="len-chip" data-font="notonaskhbold" style="font-family:'Noto Naskh Arabic',serif;font-weight:700;">Naskh жирный</div>
         <div class="len-chip" data-font="amiribold" style="font-family:'Amiri',serif;font-weight:700;">Амири жирный</div>
-      </div>
-      </div>
-
-      <div id="quranSizeBlock">
-      <div class="section-label">Размер текста</div>
-      <div class="len-choice" id="quranSizeChoice" style="justify-content:flex-start;margin-bottom:20px;">
-        <div class="len-chip" data-size="20" style="font-size:13px;">А</div>
-        <div class="len-chip active" data-size="26" style="font-size:16px;">А</div>
-        <div class="len-chip" data-size="32" style="font-size:19px;">А</div>
-        <div class="len-chip" data-size="38" style="font-size:22px;">А</div>
       </div>
       </div>
 
@@ -14797,25 +14849,43 @@ applyThemeMeta();
 // настройках — обе точки управления остаются синхронными.
 function updateThemePickerUI(){
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  let pref = null;
+  try{ pref = localStorage.getItem('themePref'); }catch(e){}
+  const active = pref === 'system' ? 'system' : (isDark ? 'dark' : 'light');
   document.querySelectorAll('.theme-picker-opt').forEach(btn=>{
-    btn.classList.toggle('active', btn.dataset.themeChoice === (isDark ? 'dark' : 'light'));
+    btn.classList.toggle('active', btn.dataset.themeChoice === active);
   });
   const supportsDark = SKINS[currentSkin()]?.supportsDark;
   document.querySelectorAll('#themePicker, #themeToggleBtn, #themeSectionLabel').forEach(el=>{
     el.classList.toggle('theme-picker-disabled', !supportsDark);
   });
 }
-function setTheme(toDark){
+// choice: 'light' | 'dark' | 'system' (следовать настройке телефона или компьютера)
+function themeIsDarkFor(choice){
+  return choice === 'dark' || (choice === 'system' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+}
+function setThemeChoice(choice){
   if(!SKINS[currentSkin()]?.supportsDark) return;
   const apply = () => {
-    if(toDark) document.documentElement.setAttribute('data-theme', 'dark');
+    if(themeIsDarkFor(choice)) document.documentElement.setAttribute('data-theme', 'dark');
     else document.documentElement.removeAttribute('data-theme');
-    try{ localStorage.setItem('themePref', toDark ? 'dark' : 'light'); }catch(e){}
+    try{ localStorage.setItem('themePref', choice); }catch(e){}
     applyThemeMeta();
     updateThemePickerUI();
   };
   if(document.startViewTransition){ document.startViewTransition(apply); }
   else { apply(); }
+}
+function setTheme(toDark){ setThemeChoice(toDark ? 'dark' : 'light'); }
+// В режиме «Система» тема следует за настройкой устройства и на лету.
+if(window.matchMedia){
+  const mq = matchMedia('(prefers-color-scheme: dark)');
+  const onSystemTheme = () => {
+    let pref = null;
+    try{ pref = localStorage.getItem('themePref'); }catch(e){}
+    if(pref === 'system') setThemeChoice('system');
+  };
+  if(mq.addEventListener) mq.addEventListener('change', onSystemTheme); else if(mq.addListener) mq.addListener(onSystemTheme);
 }
 function updateSkinPickerUI(){
   const skin = currentSkin();
@@ -14839,8 +14909,14 @@ function setSkin(name){
 updateThemePickerUI();
 updateSkinPickerUI();
 document.querySelectorAll('.theme-picker-opt').forEach(btn=>{
-  btn.addEventListener('click', ()=> setTheme(btn.dataset.themeChoice === 'dark'));
+  btn.addEventListener('click', ()=> setThemeChoice(btn.dataset.themeChoice));
 });
+// Порядок разделов как в приложении: «Аккаунт» последним.
+(function(){
+  const acc = document.querySelector('[data-settings-group="account"]');
+  const group = acc && acc.closest('.settings-group');
+  if(group && group.parentNode) group.parentNode.appendChild(group);
+})();
 document.querySelectorAll('.skin-picker-opt').forEach(btn=>{
   btn.addEventListener('click', ()=> setSkin(btn.dataset.skinChoice));
 });
@@ -14935,7 +15011,7 @@ const QURAN_PROGRESS_RESET_VERSION = 2;
     const savedFont = localStorage.getItem('quranFont');
     if(QURAN_FONTS.includes(savedFont)) quranState.font = savedFont;
     const savedSize = parseInt(localStorage.getItem('quranSize'), 10);
-    if(savedSize >= 16 && savedSize <= 48) quranState.size = savedSize;
+    if(savedSize >= 16 && savedSize <= 50) quranState.size = savedSize;
   }catch(e){}
 })();
 function quranMarkPageRead(pageNum){
@@ -16220,12 +16296,11 @@ async function quranFontReady(){
 /* --- вид «список аятов» из локального текста --- */
 function quranRenderLocalList(data, m){
   const pageEl = document.getElementById('quranPage');
-  let html = '', prevSurah = 0;
+  let html = quranPillsHtml(data.page, data.juz || 0), prevSurah = 0;
   data.verses.forEach(v => {
     const first = v.number <= 1 && v.surah !== prevSurah;
     if(first){
-      const chapter = quranChapterFor(v.surah);
-      html += `<div class="quran-surah-title" dir="ltr">${v.surah}. ${chapter ? quranSurahDisplayName(chapter) : (QURAN_SURAH_TRANSLIT[v.surah-1] || '')}${chapter ? ' — ' + chapter.name_arabic : ''}</div>`;
+      html += quranSurahTitleHtml(v.surah);
       if(v.surah !== 1 && v.surah !== 9){
         html += `<span class="quran-bismillah">${escapeHtml(m.basmalah.split(' ').map(quranApplyMode).join(' '))}</span>`;
       }
@@ -16235,10 +16310,11 @@ function quranRenderLocalList(data, m){
     if(v.number === 0){
       html += `<span class="quran-bismillah">${text}</span>`;
     } else {
-      html += `<span class="quran-verse" data-verse-key="${v.surah}:${v.number}">${text}<span class="end">${quranArabicDigits(v.number)}</span>` +
-        `<button type="button" class="quran-verse-copy" data-surah="${v.surah}" data-number="${v.number}" aria-label="Копировать аят">⧉</button></span> `;
+      html += quranVerseRowHtml(`${v.surah}:${v.number}`, `<span class="quran-verse" data-verse-key="${v.surah}:${v.number}">${text}</span>`,
+        `<button type="button" class="quran-verse-copy" data-surah="${v.surah}" data-number="${v.number}" aria-label="Копировать аят">⧉</button>`);
     }
   });
+  html += `<div class="quran-hint">Звук для этого способа чтения пока недоступен</div>`;
   pageEl.innerHTML = html;
 }
 
@@ -16359,6 +16435,18 @@ async function quranFetchPageAudio(pageNum){
 // that word's own recitation audio_url so tapping it plays just that word —
 // falls back to the plain (non-tappable) verse-level tajweed string if
 // `words` is ever missing, rather than rendering nothing.
+function quranSurahTitleHtml(num){
+  const chapter = quranChapterFor(num);
+  const ru = chapter ? quranSurahDisplayName(chapter) : '';
+  const ar = chapter ? chapter.name_arabic : '';
+  return `<div class="quran-surah-title" dir="ltr">${num}. ${QURAN_SURAH_TRANSLIT[num-1] || ''}${(ru || ar) ? `<small>${[ru, ar].filter(Boolean).join(' · ')}</small>` : ''}</div>`;
+}
+function quranPillsHtml(page, juz){
+  return `<div class="qv-pills"><span>${page} стр.</span>${juz > 0 ? `<span>${juz} джуз</span>` : ''}</div>`;
+}
+function quranVerseRowHtml(key, textHtml, buttonsHtml){
+  return `<div class="quran-verse-row"><div class="qv-label"><span>${key}</span>${buttonsHtml}</div>${textHtml}</div>`;
+}
 function quranBuildVerseHtml(v){
   if(quranState.textMode !== 'full' && v.words && v.words.length){
     // Без огласовок цвета таджвида не нужны: слово собирается целиком, звук слова остаётся.
@@ -16411,7 +16499,7 @@ async function quranRenderPage(pageNum){
   pageEl.style.display = 'none';
   loadingEl.style.display = 'block';
   loadingEl.textContent = 'Загрузка страницы…';
-  pageNumEl.textContent = pageNum + ' / ' + QURAN_TOTAL_PAGES;
+  pageNumEl.textContent = 'Страница ' + pageNum + ' из ' + QURAN_TOTAL_PAGES;
   prevBtn.disabled = pageNum <= 1;
   nextBtn.disabled = pageNum >= QURAN_TOTAL_PAGES;
   quranUpdateModeBar();
@@ -16445,12 +16533,11 @@ async function quranRenderPage(pageNum){
     pageEl.setAttribute('data-riwaya', '');
     await quranFetchChapters();
     const [verses, audioMap] = await Promise.all([quranFetchPage(pageNum), quranFetchPageAudio(pageNum)]);
-    let html = '';
+    let html = quranPillsHtml(pageNum, (verses[0] && verses[0].juz_number) || 0);
     verses.forEach(v=>{
       const chapterNum = parseInt(v.verse_key.split(':')[0], 10);
       if(v.verse_number === 1){
-        const chapter = quranChapterFor(chapterNum);
-        html += `<div class="quran-surah-title" dir="ltr">${chapterNum}. ${quranSurahDisplayName(chapter)} — ${chapter ? chapter.name_arabic : ''}</div>`;
+        html += quranSurahTitleHtml(chapterNum);
         if(chapterNum !== 1 && chapterNum !== 9){
           html += `<span class="quran-bismillah">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</span>`;
         }
@@ -16458,8 +16545,9 @@ async function quranRenderPage(pageNum){
       const audioUrl = audioMap[v.verse_key] || '';
       const playBtn = audioUrl ? `<button type="button" class="quran-verse-play" data-audio="${escapeHtml(audioUrl)}" aria-label="Слушать аят">🔊</button>` : '';
       const copyBtn = `<button type="button" class="quran-verse-copy" data-surah="${chapterNum}" data-number="${v.verse_number}" aria-label="Копировать аят">⧉</button>`;
-      html += `<span class="quran-verse" data-verse-key="${escapeHtml(v.verse_key)}">${quranBuildVerseHtml(v)}${playBtn}${copyBtn}</span> `;
+      html += quranVerseRowHtml(escapeHtml(v.verse_key), `<span class="quran-verse" data-verse-key="${escapeHtml(v.verse_key)}">${quranBuildVerseHtml(v)}</span>`, playBtn + copyBtn);
     });
+    html += `<div class="quran-hint">Нажмите на слово, чтобы послушать его, или на значок звука — весь аят</div>`;
     pageEl.innerHTML = html;
     pageEl.setAttribute('data-tajweed', quranState.tajweed && quranState.textMode === 'full' ? 'on' : 'off');
     pageEl.setAttribute('data-audio-btn', quranState.showAyahAudioBtn ? 'on' : 'off');
@@ -16550,6 +16638,23 @@ document.getElementById('quranPage').addEventListener('click', e=>{
   const wordEl = e.target.closest('.quran-word');
   if(wordEl){ quranPlayAudio(wordEl.dataset.audio, wordEl); return; }
 });
+
+// Листание свайпом, как в приложении: страницы Корана идут справа налево, поэтому следующая — свайпом вправо.
+(function quranSwipe(){
+  const el = document.getElementById('quranPageScroll');
+  if(!el) return;
+  let x0 = 0, y0 = 0, t0 = 0, active = false;
+  el.addEventListener('touchstart', e=>{
+    if(e.touches.length !== 1){ active = false; return; }
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now(); active = true;
+  }, { passive:true });
+  el.addEventListener('touchend', e=>{
+    if(!active) return; active = false;
+    const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0;
+    if(Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.6 || Date.now() - t0 > 700) return;
+    quranGoToPage(quranState.page + (dx > 0 ? 1 : -1));
+  }, { passive:true });
+})();
 
 function openQuranScreen(){
   quranState.mode = 'progress';
@@ -17200,18 +17305,16 @@ document.querySelectorAll('#quranFontChoice .len-chip').forEach(chip=>{
   });
 });
 
-function quranUpdateSizeChoiceUI(){
-  document.querySelectorAll('#quranSizeChoice .len-chip').forEach(c=>c.classList.toggle('active', parseInt(c.dataset.size,10)===quranState.size));
-}
-quranUpdateSizeChoiceUI();
-document.querySelectorAll('#quranSizeChoice .len-chip').forEach(chip=>{
-  chip.addEventListener('click', ()=>{
-    quranState.size = parseInt(chip.dataset.size, 10);
+(function initQuranSizeRange(){
+  const range = document.getElementById('quranSizeRange'), val = document.getElementById('quranSizeVal');
+  range.value = quranState.size; val.textContent = quranState.size;
+  range.addEventListener('input', ()=>{
+    quranState.size = parseInt(range.value, 10) || 26;
+    val.textContent = quranState.size;
     try{ localStorage.setItem('quranSize', quranState.size); }catch(e){}
-    quranUpdateSizeChoiceUI();
     quranApplyDisplayPrefs();
   });
-});
+})();
 
 // Показывает только те настройки, которые работают в выбранном виде.
 function quranRefreshSettingsUI(){
