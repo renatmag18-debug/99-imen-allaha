@@ -39,7 +39,7 @@
 <meta name="robots" content="index, follow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Amiri+Quran&family=Manrope:wght@200;300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Jost:wght@300;400;500;600;700&family=Rubik:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Marcellus&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Scheherazade+New:wght@400;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Lateef:wght@400;700&family=Aref+Ruqaa:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Amiri+Quran&family=Manrope:wght@200;300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Jost:wght@300;400;500;600;700&family=Rubik:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Marcellus&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Scheherazade+New:wght@400;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Lateef:wght@400;700&family=Aref+Ruqaa:wght@400;700&family=Harmattan:wght@400;700&display=swap" rel="stylesheet">
 <script>
 // Applied before any CSS paints, so a returning user who chose dark mode
 // never sees a flash of the (now-default) light theme first.
@@ -1020,7 +1020,39 @@ body{
 .quran-page[data-font="notonaskh"], .quran-font-preview[data-font="notonaskh"]{ font-family:'Noto Naskh Arabic', serif; }
 .quran-page[data-font="lateef"], .quran-font-preview[data-font="lateef"]{ font-family:'Lateef', serif; }
 .quran-page[data-font="arefruqaa"], .quran-font-preview[data-font="arefruqaa"]{ font-family:'Aref Ruqaa', serif; }
+.quran-page[data-font="harmattan"], .quran-font-preview[data-font="harmattan"]{ font-family:'Harmattan', serif; }
+.quran-page[data-font="scheherazadebold"], .quran-font-preview[data-font="scheherazadebold"]{ font-family:'Scheherazade New', serif; font-weight:700; }
+.quran-page[data-font="notonaskhbold"], .quran-font-preview[data-font="notonaskhbold"]{ font-family:'Noto Naskh Arabic', serif; font-weight:700; }
+.quran-page[data-font="amiribold"], .quran-font-preview[data-font="amiribold"]{ font-family:'Amiri', serif; font-weight:700; }
 .quran-status{ text-align:center; color:var(--ivory-dim); font-size:13.5px; padding:60px 20px; line-height:1.7; }
+.quran-set-note{ font-size:12px; color:var(--ivory-dim); line-height:1.55; margin:-10px 0 18px; text-align:left; }
+.quran-set-note.info{ font-size:13px; color:var(--ivory); }
+.quran-verse-copy{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:1.5em; height:1.5em; margin:0 2px; border:none; background:none; padding:0;
+  font-size:0.5em; opacity:.55; cursor:pointer; vertical-align:middle; color:var(--ivory-dim);
+}
+.quran-page[data-copy-btn="off"] .quran-verse-copy{ display:none; }
+/* Страница как в печатном мусхафе */
+.quran-page-scroll.mushaf-on{ padding:6px 10px 10px; overflow:hidden; }
+.quran-page.mushaf{ text-align:center; line-height:1.2; text-shadow:none; }
+.mushaf-page{
+  display:flex; flex-direction:column; justify-content:center; box-sizing:border-box; margin:0 auto;
+  padding:6px 8px; border:1px solid var(--line); border-radius:14px; background:var(--fill-sunken);
+  color:var(--ivory); overflow:hidden;
+}
+.mslot{ display:flex; align-items:center; justify-content:center; width:100%; flex-shrink:0; }
+.mline{ width:100%; display:flex; align-items:center; direction:rtl; white-space:nowrap; }
+.mline.just{ justify-content:space-between; }
+.mline.cen{ justify-content:center; }
+.mw{ display:inline-block; }
+.mk{ cursor:pointer; color:var(--gold); display:inline-block; }
+.mhead{
+  width:100%; text-align:center; direction:ltr; border:1px solid var(--gold); border-radius:10px; padding:2px 6px;
+  font-family:var(--font-display); font-size:14px !important; font-weight:300; color:var(--gold); line-height:1.5;
+}
+.mbas{ width:100%; text-align:center; color:var(--gold-soft); white-space:nowrap; direction:rtl; }
+.mushaf-foot{ text-align:center; font-size:12px; color:var(--ivory-dim); padding-top:4px; }
 
 .quran-surah-title{
   display:flex; align-items:center; justify-content:center; gap:10px;
@@ -4650,6 +4682,27 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 
       <div class="quran-font-preview" id="quranFontPreview" dir="rtl">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div>
 
+      <div class="section-label" style="margin-top:0;">Вид</div>
+      <div class="len-choice" id="quranViewChoice" style="justify-content:flex-start;margin-bottom:20px;">
+        <div class="len-chip" data-view="list">Список аятов</div>
+        <div class="len-chip" data-view="mushaf">Страница мусхафа</div>
+      </div>
+      <div class="quran-set-note" id="quranViewNote"></div>
+
+      <div class="section-label">Вид текста</div>
+      <div class="len-choice" id="quranTextModeChoice" style="justify-content:flex-start;margin-bottom:20px;">
+        <div class="len-chip" data-textmode="full">С огласовками</div>
+        <div class="len-chip" data-textmode="novowels">Без огласовок</div>
+        <div class="len-chip" data-textmode="stretched">Растянутый</div>
+      </div>
+      <div class="quran-set-note" id="quranTextModeNote"></div>
+
+      <div class="section-label">Способ чтения (кираат)</div>
+      <div class="len-choice" id="quranRiwayaChoice" style="justify-content:flex-start;margin-bottom:20px;"></div>
+      <div class="quran-set-note info" id="quranRiwayaInfo"></div>
+      <div class="quran-set-note" id="quranRiwayaNote"></div>
+
+      <div id="quranFontBlock">
       <div class="section-label" style="margin-top:0;">Шрифт</div>
       <div class="len-choice" id="quranFontChoice" style="justify-content:flex-start;margin-bottom:20px;">
         <div class="len-chip active" data-font="uthmani">Усмани (как в Мусхафе)</div>
@@ -4659,8 +4712,14 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
         <div class="len-chip" data-font="notonaskh" style="font-family:'Noto Naskh Arabic',serif;">Naskh</div>
         <div class="len-chip" data-font="lateef" style="font-family:'Lateef',serif;">Латиф</div>
         <div class="len-chip" data-font="arefruqaa" style="font-family:'Aref Ruqaa',serif;">Рукъа</div>
+        <div class="len-chip" data-font="harmattan" style="font-family:'Harmattan',serif;">Харматтан</div>
+        <div class="len-chip" data-font="scheherazadebold" style="font-family:'Scheherazade New',serif;font-weight:700;">Шахразад жирный</div>
+        <div class="len-chip" data-font="notonaskhbold" style="font-family:'Noto Naskh Arabic',serif;font-weight:700;">Naskh жирный</div>
+        <div class="len-chip" data-font="amiribold" style="font-family:'Amiri',serif;font-weight:700;">Амири жирный</div>
+      </div>
       </div>
 
+      <div id="quranSizeBlock">
       <div class="section-label">Размер текста</div>
       <div class="len-choice" id="quranSizeChoice" style="justify-content:flex-start;margin-bottom:20px;">
         <div class="len-chip" data-size="20" style="font-size:13px;">А</div>
@@ -4668,7 +4727,9 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
         <div class="len-chip" data-size="32" style="font-size:19px;">А</div>
         <div class="len-chip" data-size="38" style="font-size:22px;">А</div>
       </div>
+      </div>
 
+      <div id="quranTajweedBlock">
       <div class="section-label">Таджвид</div>
       <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--line);margin-bottom:16px;">
         <div style="font-size:14px;color:var(--ivory);">Подсветка правил чтения</div>
@@ -4692,6 +4753,7 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
         <svg viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
       <div class="quran-legend" id="quranLegend" style="display:none;"></div>
+      </div>
 
     </div>
   </div>
@@ -14766,7 +14828,7 @@ updateSettingsGearVisibility();
    реально открыл этот экран, с кэшем в памяти на время сессии.
 ===================================================== */
 const QURAN_TOTAL_PAGES = 604;
-const QURAN_FONTS = ['uthmani','amiri', 'amiriquran','scheherazade','notonaskh','lateef','arefruqaa'];
+const QURAN_FONTS = ['uthmani','amiri', 'amiriquran','scheherazade','notonaskh','lateef','arefruqaa','harmattan','scheherazadebold','notonaskhbold','amiribold'];
 const QURAN_TAJWEED_LEGEND = [
   { color:'#9AA0A6', label:'Не произносится — соединительная хамза, «солнечный» лям и другие непроизносимые буквы' },
   { color:'#18A800', label:'Гунна, идгам и ихфа — везде, где звучит носовой призвук: слияние букв, скрытое произношение «нун»/«мим», переход «нун» в «м» перед «ба»' },
@@ -15931,6 +15993,302 @@ document.getElementById('homeListenCard').addEventListener('click', e=>{
   if(listenState.reciter) openListenReciter(listenState.reciter.id);
 });
 
+/* =====================================================
+   СПОСОБЫ ЧТЕНИЯ (кираат), СТРАНИЦА МУСХАФА, ВИД ТЕКСТА, КОПИРОВАНИЕ —
+   то же, что в приложении. Тексты семи способов чтения и их шрифты
+   (KFGQPC — Комплекс имама Фахда, свободное использование в программах и
+   сайтах) лежат рядом с сайтом в /quran/ и подгружаются лениво, по одному.
+   Хафс в виде списка аятов по-прежнему идёт с api.quran.com (таджвид, звук).
+===================================================== */
+const QURAN_LOCAL_BASE = /^https?:/.test(location.protocol) ? '/quran/' : 'https://99ism.ru/quran/';
+const QURAN_RIWAYAT = [
+  { id:'hafs',   label:'Хафс',      qari:'от Асима',      font:'KFGQPC Hafs',
+    info:'Имам Асим — из Куфы (Ирак). Передатчик Хафс ибн Сулейман жил в Куфе. Сегодня самый распространённый способ чтения в мире, в том числе в России.' },
+  { id:'shubah', label:'Шу\'ба',    qari:'от Асима',      font:'KFGQPC Shubah',
+    info:'Имам Асим — из Куфы (Ирак). Передатчик Шу\'ба (Абу Бакр ибн Айяш) жил в Куфе. Сегодня читают редко.' },
+  { id:'warsh',  label:'Варш',      qari:'от Нафи\'а',    font:'KFGQPC Warsh',
+    info:'Имам Нафи\' — из Медины. Передатчик Варш был египтянином и учился у Нафи\' в Медине. Сегодня читают в Марокко, Алжире, Мавритании и Западной Африке.' },
+  { id:'qalun',  label:'Кальун',    qari:'от Нафи\'а',    font:'KFGQPC Qalun',
+    info:'Имам Нафи\' — из Медины. Передатчик Кальун (Иса ибн Мина) жил в Медине. Сегодня читают в Ливии и отдельных районах Туниса.' },
+  { id:'duri',   label:'ад-Дури',   qari:'от Абу Амра',   font:'KFGQPC Duri',
+    info:'Имам Абу Амр ибн аль-Ала родился в Мекке, жил и учил в Басре (Ирак). Передатчик ад-Дури — из окрестностей Багдада. Сегодня читают в Судане и части Африки.' },
+  { id:'susi',   label:'ас-Суси',   qari:'от Абу Амра',   font:'KFGQPC Susi',
+    info:'Имам Абу Амр ибн аль-Ала родился в Мекке, жил и учил в Басре (Ирак). Передатчик ас-Суси жил в ар-Ракке (Сирия). Сегодня читают редко.' },
+  { id:'bazzi',  label:'аль-Баззи', qari:'от Ибн Касира', font:'KFGQPC Bazzi',
+    info:'Имам Ибн Касир — из Мекки. Передатчик аль-Баззи — мекканец, муэдзин Заповедной мечети. Сегодня читают редко.' },
+];
+const QURAN_TEXT_MODES = ['full','novowels','stretched'];
+quranState.riwaya = 'hafs';
+quranState.view = 'list';        // 'list' — список аятов, 'mushaf' — страница как в печатном мусхафе
+quranState.textMode = 'full';    // 'full' — с огласовками, 'novowels' — без огласовок, 'stretched' — растянутый
+(function quranLoadRiwayaPrefs(){
+  try{
+    const r = localStorage.getItem('quranRiwaya');
+    if(QURAN_RIWAYAT.some(x=>x.id===r)) quranState.riwaya = r;
+    if(localStorage.getItem('quranView') === 'mushaf') quranState.view = 'mushaf';
+    const t = localStorage.getItem('quranTextMode');
+    if(QURAN_TEXT_MODES.includes(t)) quranState.textMode = t;
+  }catch(e){}
+})();
+(function quranInjectFontFaces(){
+  const css = QURAN_RIWAYAT.map(r =>
+    `@font-face{font-family:'${r.font}';src:url('${QURAN_LOCAL_BASE}fonts/uthmanic_${r.id}.woff2') format('woff2');font-display:swap;}\n` +
+    `.quran-page[data-riwaya="${r.id}"], .quran-font-preview[data-riwaya="${r.id}"]{ font-family:'${r.font}', serif !important; font-weight:400 !important; }`
+  ).join('\n');
+  const el = document.createElement('style');
+  el.textContent = css;
+  document.head.appendChild(el);
+})();
+function quranRiwayaInfo(){ return QURAN_RIWAYAT.find(r=>r.id===quranState.riwaya) || QURAN_RIWAYAT[0]; }
+// Страница и список аятов берутся из локальных текстов, если выбран не Хафс или включён вид «страница мусхафа».
+function quranUsesLocal(){ return quranState.view === 'mushaf' || quranState.riwaya !== 'hafs'; }
+
+/* --- вид текста: без огласовок / растянутый --- */
+const QURAN_DUAL_JOIN = new Set('بتثجحخسشصضطظعغفقكلمنهيئ'.split(''));
+function quranStripMarks(word){
+  let s = '';
+  for(const ch of word){
+    const cp = ch.codePointAt(0);
+    if(cp === 0x0671 || (cp >= 0x0870 && cp <= 0x0879)) s += 'ا';        // алиф васла и алифы с огласовкой → обычный алиф
+    else if(cp === 0x06D2) s += 'ى';                                      // конечная «йа» у Варша и Кальуна
+    else if(cp === 0x06D1) s += 'ي';
+    else s += ch;
+  }
+  return s.replace(/[\p{M}ۥۦ۩۞ࢇ࢈ࣉ‍‏ـ]/gu, '').trim();
+}
+function quranStretch(word){
+  const base = quranStripMarks(word);
+  let out = '';
+  for(let i = 0; i < base.length; i++){
+    out += base[i];
+    if(QURAN_DUAL_JOIN.has(base[i]) && i < base.length - 1) out += 'ــ';
+  }
+  return out;
+}
+function quranApplyMode(word){
+  if(quranState.textMode === 'novowels') return quranStripMarks(word);
+  if(quranState.textMode === 'stretched') return quranStretch(word);
+  return word;
+}
+function quranArabicDigits(n){ return String(n).replace(/\d/g, d => String.fromCharCode(0x0660 + Number(d))); }
+function quranCopyText(arabic, surah, number){
+  const name = QURAN_SURAH_TRANSLIT[surah-1] || '';
+  return number > 0 ? `${arabic} ﴿${quranArabicDigits(number)}﴾\n${name} (${surah}:${number})` : arabic;
+}
+async function quranCopyToClipboard(text){
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){ await navigator.clipboard.writeText(text); return true; }
+  }catch(e){}
+  try{
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly',''); ta.style.cssText = 'position:fixed;left:-9999px;top:0;';
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  }catch(e){ return false; }
+}
+// Копирует аят в выбранном виде текста: растянутый остаётся растянутым.
+async function quranCopyAyah(surah, number){
+  try{
+    const m = await quranLoadLocal(quranState.riwaya);
+    const words = m.ayahWords(surah, number);
+    if(!words.length) throw new Error('no ayah');
+    const arabic = words.map(quranApplyMode).join(' ');
+    const ok = await quranCopyToClipboard(quranCopyText(arabic, surah, number));
+    showToast(ok ? `Аят ${surah}:${number} скопирован` : 'Не удалось скопировать');
+  }catch(e){
+    showToast('Не удалось скопировать');
+  }
+}
+
+/* --- локальные тексты: разметка страниц, строк, аятов, сур --- */
+const quranLocalCache = {};
+function quranCountUpTo(arr, v){
+  let lo = 0, hi = arr.length;
+  while(lo < hi){ const mid = (lo + hi) >> 1; if(arr[mid] <= v) lo = mid + 1; else hi = mid; }
+  return lo;
+}
+function quranBuildLocal(d){
+  const words = d.w, ayahStarts = d.a, pageStarts = d.p, juzStarts = d.j || [], lineStarts = d.l,
+        surahFirst = d.sf, surahStart = d.ss, names = d.sn || [];
+  const surahOfAyah = new Array(ayahStarts.length);
+  for(let s = 0; s < surahFirst.length; s++){
+    const end = s + 1 < surahFirst.length ? surahFirst[s+1] : ayahStarts.length;
+    for(let a = surahFirst[s]; a < end; a++) surahOfAyah[a] = s + 1;
+  }
+  const endNumber = new Int32Array(words.length);
+  for(let a = 0; a < ayahStarts.length; a++){
+    const last = (a + 1 < ayahStarts.length ? ayahStarts[a+1] : words.length) - 1;
+    if(last >= 0 && last < words.length) endNumber[last] = a - surahFirst[surahOfAyah[a] - 1] + 1;
+  }
+  const basmalah = words.slice(0, 4).join(' ');
+  const wordsOf = (from, to) => words.slice(from, to);
+  return {
+    basmalah,
+    surahPage(surah){ return Math.max(1, quranCountUpTo(pageStarts, surahStart[surah-1])); },
+    ayahWords(surah, number){
+      if(surah < 1 || surah > surahFirst.length || number < 1) return [];
+      const idx = surahFirst[surah-1] + number - 1;
+      const limit = surah < surahFirst.length ? surahFirst[surah] : ayahStarts.length;
+      if(idx >= limit || idx >= ayahStarts.length) return [];
+      const end = idx + 1 < ayahStarts.length ? ayahStarts[idx+1] : words.length;
+      return wordsOf(ayahStarts[idx], end);
+    },
+    // Страница списком аятов: аят целиком на той странице, где начинается.
+    page(page){
+      const from = pageStarts[page-1], to = page < pageStarts.length ? pageStarts[page] : words.length;
+      const verses = [];
+      if(from === 0 && ayahStarts.length && ayahStarts[0] > 0) verses.push({ surah:1, number:0, words:wordsOf(0, ayahStarts[0]) });
+      let a = quranCountUpTo(ayahStarts, from - 1);
+      while(a < ayahStarts.length && ayahStarts[a] < to){
+        const end = a + 1 < ayahStarts.length ? ayahStarts[a+1] : words.length;
+        const surah = surahOfAyah[a];
+        verses.push({ surah, number: a - surahFirst[surah-1] + 1, words: wordsOf(ayahStarts[a], end) });
+        a++;
+      }
+      return { page, verses, juz: juzStarts.length ? quranCountUpTo(juzStarts, from) : 0 };
+    },
+    // Страница как в печатном мусхафе: строки, заголовки сур и бисмиллях на своих местах.
+    mushafPage(page){
+      const from = pageStarts[page-1], to = page < pageStarts.length ? pageStarts[page] : words.length;
+      const slots = [];
+      let li = quranCountUpTo(lineStarts, from - 1);
+      while(li < lineStarts.length && lineStarts[li] < to){
+        const start = lineStarts[li];
+        const end = Math.min(li + 1 < lineStarts.length ? lineStarts[li+1] : words.length, to);
+        const si = quranCountUpTo(surahStart, start) - 1;
+        if(si >= 0 && surahStart[si] === start){
+          slots.push({ t:'h', surah: si + 1, nameAr: names[si] || '' });
+          if(si !== 0 && si !== 8) slots.push({ t:'b', text: basmalah });
+        }
+        const items = [];
+        for(let i = start; i < end; i++){
+          items.push({ w: words[i] });
+          if(endNumber[i] > 0) items.push({ mk: endNumber[i] });
+        }
+        slots.push({ t:'l', items, surah: Math.max(1, quranCountUpTo(surahStart, start)) });
+        li++;
+      }
+      return { page, slots, firstSurah: Math.max(1, quranCountUpTo(surahStart, from)) };
+    },
+  };
+}
+async function quranLoadLocal(id){
+  if(quranLocalCache[id]) return quranLocalCache[id];
+  const resp = await fetch(QURAN_LOCAL_BASE + id + '.json');
+  if(!resp.ok) throw new Error('bad status ' + resp.status);
+  const m = quranBuildLocal(await resp.json());
+  quranLocalCache[id] = m;
+  return m;
+}
+async function quranFontReady(){
+  const fam = quranRiwayaInfo().font;
+  try{ await document.fonts.load(`40px "${fam}"`, 'بسم'); }catch(e){}
+}
+
+/* --- вид «список аятов» из локального текста --- */
+function quranRenderLocalList(data, m){
+  const pageEl = document.getElementById('quranPage');
+  let html = '', prevSurah = 0;
+  data.verses.forEach(v => {
+    const first = v.number <= 1 && v.surah !== prevSurah;
+    if(first){
+      const chapter = quranChapterFor(v.surah);
+      html += `<div class="quran-surah-title" dir="ltr">${v.surah}. ${chapter ? quranSurahDisplayName(chapter) : (QURAN_SURAH_TRANSLIT[v.surah-1] || '')}${chapter ? ' — ' + chapter.name_arabic : ''}</div>`;
+      if(v.surah !== 1 && v.surah !== 9){
+        html += `<span class="quran-bismillah">${escapeHtml(m.basmalah.split(' ').map(quranApplyMode).join(' '))}</span>`;
+      }
+    }
+    prevSurah = v.surah;
+    const text = v.words.map(w => `<span class="quran-word-l">${escapeHtml(quranApplyMode(w))}</span>`).join(' ');
+    if(v.number === 0){
+      html += `<span class="quran-bismillah">${text}</span>`;
+    } else {
+      html += `<span class="quran-verse" data-verse-key="${v.surah}:${v.number}">${text}<span class="end">${quranArabicDigits(v.number)}</span>` +
+        `<button type="button" class="quran-verse-copy" data-surah="${v.surah}" data-number="${v.number}" aria-label="Копировать аят">⧉</button></span> `;
+    }
+  });
+  pageEl.innerHTML = html;
+}
+
+/* --- вид «страница мусхафа» --- */
+function quranRenderMushaf(data, m){
+  const pageEl = document.getElementById('quranPage');
+  const scrollEl = document.getElementById('quranPageScroll');
+  const fam = quranRiwayaInfo().font;
+  const outerW = Math.max(240, scrollEl.clientWidth - 20);
+  const outerH = Math.max(320, scrollEl.clientHeight - 16);
+  const W = outerW - 18, H = outerH - 14, slotPx = H / 15, basePx = 40;
+  const ctx = document.createElement('canvas').getContext('2d');
+  ctx.font = `${basePx}px "${fam}"`;
+  const gap0 = basePx * 0.28;
+  const texts = data.slots.map(s => s.t === 'l' ? s.items.map(it => it.w ? quranApplyMode(it.w) : '۝' + quranArabicDigits(it.mk)) : null);
+  const natural = texts.map(t => t ? t.reduce((sum, w) => sum + ctx.measureText(w).width, 0) + Math.max(0, t.length - 1) * gap0 : 0);
+  const widest = Math.max(1, ...natural);
+  const sizePx = Math.min(basePx * W / widest, slotPx / 1.75);
+  const k = sizePx / basePx;
+  let html = `<div class="mushaf-page" style="width:${outerW}px;height:${outerH}px;font-size:${sizePx}px;">`;
+  data.slots.forEach((s, i) => {
+    html += `<div class="mslot" style="height:${slotPx}px">`;
+    if(s.t === 'h'){
+      const chapter = quranChapterFor(s.surah);
+      html += `<div class="mhead">${s.surah}. ${QURAN_SURAH_TRANSLIT[s.surah-1] || ''} · ${chapter ? chapter.name_arabic : escapeHtml(s.nameAr)}</div>`;
+    } else if(s.t === 'b'){
+      html += `<div class="mbas">${escapeHtml(s.text.split(' ').map(quranApplyMode).join(' '))}</div>`;
+    } else {
+      const just = natural[i] * k / W >= 0.8;
+      html += `<div class="mline ${just ? 'just' : 'cen'}" dir="rtl" style="gap:${gap0 * k}px">` +
+        s.items.map((it, j) => it.w
+          ? `<span class="mw">${escapeHtml(texts[i][j])}</span>`
+          : `<span class="mk" data-surah="${s.surah}" data-number="${it.mk}">${escapeHtml(texts[i][j])}</span>`).join('') + `</div>`;
+    }
+    html += `</div>`;
+  });
+  html += `</div><div class="mushaf-foot">${data.page}</div>`;
+  pageEl.innerHTML = html;
+}
+
+// Рисует страницу из локальных текстов (любой способ чтения или вид «мусхаф»).
+async function quranRenderLocalPage(pageNum){
+  const pageEl = document.getElementById('quranPage');
+  const scrollEl = document.getElementById('quranPageScroll');
+  const m = await quranLoadLocal(quranState.riwaya);
+  await quranFontReady();
+  const mushaf = quranState.view === 'mushaf';
+  scrollEl.classList.toggle('mushaf-on', mushaf);
+  pageEl.classList.toggle('mushaf', mushaf);
+  pageEl.setAttribute('data-riwaya', (quranState.riwaya !== 'hafs' || mushaf) ? quranState.riwaya : '');
+  pageEl.setAttribute('data-tajweed', 'off');
+  pageEl.setAttribute('data-audio-btn', 'off');
+  pageEl.setAttribute('data-font', quranState.font);
+  pageEl.style.fontSize = mushaf ? '' : quranState.size + 'px';
+  let firstChapterNum;
+  if(mushaf){
+    const data = m.mushafPage(pageNum);
+    quranRenderMushaf(data, m);
+    firstChapterNum = data.firstSurah;
+  } else {
+    const data = m.page(pageNum);
+    quranRenderLocalList(data, m);
+    firstChapterNum = data.verses.length ? data.verses[0].surah : 1;
+  }
+  return firstChapterNum;
+}
+
+// Общий хвост отрисовки: название суры вверху и закладка/«прочитано» (только в режиме чтения).
+function quranFinishPage(pageNum, firstChapterNum){
+  const firstChapter = quranChapterFor(firstChapterNum);
+  document.getElementById('quranSurahName').textContent = firstChapter
+    ? (firstChapterNum + '. ' + quranSurahDisplayName(firstChapter))
+    : (firstChapterNum + '. ' + (QURAN_SURAH_TRANSLIT[firstChapterNum-1] || 'Коран'));
+  quranState.page = pageNum;
+  if(quranState.mode === 'progress'){
+    quranState.bookmarkPage = pageNum;
+    try{ localStorage.setItem('quranLastPage', pageNum); }catch(e){}
+    quranMarkPageRead(pageNum);
+  }
+}
 async function quranFetchPage(pageNum){
   if(quranState.pageCache[pageNum]) return quranState.pageCache[pageNum];
   // Each word carries its own text_uthmani_tajweed — a per-word tajweed
@@ -15972,6 +16330,18 @@ async function quranFetchPageAudio(pageNum){
 // falls back to the plain (non-tappable) verse-level tajweed string if
 // `words` is ever missing, rather than rendering nothing.
 function quranBuildVerseHtml(v){
+  if(quranState.textMode !== 'full' && v.words && v.words.length){
+    // Без огласовок цвета таджвида не нужны: слово собирается целиком, звук слова остаётся.
+    const [chNum, ayNum] = v.verse_key.split(':').map(Number);
+    const p3 = n => String(n).padStart(3, '0');
+    let pos = 0;
+    return v.words.map(w => {
+      if(w.char_type_name === 'end') return `<span class="end">${escapeHtml(w.text_uthmani_tajweed || '')}</span>`;
+      pos++;
+      const plain = quranApplyMode((w.text_uthmani_tajweed || '').replace(/<[^>]*>/g, ''));
+      return `<span class="quran-word" data-audio="${escapeHtml(`${QURAN_AUDIO_BASE}wbw/${p3(chNum)}_${p3(ayNum)}_${p3(pos)}.mp3`)}">${escapeHtml(plain)}</span>`;
+    }).join(' ');
+  }
   if(!v.words || !v.words.length) return v.text_uthmani_tajweed;
   const [chapterNum, ayahNum] = v.verse_key.split(':').map(Number);
   // The API's own per-word audio_url is wrong whenever a pause mark (ۛ ۘ ۚ
@@ -16019,6 +16389,30 @@ async function quranRenderPage(pageNum){
   quranPauseAudio();
 
   try{
+    if(quranUsesLocal()){
+      // Локальные тексты работают и без интернета: названия сур из сети — лишь украшение.
+      try{ await Promise.race([quranFetchChapters(), new Promise(r => setTimeout(r, 2500))]); }catch(e){}
+      const firstChapterNum = await quranRenderLocalPage(pageNum);
+      pageEl.setAttribute('data-copy-btn', 'on');
+      pageEl.style.display = '';
+      loadingEl.style.display = 'none';
+      if(scrollEl) scrollEl.scrollTop = 0;
+      if(quranState.highlightVerseKey){
+        const target = pageEl.querySelector(`.quran-verse[data-verse-key="${CSS.escape(quranState.highlightVerseKey)}"]`);
+        if(target){
+          target.classList.add('search-highlight');
+          target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          setTimeout(()=> target.classList.remove('search-highlight'), 2500);
+        }
+        quranState.highlightVerseKey = null;
+      }
+      quranFinishPage(pageNum, firstChapterNum);
+      return;
+    }
+    // Хафс списком аятов — с api.quran.com: сбрасываем следы локального вида.
+    if(scrollEl) scrollEl.classList.remove('mushaf-on');
+    pageEl.classList.remove('mushaf');
+    pageEl.setAttribute('data-riwaya', '');
     await quranFetchChapters();
     const [verses, audioMap] = await Promise.all([quranFetchPage(pageNum), quranFetchPageAudio(pageNum)]);
     let html = '';
@@ -16033,11 +16427,13 @@ async function quranRenderPage(pageNum){
       }
       const audioUrl = audioMap[v.verse_key] || '';
       const playBtn = audioUrl ? `<button type="button" class="quran-verse-play" data-audio="${escapeHtml(audioUrl)}" aria-label="Слушать аят">🔊</button>` : '';
-      html += `<span class="quran-verse" data-verse-key="${escapeHtml(v.verse_key)}">${quranBuildVerseHtml(v)}${playBtn}</span> `;
+      const copyBtn = `<button type="button" class="quran-verse-copy" data-surah="${chapterNum}" data-number="${v.verse_number}" aria-label="Копировать аят">⧉</button>`;
+      html += `<span class="quran-verse" data-verse-key="${escapeHtml(v.verse_key)}">${quranBuildVerseHtml(v)}${playBtn}${copyBtn}</span> `;
     });
     pageEl.innerHTML = html;
-    pageEl.setAttribute('data-tajweed', quranState.tajweed ? 'on' : 'off');
+    pageEl.setAttribute('data-tajweed', quranState.tajweed && quranState.textMode === 'full' ? 'on' : 'off');
     pageEl.setAttribute('data-audio-btn', quranState.showAyahAudioBtn ? 'on' : 'off');
+    pageEl.setAttribute('data-copy-btn', 'on');
     pageEl.setAttribute('data-font', quranState.font);
     pageEl.style.fontSize = quranState.size + 'px';
     pageEl.style.display = '';
@@ -16117,6 +16513,8 @@ function quranPauseAudio(){
   quranClearPlayingHighlight();
 }
 document.getElementById('quranPage').addEventListener('click', e=>{
+  const copyBtn = e.target.closest('.quran-verse-copy, .mk');
+  if(copyBtn){ quranCopyAyah(parseInt(copyBtn.dataset.surah, 10), parseInt(copyBtn.dataset.number, 10)); return; }
   const playBtn = e.target.closest('.quran-verse-play');
   if(playBtn){ quranPlayAudio(playBtn.dataset.audio, playBtn); return; }
   const wordEl = e.target.closest('.quran-word');
@@ -16709,7 +17107,7 @@ const quranTajweedToggle = document.getElementById('quranTajweedToggle');
     quranState.tajweed = quranTajweedToggle.checked;
     try{ localStorage.setItem('quranTajweed', quranState.tajweed ? 'on' : 'off'); }catch(e){}
     paint();
-    document.getElementById('quranPage').setAttribute('data-tajweed', quranState.tajweed ? 'on' : 'off');
+    document.getElementById('quranPage').setAttribute('data-tajweed', quranState.tajweed && quranState.textMode === 'full' ? 'on' : 'off');
   });
 })();
 
@@ -16740,11 +17138,23 @@ const quranAyahAudioToggle = document.getElementById('quranAyahAudioToggle');
 // так видно результат сразу, не закрывая лист настроек.
 function quranApplyDisplayPrefs(){
   const preview = document.getElementById('quranFontPreview');
+  const localFont = quranState.riwaya !== 'hafs';
   preview.setAttribute('data-font', quranState.font);
+  preview.setAttribute('data-riwaya', localFont ? quranState.riwaya : '');
   preview.style.fontSize = quranState.size + 'px';
   const pageEl = document.getElementById('quranPage');
   pageEl.setAttribute('data-font', quranState.font);
-  pageEl.style.fontSize = quranState.size + 'px';
+  if(quranState.view !== 'mushaf') pageEl.style.fontSize = quranState.size + 'px';
+  quranUpdatePreview();
+}
+// Образец показывает настоящий бисмиллях выбранного способа чтения в выбранном виде текста.
+async function quranUpdatePreview(){
+  const preview = document.getElementById('quranFontPreview');
+  let text = 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ';
+  if(quranState.riwaya !== 'hafs'){
+    try{ text = (await quranLoadLocal(quranState.riwaya)).basmalah; }catch(e){}
+  }
+  preview.textContent = text.split(' ').map(quranApplyMode).join(' ');
 }
 
 function quranUpdateFontChoiceUI(){
@@ -16773,7 +17183,65 @@ document.querySelectorAll('#quranSizeChoice .len-chip').forEach(chip=>{
   });
 });
 
+// Показывает только те настройки, которые работают в выбранном виде.
+function quranRefreshSettingsUI(){
+  const list = quranState.view === 'list', hafs = quranState.riwaya === 'hafs', full = quranState.textMode === 'full';
+  document.querySelectorAll('#quranViewChoice .len-chip').forEach(c=>c.classList.toggle('active', c.dataset.view===quranState.view));
+  document.querySelectorAll('#quranTextModeChoice .len-chip').forEach(c=>c.classList.toggle('active', c.dataset.textmode===quranState.textMode));
+  document.querySelectorAll('#quranRiwayaChoice .len-chip').forEach(c=>c.classList.toggle('active', c.dataset.riwaya===quranState.riwaya));
+  document.getElementById('quranRiwayaInfo').textContent = quranRiwayaInfo().info;
+  document.getElementById('quranRiwayaNote').textContent = hafs && list
+    ? '' : 'Текст и шрифт: Комплекс имама Фахда (KFGQPC), данные подготовлены проектом quran.ws. Работает без интернета.' + (!hafs ? ' Звук и цвета таджвида пока только для Хафса.' : '');
+  document.getElementById('quranViewNote').textContent = list
+    ? 'Каждый аят отдельно: звук и цвета таджвида (для Хафса), размер текста и шрифт на выбор.'
+    : 'Как в печатном мусхафе: 604 страницы по 15 строк. Нажмите на номер аята, чтобы скопировать его.';
+  document.getElementById('quranTextModeNote').textContent = ({
+    full: 'Полный текст мусхафа со всеми огласовками и знаками.',
+    novowels: 'Только буквы, без огласовок и малых знаков. Для чтения Корана с огласовками лучше полный текст.',
+    stretched: 'Без огласовок, буквы соединены палочками, слова становятся шире.',
+  })[quranState.textMode];
+  document.getElementById('quranFontPreview').style.display = list ? '' : 'none';
+  document.getElementById('quranSizeBlock').style.display = list ? '' : 'none';
+  document.getElementById('quranFontBlock').style.display = list && hafs ? '' : 'none';
+  document.getElementById('quranTajweedBlock').style.display = list && hafs && full ? '' : 'none';
+}
+function quranRerenderCurrent(){
+  const pageEl = document.getElementById('quranPage');
+  if(pageEl && pageEl.offsetParent !== null) quranRenderPage(quranState.page);
+}
+document.getElementById('quranRiwayaChoice').innerHTML = QURAN_RIWAYAT.map(r =>
+  `<div class="len-chip" data-riwaya="${r.id}">${r.label} · ${r.qari}</div>`).join('');
+document.querySelectorAll('#quranViewChoice .len-chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    quranState.view = chip.dataset.view;
+    try{ localStorage.setItem('quranView', quranState.view); }catch(e){}
+    quranPauseAudio(); quranRefreshSettingsUI(); quranApplyDisplayPrefs(); quranRerenderCurrent();
+  });
+});
+document.querySelectorAll('#quranTextModeChoice .len-chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    quranState.textMode = chip.dataset.textmode;
+    try{ localStorage.setItem('quranTextMode', quranState.textMode); }catch(e){}
+    quranRefreshSettingsUI(); quranApplyDisplayPrefs(); quranRerenderCurrent();
+  });
+});
+document.querySelectorAll('#quranRiwayaChoice .len-chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    quranState.riwaya = chip.dataset.riwaya;
+    try{ localStorage.setItem('quranRiwaya', quranState.riwaya); }catch(e){}
+    quranPauseAudio(); quranRefreshSettingsUI(); quranApplyDisplayPrefs(); quranRerenderCurrent();
+  });
+});
+// Страница мусхафа подгоняется под размер окна: при повороте экрана пересчитываем.
+let quranResizeTimer = null;
+window.addEventListener('resize', ()=>{
+  if(quranState.view !== 'mushaf') return;
+  clearTimeout(quranResizeTimer);
+  quranResizeTimer = setTimeout(quranRerenderCurrent, 250);
+});
+
 function openQuranSettingsSheet(){
+  quranRefreshSettingsUI();
   quranApplyDisplayPrefs();
   pushSheetHistory();
   document.getElementById('quranSettingsSheet').classList.add('show');
@@ -16796,7 +17264,7 @@ function quranRenderSurahRows(chapters){
     return;
   }
   listEl.innerHTML = chapters.map(c => `
-    <div class="quran-surah-row" data-page="${c.pages[0]}">
+    <div class="quran-surah-row" data-page="${c.pages[0]}" data-id="${c.id}">
       <span class="n">${c.id}</span>
       <span class="name">
         <span class="ru">${quranSurahDisplayName(c)}</span>
@@ -16807,9 +17275,13 @@ function quranRenderSurahRows(chapters){
     </div>
   `).join('');
   listEl.querySelectorAll('.quran-surah-row').forEach(row=>{
-    row.addEventListener('click', ()=>{
+    row.addEventListener('click', async ()=>{
       closeQuranSurahSheet();
-      quranBrowseToPage(parseInt(row.dataset.page, 10));
+      let target = parseInt(row.dataset.page, 10);
+      if(quranUsesLocal()){
+        try{ target = (await quranLoadLocal(quranState.riwaya)).surahPage(parseInt(row.dataset.id, 10)); }catch(e){}
+      }
+      quranBrowseToPage(target);
     });
   });
 }
