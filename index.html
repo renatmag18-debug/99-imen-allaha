@@ -7071,7 +7071,8 @@ function updateWhatsNewBannerVisibility(){
   if(!banner) return;
   let seen = null;
   try{ seen = localStorage.getItem('whatsNewSeen'); }catch(e){}
-  banner.classList.toggle('show', seen !== WHATS_NEW_VERSION);
+  // Плашка «Крупное обновление для Android» больше не показывается: остаётся только «Скачать настоящее приложение».
+  banner.classList.remove('show');
 }
 function dismissWhatsNewBanner(){
   try{ localStorage.setItem('whatsNewSeen', WHATS_NEW_VERSION); }catch(e){}
