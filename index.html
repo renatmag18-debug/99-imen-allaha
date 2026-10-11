@@ -2413,6 +2413,42 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
 .hub-grid .hub-ico svg{ width:23px; height:23px; }
 .hub-grid .hub-txt{ flex:1; }
 
+/* Разделы как в приложении: сетка из четырёх колонок, плитки шириной от 1 до 4 колонок, режим «Изменить» */
+.hub-grid4{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-top:10px; }
+.hub-grid4 .hub-tile{
+  position:relative; height:96px; min-height:0; min-width:0; padding:8px 12px; gap:10px; border-radius:16px;
+  -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
+}
+.hub-grid4 .hub-tile.s1{ flex-direction:column; justify-content:center; text-align:center; padding:8px 4px; gap:5px; }
+.hub-grid4 .hub-ico{ width:44px; height:44px; border-radius:14px; }
+.hub-grid4 .hub-ico svg{ width:25px; height:25px; }
+.hub-grid4 .s1 .hub-ico{ width:38px; height:38px; border-radius:12px; }
+.hub-grid4 .s1 .hub-ico svg{ width:22px; height:22px; }
+.hub-grid4 .hub-txt{ flex:1; min-width:0; }
+.hub-grid4 .hub-txt b{
+  font-size:14.5px; font-weight:600; line-height:1.12; white-space:normal;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+}
+.hub-grid4 .hub-txt span{
+  font-size:11.5px; line-height:1.15; margin-top:2px; white-space:normal;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+}
+.hub-grid4 .s1 .hub-txt{ flex:none; width:100%; }
+.hub-grid4 .s1 .hub-txt b{ font-size:11px; line-height:12px; }
+.hub-grid4 .s1 .hub-txt span{ display:none; }
+.hub-grid4.editing .hub-tile{ outline:1px solid color-mix(in srgb, var(--gold) 45%, transparent); touch-action:none; cursor:grab; }
+.hub-grid4 .hub-tile.dragging{ z-index:5; transition:none; opacity:.95; box-shadow:0 8px 24px rgba(0,0,0,.35); }
+.hub-resize{
+  display:none; position:absolute; right:4px; bottom:4px; width:30px; height:30px; border-radius:50%;
+  align-items:center; justify-content:center; background:var(--accent-tint); color:var(--gold-soft);
+  font-size:15px; touch-action:none; cursor:ew-resize;
+}
+.hub-grid4.editing .hub-resize{ display:flex; }
+.hub-edit-btn{ background:none; border:none; color:var(--gold-soft); font-family:inherit; font-size:15px; font-weight:600; cursor:pointer; padding:8px 4px; }
+.hub-hint{ display:none; text-align:center; font-size:12px; color:var(--ivory-dim); padding:12px 8px 0; line-height:1.5; }
+.hub-hint.show{ display:block; }
+.hub-hint button{ display:block; margin:6px auto 0; background:none; border:none; color:var(--gold-soft); font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; }
+
 /* Имена: строки как в приложении */
 .screen[data-screen="study"] .segmented-wrap{ display:none; }
 .listen-root-back{ display:none !important; }
@@ -3163,6 +3199,141 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
         </div>
       </div>
     </section>
+
+<script>
+// Разделы как в приложении: плитки в сетке из 4 колонок. Ширина плитки — от 1 до 4 колонок,
+// «Изменить» (или долгое нажатие) включает перестановку перетаскиванием и растягивание за уголок ⇲.
+(function(){
+  var screen = document.querySelector('.screen[data-screen="hub"]');
+  var scroll = screen && screen.querySelector('.scroll');
+  var head = scroll && scroll.querySelector('.app-head');
+  var wide = scroll && scroll.querySelector('.hub-wide');
+  var oldGrid = scroll && scroll.querySelector('.hub-grid');
+  if(!head || !wide || !oldGrid) return;
+  var ORDER = ['quran','prophets','misc','alarms','qibla','tafsir','sira','siraFull','favorites','room','weekly'];
+  var TEXT = {
+    quran:['Коран','Продолжить чтение'], prophets:['Имена пророков','25 пророков и тест'], misc:['Зикры и дуа','Азкары, дуа, слова намаза'],
+    alarms:['Будильник','На молитву и не только'], tafsir:['Тафсир','114 сур'], sira:['Сира за 30 дней','По дню в сутки'],
+    siraFull:['Сира полностью','25 глав'], favorites:['Избранное','Отмеченное звёздочкой'], room:['Зикр с друзьями','Общий счёт'],
+    weekly:['Зикр недели','Салават и истигфар']
+  };
+  var tiles = {};
+  [wide].concat([].slice.call(oldGrid.children)).forEach(function(t){ tiles[t.dataset.hub] = t; });
+  ORDER.forEach(function(id){
+    var t = tiles[id]; if(!t) return;
+    if(TEXT[id]){ var b = t.querySelector('.hub-txt b'), sp = t.querySelector('.hub-txt span'); if(b) b.textContent = TEXT[id][0]; if(sp) sp.textContent = TEXT[id][1]; }
+    var h = document.createElement('span'); h.className = 'hub-resize'; h.setAttribute('aria-hidden', 'true'); h.textContent = '\u21F2'; t.appendChild(h);
+  });
+  var state = { order: ORDER.slice(), spans: {} };
+  function defaults(){ var sp = {}; ORDER.forEach(function(id){ sp[id] = id === 'quran' ? 4 : 2; }); return sp; }
+  state.spans = defaults();
+  try{
+    var saved = JSON.parse(localStorage.getItem('hubLayout4') || 'null');
+    if(saved && Array.isArray(saved.order)){
+      var seen = {}, order = [];
+      saved.order.forEach(function(id){ if(tiles[id] && !seen[id]){ seen[id] = 1; order.push(id); } });
+      ORDER.forEach(function(id){ if(tiles[id] && !seen[id]) order.push(id); });
+      state.order = order;
+      Object.keys(saved.spans || {}).forEach(function(id){ var n = parseInt(saved.spans[id], 10); if(n >= 1 && n <= 4) state.spans[id] = n; });
+    }
+  }catch(e){}
+  function save(){ try{ localStorage.setItem('hubLayout4', JSON.stringify(state)); }catch(e){} }
+
+  var grid = document.createElement('div'); grid.className = 'hub-grid4';
+  wide.parentNode.removeChild(wide); oldGrid.parentNode.removeChild(oldGrid);
+  head.parentNode.insertBefore(grid, head.nextSibling);
+  head.insertAdjacentHTML('beforeend', '<button type="button" class="hub-edit-btn" id="hubEditBtn">Изменить</button>');
+  var hint = document.createElement('div'); hint.className = 'hub-hint';
+  hint.innerHTML = 'Перетащите плитку, чтобы переставить. Потяните за уголок \u21F2, чтобы изменить ширину от 1 до 4 колонок.<button type="button" id="hubResetBtn">Сбросить расстановку</button>';
+  grid.parentNode.insertBefore(hint, grid.nextSibling);
+
+  function paint(){
+    state.order.forEach(function(id){
+      var t = tiles[id]; if(!t) return;
+      var n = state.spans[id] || 2;
+      t.classList.remove('hub-wide', 's1', 's2', 's3', 's4'); t.classList.add('s' + n);
+      t.style.gridColumn = 'span ' + n;
+      grid.appendChild(t);
+    });
+  }
+  paint();
+
+  // Подпись у «Корана»: с какой страницы продолжить.
+  function quranSub(){
+    var n = 0; try{ n = parseInt(localStorage.getItem('quranLastPage'), 10) || 0; }catch(e){}
+    var sp = tiles.quran && tiles.quran.querySelector('.hub-txt span');
+    if(sp) sp.textContent = n > 0 ? 'Продолжить с ' + n + ' страницы' : 'Продолжить чтение';
+  }
+  quranSub();
+  if(window.MutationObserver) new MutationObserver(quranSub).observe(screen, { attributes:true, attributeFilter:['class'] });
+
+  var editing = false, swallow = false;
+  var editBtn = document.getElementById('hubEditBtn');
+  function setEditing(on){
+    editing = on; grid.classList.toggle('editing', on); hint.classList.toggle('show', on);
+    editBtn.textContent = on ? 'Готово' : 'Изменить';
+  }
+  editBtn.addEventListener('click', function(){ setEditing(!editing); });
+  document.getElementById('hubResetBtn').addEventListener('click', function(){
+    state.order = ORDER.filter(function(id){ return tiles[id]; }); state.spans = defaults(); save(); paint();
+  });
+  grid.addEventListener('click', function(e){
+    if(editing || swallow){ e.stopImmediatePropagation(); e.preventDefault(); swallow = false; }
+  }, true);
+
+  function currentOrder(){ return [].slice.call(grid.children).map(function(t){ return t.dataset.hub; }); }
+  function startDrag(tile, e){
+    var rect = tile.getBoundingClientRect(), gx = e.clientX - rect.left, gy = e.clientY - rect.top;
+    tile.classList.add('dragging');
+    function move(ev){
+      tile.style.transform = 'none'; tile.style.pointerEvents = 'none';
+      var el = document.elementFromPoint(ev.clientX, ev.clientY), tgt = el && el.closest && el.closest('.hub-tile');
+      if(tgt && tgt !== tile && grid.contains(tgt)){
+        var kids = [].slice.call(grid.children);
+        if(kids.indexOf(tile) < kids.indexOf(tgt)) grid.insertBefore(tile, tgt.nextSibling); else grid.insertBefore(tile, tgt);
+      }
+      var r0 = tile.getBoundingClientRect();
+      tile.style.transform = 'translate(' + (ev.clientX - gx - r0.left) + 'px,' + (ev.clientY - gy - r0.top) + 'px) scale(1.04)';
+    }
+    function up(){
+      window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+      tile.classList.remove('dragging'); tile.style.transform = ''; tile.style.pointerEvents = '';
+      state.order = currentOrder(); save();
+    }
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+  }
+  function startResize(tile, e){
+    var id = tile.dataset.hub, startSpan = state.spans[id] || 2, x0 = e.clientX;
+    var step = (grid.clientWidth - 24) / 4 + 8;
+    function move(ev){
+      var n = Math.max(1, Math.min(4, startSpan + Math.round((ev.clientX - x0) / step)));
+      if(n !== state.spans[id]){ state.spans[id] = n; paint(); }
+    }
+    function up(){
+      window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+      save();
+    }
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+  }
+  var lpTimer = null;
+  grid.addEventListener('pointerdown', function(e){
+    var tile = e.target.closest && e.target.closest('.hub-tile');
+    if(!tile) return;
+    if(editing){
+      e.preventDefault();
+      if(e.target.closest('.hub-resize')) startResize(tile, e); else startDrag(tile, e);
+      return;
+    }
+    // Долгое нажатие включает режим перестановки.
+    var x0 = e.clientX, y0 = e.clientY;
+    function cancel(){ clearTimeout(lpTimer); window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', cancel); window.removeEventListener('pointercancel', cancel); }
+    function mv(ev){ if(Math.abs(ev.clientX - x0) > 10 || Math.abs(ev.clientY - y0) > 10) cancel(); }
+    lpTimer = setTimeout(function(){ cancel(); swallow = true; setEditing(true); try{ if(navigator.vibrate) navigator.vibrate(15); }catch(e){} }, 550);
+    window.addEventListener('pointermove', mv); window.addEventListener('pointerup', cancel); window.addEventListener('pointercancel', cancel);
+  });
+  grid.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+})();
+</script>
 
     <!-- STUDY LIST -->
     <section class="screen" data-screen="study">
@@ -16385,9 +16556,7 @@ async function quranRenderLocalPage(pageNum){
 // Общий хвост отрисовки: название суры вверху и закладка/«прочитано» (только в режиме чтения).
 function quranFinishPage(pageNum, firstChapterNum){
   const firstChapter = quranChapterFor(firstChapterNum);
-  document.getElementById('quranSurahName').textContent = firstChapter
-    ? (firstChapterNum + '. ' + quranSurahDisplayName(firstChapter))
-    : (firstChapterNum + '. ' + (QURAN_SURAH_TRANSLIT[firstChapterNum-1] || 'Коран'));
+  document.getElementById('quranSurahName').textContent = firstChapterNum + '. ' + (QURAN_SURAH_TRANSLIT[firstChapterNum-1] || (firstChapter ? quranSurahDisplayName(firstChapter) : 'Коран'));
   quranState.page = pageNum;
   if(quranState.mode === 'progress'){
     quranState.bookmarkPage = pageNum;
@@ -16573,8 +16742,7 @@ async function quranRenderPage(pageNum){
 
     const firstChapterNum = parseInt(verses[0].verse_key.split(':')[0], 10);
     const firstChapter = quranChapterFor(firstChapterNum);
-    document.getElementById('quranSurahName').textContent = firstChapter
-      ? (firstChapterNum + '. ' + quranSurahDisplayName(firstChapter)) : 'Коран';
+    document.getElementById('quranSurahName').textContent = firstChapterNum + '. ' + (QURAN_SURAH_TRANSLIT[firstChapterNum-1] || (firstChapter ? quranSurahDisplayName(firstChapter) : 'Коран'));
 
     quranState.page = pageNum;
     // Only a 'progress' page (reached by turning one page at a time from the
