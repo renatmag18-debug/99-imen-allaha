@@ -2105,6 +2105,9 @@ video::-webkit-media-controls-start-playback-button{ display:none !important; }
   display:flex; align-items:flex-start; gap:12px; padding:16px 10px; border-radius:var(--r-card);
   transition:background .25s;
 }
+.listen-karaoke-word{border-radius:4px;transition:color .18s ease,background-color .18s ease,box-shadow .18s ease;}
+.listen-karaoke-word.active{color:var(--gold-soft);background:var(--accent-tint);box-shadow:0 0 0 2px var(--accent-tint);animation:listenKaraokeWordPulse .22s ease-out;}
+@keyframes listenKaraokeWordPulse{from{filter:brightness(1.65)}to{filter:brightness(1)}}
 .listen-karaoke-ayah.active{ background:var(--accent-tint); }
 .listen-karaoke-ayah-num{
   flex-shrink:0; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center;
@@ -5787,6 +5790,30 @@ window.addEventListener('popstate', (e) => {
     isPopping = false;
   }
 });
+// Native Android back and the in-page edge gesture must stay within our
+// screen router; WebView.goBack() can navigate to the stale preloaded page.
+function handleAppBackNavigation(){
+  const drawer = document.getElementById('sideDrawer');
+  if(drawer && drawer.classList.contains('show')){
+    closeSideDrawer();
+    return true;
+  }
+  if(isSheetOpenState){
+    history.back(); // the immediately preceding entry is our sheet's screen
+    return true;
+  }
+  if(typeof listenKaraokeOverlayOpen !== 'undefined' && listenKaraokeOverlayOpen){
+    listenExitKaraoke();
+    return true;
+  }
+  if(state.screen !== 'home'){
+    const parent = {listenReciter:'listen',listenSaved:'listen',chat:'chats',siraFull:'sira'}[state.screen] || 'home';
+    go(parent, true);
+    return true;
+  }
+  return false;
+}
+window.handleAndroidBack = handleAppBackNavigation;
 history.replaceState({screen: 'home'}, '', '#home');
 document.querySelectorAll('[data-nav]').forEach(el=>{
   // Экраны, которым при открытии нужно ещё и наполнить себя (список чтецов, время намаза,
@@ -16106,6 +16133,32 @@ async function listenDownloadAllSurahs(){
 /* ---- "show text" overlay — pure visibility toggle over whatever ayah
    listenAyah.currentIndex (tracked continuously below) says is playing
    right now; open/close never touches listenAudioEl. ---- */
+// Word highlighting is interpolated within each timed ayah. We have ayah
+// boundaries, NOT verified word-level timestamps: keep the UI explicit about
+// this distinction, including for reciters with exact ayah alignment.
+function listenKaraokeWordMarkup(text){
+  return String(text || '').split(/(\s+)/u).map(part =>
+    /^\s+$/u.test(part) ? part : '<span class="listen-karaoke-word">' + escapeHtml(part) + '</span>'
+  ).join('');
+}
+function listenHighlightKaraokeWord(){
+  if(!listenKaraokeOverlayOpen || !listenAyah.active || listenAyah.currentIndex < 0) return;
+  const idx = listenAyah.currentIndex;
+  const seg = listenAyah.timings[idx];
+  if(!seg) return;
+  const row = document.querySelector('.listen-karaoke-ayah[data-index="' + idx + '"]');
+  if(!row) return;
+  const words = row.querySelectorAll('.listen-karaoke-word');
+  if(!words.length) return;
+  const duration = Math.max(0.1, seg.toSec - seg.fromSec);
+  const fraction = Math.max(0, Math.min(0.99999, (listenAudioEl.currentTime - seg.fromSec) / duration));
+  const next = Math.min(words.length - 1, Math.floor(fraction * words.length));
+  if(row.dataset.activeWord === String(next)) return;
+  const old = row.querySelector('.listen-karaoke-word.active');
+  if(old) old.classList.remove('active');
+  words[next].classList.add('active');
+  row.dataset.activeWord = String(next);
+}
 function renderListenKaraokeAyahs(){
   const wrap = document.getElementById('listenKaraokeScroll');
   wrap.innerHTML = listenAyah.timings.map((a, i) => {
@@ -16114,7 +16167,7 @@ function renderListenKaraokeAyahs(){
     <div class="listen-karaoke-ayah${i === listenAyah.currentIndex ? ' active' : ''}" data-index="${i}">
       <div class="listen-karaoke-ayah-num">${i + 1}</div>
       <div class="listen-karaoke-ayah-content">
-        <div class="listen-karaoke-ayah-text">${a.text}</div>
+        <div class="listen-karaoke-ayah-text">${listenKaraokeWordMarkup(a.text)}</div>
         ${translation ? `<div class="listen-karaoke-ayah-translation">${escapeHtml(translation)}</div>` : ''}
       </div>
     </div>
@@ -16137,7 +16190,8 @@ function listenOpenKaraoke(){
   if(listenTranslationOn && !listenAyah.translations.length) listenLoadTranslationIfOn(listenState.currentSurah);
   const disclaimerEl = document.getElementById('listenKaraokeDisclaimer');
   if(listenHasExactKaraoke(listenState.reciter.id)){
-    disclaimerEl.style.display = 'none';
+    disclaimerEl.style.display = 'block';
+    disclaimerEl.textContent = 'Аяты синхронизированы точно. Подсветка отдельных слов приблизительная.';
   } else if(listenHasPrecomputedTiming(listenState.reciter.id)){
     disclaimerEl.style.display = 'block';
     disclaimerEl.textContent = `У чтеца «${listenState.reciter.name}» синхронизация текста рассчитана автоматически и в редких местах может немного не совпадать с чтением.`;
@@ -16149,6 +16203,7 @@ function listenOpenKaraoke(){
   document.getElementById('listenKaraokeTitle').textContent = chapter ? quranSurahDisplayName(chapter) : ('Сура ' + listenState.currentSurah);
   if(listenAyah.active && listenAyah.timings.length){
     renderListenKaraokeAyahs();
+    listenHighlightKaraokeWord();
     // Only jump to the marked ayah on open for reliable-timing reciters —
     // for an estimate, auto-scrolling the screen around to chase a mark
     // that can itself be off is more distracting than useful.
@@ -16217,6 +16272,7 @@ listenAudioEl.addEventListener('timeupdate', ()=>{
         }
       }
     }
+    if(listenKaraokeOverlayOpen) listenHighlightKaraokeWord();
   }
 });
 
@@ -18096,9 +18152,9 @@ document.addEventListener('touchend', (e) => {
     const endY = e.changedTouches[0].clientY;
     // ensure it's a horizontal swipe, not vertical scrolling
     if (endX - edgeSwipeStartX > 60 && Math.abs(endY - edgeSwipeStartY) < 60) {
-      if (isSheetOpenState || location.hash) {
-        history.back();
-      }
+      // location.hash is truthy even on #home; history.back() there
+      // escapes the SPA and can reveal WebView's stale bootstrap document.
+      handleAppBackNavigation();
     }
   }
 }, {passive:true});
