@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Deploy disabled website to GitHub Pages
 
 on:
   push:
@@ -23,12 +23,43 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Upload Pages artifact
+      - name: Disable web interface while preserving application assets
+        run: |
+          python3 - <<'PY'
+          import pathlib, subprocess, shutil, hashlib
+          out = pathlib.Path("_site")
+          out.mkdir(exist_ok=True)
+          files = subprocess.check_output(["git", "ls-files", "-z"]).decode().split("\0")
+          disabled = "<!doctype html><html lang=\"ru\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><meta name=\"robots\" content=\"noindex,nofollow\"><title>99ism — сайт отключён</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#09212b;color:#f4eddd;font:20px system-ui;text-align:center}main{padding:32px}h1{font-size:28px}</style><main><h1>Сайт отключён</h1></main><script>if(\"serviceWorker\" in navigator)navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()));if(\"caches\" in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));</script></html>\n"
+          for name in files:
+              if not name or name.startswith(".github/"):
+                  continue
+              source = pathlib.Path(name)
+              if not source.is_file():
+                  continue
+              target = out / name
+              target.parent.mkdir(parents=True, exist_ok=True)
+              if source.suffix.lower() == ".html":
+                  target.write_text(disabled, encoding="utf-8")
+              else:
+                  shutil.copy2(source, target)
+          (out / "index.html").write_text(disabled, encoding="utf-8")
+          (out / "404.html").write_text(disabled, encoding="utf-8")
+          (out / "robots.txt").write_text("User-agent: *\nDisallow: /\n", encoding="utf-8")
+          (out / "sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"/>', encoding="utf-8")
+          (out / "sw.js").write_text("self.addEventListener('install',()=>self.skipWaiting());self.addEventListener('activate',e=>e.waitUntil((async()=>{await self.clients.claim();for(const k of await caches.keys())await caches.delete(k);for(const c of await self.clients.matchAll({type:'window'})){if('navigate' in c)await c.navigate('/');}await self.registration.unregister();})()));", encoding="utf-8")
+          for page in out.rglob("*.html"):
+              assert "Сайт отключён" in page.read_text()
+          for source in pathlib.Path(".").glob("*.apk"):
+              assert hashlib.sha256(source.read_bytes()).digest() == hashlib.sha256((out / source.name).read_bytes()).digest()
+          assert (out / "CNAME").read_text().strip() == "99ism.ru"
+          print("Web pages disabled; download and application assets preserved.")
+          
+          PY
+      - name: Upload disabled Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
-
+          path: '_site'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
