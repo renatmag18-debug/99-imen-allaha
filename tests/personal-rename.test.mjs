@@ -157,3 +157,14 @@ test('existing nickname is never overwritten', async () => {
   assert.equal(db.entries.get('new').value.password, btoa('other'));
   assert.equal(db.entries.get('old').value.personalProgressRenameLock, undefined);
 });
+test('concurrent requests for two different nicknames cannot duplicate or lose progress', async () => {
+  const db = fakeDb();
+  const results = await Promise.all([
+    db.rename({ ...request, newUsername: 'new' }, {}),
+    db.rename({ ...request, newUsername: 'other' }, {}),
+  ]);
+  assert.equal(results.filter(result => result.status === 200).length, 1);
+  const records = [...db.entries.values()].filter(entry => entry.value?.personalProgressV1);
+  assert.equal(records.length, 1);
+  assert.equal(records[0].value.personalProgressV1.revision, 'old-saved-progress');
+});
