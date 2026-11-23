@@ -84,3 +84,45 @@ test('a simultaneous source update cancels the move and preserves the newer reco
     await fetchDb(userPath(newName), env, { method: 'DELETE' });
   }
 });
+
+test('first identity assignment cannot resurrect an old nickname during a rename', async () => {
+  await putUser(oldName, { username: oldName, password: btoa('secret') });
+  try {
+    let release; const gate = new Promise(resolve => { release = resolve; });
+    let signal; const blocked = new Promise(resolve => { signal = resolve; });
+    let once = false;
+    const delayedFetch = async (path, e, options = {}) => {
+      if (!once && path === userPath(oldName) && options.method === 'PUT') {
+        const body = JSON.parse(options.body);
+        if (body.personalAccountId && !body.personalProgressRenameLock) { once = true; signal(); await gate; }
+      }
+      return fetchDb(path, e, options);
+    };
+    const pendingRead = createProgressHandler({ ...deps, rtdbFetch: delayedFetch })({ username: oldName, password: 'secret', action: 'read' }, env);
+    await blocked;
+    assert.equal((await rename({ username: oldName, password: 'secret', newUsername: newName }, env)).status, 200);
+    release();
+    assert.equal((await pendingRead).status, 409);
+    assert.equal(await readUser(oldName), null);
+    const freshRead = await progress({ username: newName, password: 'secret', action: 'read' }, env);
+    assert.equal(freshRead.status, 200);
+    assert.ok(freshRead.body.accountId);
+  } finally {
+    await fetchDb(userPath(oldName), env, { method: 'DELETE' });
+    await fetchDb(userPath(newName), env, { method: 'DELETE' });
+  }
+});
+
+test('reusing a deleted nickname creates a different personal identity', async () => {
+  await putUser(oldName, { username: oldName, password: btoa('secret') });
+  try {
+    const first = await progress({ username: oldName, password: 'secret', action: 'read' }, env);
+    assert.equal(first.status, 200);
+    await fetchDb(userPath(oldName), env, { method: 'DELETE' });
+    await putUser(oldName, { username: oldName, password: btoa('secret') });
+    const second = await progress({ username: oldName, password: 'secret', action: 'read' }, env);
+    assert.equal(second.status, 200);
+    assert.notEqual(first.body.accountId, second.body.accountId);
+    assert.equal(second.body.progress, null);
+  } finally { await fetchDb(userPath(oldName), env, { method: 'DELETE' }); }
+});
