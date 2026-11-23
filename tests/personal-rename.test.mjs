@@ -70,7 +70,8 @@ test('an in-flight backup cannot write to the old nickname after rename starts',
   const progress = createProgressHandler({ ...db.dependencies });
   const original = { version: 1, ayahs: ['1:1'], qada: null };
   const changed = { version: 1, ayahs: ['1:1', '2:2'], qada: null };
-  const first = await progress({ ...request, action: 'write', revision: null, snapshot: original }, env);
+  const bound = await progress({ ...request, action: 'read' }, env);
+  const first = await progress({ ...request, action: 'write', accountId: bound.body.accountId, revision: null, snapshot: original }, env);
   assert.equal(first.status, 200);
   let release; const gate = new Promise(resolve => { release = resolve; });
   let signal; const blocked = new Promise(resolve => { signal = resolve; });
@@ -82,7 +83,7 @@ test('an in-flight backup cannot write to the old nickname after rename starts',
       once = true; signal(); await gate;
     }
   });
-  const inFlight = progress({ ...request, action: 'write', revision: first.body.revision, snapshot: changed }, env);
+  const inFlight = progress({ ...request, action: 'write', accountId: bound.body.accountId, revision: first.body.revision, snapshot: changed }, env);
   await blocked;
   assert.equal((await db.rename(request, env)).status, 200);
   release();

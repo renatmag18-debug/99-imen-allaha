@@ -1,0 +1,25 @@
+name: Test personal identity and rename on demo RTDB emulator
+on:
+  push:
+    branches: [draft/account-bound-progress]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Test sync and rename with mocks
+        run: node --test tests/personal-progress.test.mjs tests/personal-rename.test.mjs tests/worker-rename.integration.test.mjs
+      - name: Run local demo emulator tests only
+        env:
+          CI: '1'
+        run: npx --yes firebase-tools@13.35.1 emulators:exec --config firebase.emulator.json --project demo-ism99 --only database "node --test tests/personal-rename.emulator.test.mjs"

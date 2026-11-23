@@ -41,14 +41,15 @@ test('requires authentication and a valid encryption key', async () => {
 });
 test('private encrypted round-trip and no overwrite of newer data', async () => {
   const { handler, records } = mockDb(); const env = { PERSONAL_PROGRESS_KEY: secret };
-  assert.equal((await handler({ ...alice, action: 'read' }, env)).body.progress, null);
-  const written = await handler({ ...alice, action: 'write', revision: null, snapshot: sample }, env);
+  const initial = await handler({ ...alice, action: 'read' }, env);
+  assert.equal(initial.body.progress, null);
+  const written = await handler({ ...alice, action: 'write', accountId: initial.body.accountId, revision: null, snapshot: sample }, env);
   assert.equal(written.status, 200);
   const raw = records.get('/users/alice.json').value.personalProgressV1;
   assert.equal(JSON.stringify(raw).includes('1:1'), false);
   const read = await handler({ ...alice, action: 'read' }, env);
   assert.deepEqual(read.body.progress.snapshot, sample);
-  const stale = await handler({ ...alice, action: 'write', revision: null, snapshot: empty }, env);
+  const stale = await handler({ ...alice, action: 'write', accountId: initial.body.accountId, revision: null, snapshot: empty }, env);
   assert.equal(stale.status, 409);
   assert.deepEqual((await handler({ ...alice, action: 'read' }, env)).body.progress.snapshot, sample);
   const bob = await handler({ username: 'bob', password: 'other', action: 'read' }, env);
@@ -56,22 +57,25 @@ test('private encrypted round-trip and no overwrite of newer data', async () => 
 });
 test('database compare-and-swap conflict preserves the previous record', async () => {
   const db = mockDb(); const env = { PERSONAL_PROGRESS_KEY: secret };
-  const first = await db.handler({ ...alice, action: 'write', revision: null, snapshot: sample }, env);
+  const initial = await db.handler({ ...alice, action: 'read' }, env);
+  const first = await db.handler({ ...alice, action: 'write', accountId: initial.body.accountId, revision: null, snapshot: sample }, env);
   db.conflict();
-  assert.equal((await db.handler({ ...alice, action: 'write', revision: first.body.revision, snapshot: empty }, env)).status, 409);
+  assert.equal((await db.handler({ ...alice, action: 'write', accountId: initial.body.accountId, revision: first.body.revision, snapshot: empty }, env)).status, 409);
   assert.deepEqual((await db.handler({ ...alice, action: 'read' }, env)).body.progress.snapshot, sample);
 });
 test('corrupt ciphertext or wrong key never causes existing data to be overwritten', async () => {
   const { handler, records } = mockDb(); const env = { PERSONAL_PROGRESS_KEY: secret };
-  await handler({ ...alice, action: 'write', revision: null, snapshot: sample }, env);
+  const initial = await handler({ ...alice, action: 'read' }, env);
+  await handler({ ...alice, action: 'write', accountId: initial.body.accountId, revision: null, snapshot: sample }, env);
   const before = JSON.stringify(records.get('/users/alice.json'));
   const wrong = { PERSONAL_PROGRESS_KEY: Buffer.alloc(32, 8).toString('base64') };
-  assert.equal((await handler({ ...alice, action: 'write', revision: null, snapshot: empty }, wrong)).status, 503);
+  assert.equal((await handler({ ...alice, action: 'write', accountId: initial.body.accountId, revision: null, snapshot: empty }, wrong)).status, 503);
   assert.equal(JSON.stringify(records.get('/users/alice.json')), before);
 });
 test('encrypted progress still decrypts after username change', async () => {
   const { handler, records } = mockDb(); const env = { PERSONAL_PROGRESS_KEY: secret };
-  const initial = await handler({ ...alice, action: 'write', revision: null, snapshot: sample }, env);
+  const bound = await handler({ ...alice, action: 'read' }, env);
+  const initial = await handler({ ...alice, action: 'write', accountId: bound.body.accountId, revision: null, snapshot: sample }, env);
   const previous = records.get('/users/alice.json');
   records.set('/users/renamed.json', { value: { ...previous.value }, etag: '"renamed"' });
   const after = await handler({ username: 'renamed', password: 'secret', action: 'read' }, env);
@@ -86,4 +90,6 @@ test('recreating a deleted nickname gets a new personal identity', async () => {
   const next = await handler({ ...alice, action: 'read' }, env);
   assert.notEqual(old.body.accountId, next.body.accountId);
   assert.equal(next.body.progress, null);
+  assert.equal((await handler({ ...alice, action: 'write', accountId: old.body.accountId, revision: null, snapshot: sample }, env)).status, 409);
+  assert.equal((await handler({ ...alice, action: 'read' }, env)).body.progress, null);
 });

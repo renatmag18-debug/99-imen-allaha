@@ -65,10 +65,12 @@ export function createProgressHandler({ userKey, b64EncodeUtf8, rtdbFetch, reply
     let key;
     try { key = await encryptionKey(env); } catch (_) { return reply({ error: 'personal progress unavailable' }, 503); }
     if (body.action !== 'read' && body.action !== 'write') return reply({ error: 'invalid action' }, 400);
-    if (body.action === 'write' && (!validSnapshot(body.snapshot) || JSON.stringify(body.snapshot).length > MAX_BODY || !(body.revision === null || typeof body.revision === 'string'))) return reply({ error: 'invalid progress data' }, 400);
+    if (body.action === 'write' && (!validSnapshot(body.snapshot) || JSON.stringify(body.snapshot).length > MAX_BODY || typeof body.accountId !== 'string' || !(body.revision === null || typeof body.revision === 'string'))) return reply({ error: 'invalid progress data' }, 400);
     // A permanent account identifier follows the record across nickname moves.
     // It is established by compare-and-swap, never derived from the nickname.
     if (user.personalAccountId == null) {
+      // The caller must read and bind the identity before attempting a write.
+      if (body.action === 'write') return reply({ error: 'account changed; retry' }, 409);
       const assignedId = crypto.randomUUID();
       const assigned = await rtdbFetch(path, env, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'if-match': etag }, body: JSON.stringify({ ...user, personalAccountId: assignedId }) });
       if (assigned.status === 412) return reply({ error: 'account changed; retry' }, 409);
@@ -80,6 +82,7 @@ export function createProgressHandler({ userKey, b64EncodeUtf8, rtdbFetch, reply
       if (!user || user.password !== b64EncodeUtf8(body.password) || user.personalAccountId !== assignedId || user.personalProgressRenameLock) return reply({ error: 'account changed; retry' }, 409);
     }
     if (typeof user.personalAccountId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(user.personalAccountId)) return reply({ error: 'invalid account identity' }, 503);
+    if (body.action === 'write' && body.accountId !== user.personalAccountId) return reply({ error: 'account changed; retry' }, 409);
     const old = user.personalProgressV1 ?? null;
     let current = null;
     try { if (old !== null) current = { revision: old.revision, snapshot: await decrypt(key, old) }; }

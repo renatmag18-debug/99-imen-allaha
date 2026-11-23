@@ -34,7 +34,8 @@ test('actual RTDB ETags prevent a stale backup from overwriting a renamed accoun
   await putUser(oldName, { username: oldName, password: btoa('secret') });
   try {
     const credentials = { username: oldName, password: 'secret' };
-    const first = await progress({ ...credentials, action: 'write', revision: null, snapshot: empty }, env);
+    const bound = await progress({ ...credentials, action: 'read' }, env);
+    const first = await progress({ ...credentials, action: 'write', accountId: bound.body.accountId, revision: null, snapshot: empty }, env);
     assert.equal(first.status, 200);
     let release; const gate = new Promise(resolve => { release = resolve; });
     let signal; const blocked = new Promise(resolve => { signal = resolve; });
@@ -47,7 +48,7 @@ test('actual RTDB ETags prevent a stale backup from overwriting a renamed accoun
       return fetchDb(path, e, options);
     };
     const delayedProgress = createProgressHandler({ ...deps, rtdbFetch: delayedFetch });
-    const inFlight = delayedProgress({ ...credentials, action: 'write', revision: first.body.revision, snapshot: changed }, env);
+    const inFlight = delayedProgress({ ...credentials, action: 'write', accountId: bound.body.accountId, revision: first.body.revision, snapshot: changed }, env);
     await blocked;
     const moved = await rename({ ...credentials, newUsername: newName }, env);
     assert.equal(moved.status, 200);
