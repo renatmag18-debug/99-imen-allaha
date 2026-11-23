@@ -59,6 +59,9 @@ export function createProgressHandler({ userKey, b64EncodeUtf8, rtdbFetch, reply
     let user;
     try { user = await response.json(); } catch (_) { return reply({ error: 'storage unavailable' }, 503); }
     if (!user || user.password !== b64EncodeUtf8(body.password)) return reply({ error: 'invalid auth' }, 401);
+    // A rename freezes both names until the move is finished. In-flight writes
+    // that read before the freeze fail their parent-record ETag check.
+    if (user.personalProgressRenameLock) return reply({ error: 'account rename in progress' }, 409);
     let key;
     try { key = await encryptionKey(env); } catch (_) { return reply({ error: 'personal progress unavailable' }, 503); }
     if (body.action !== 'read' && body.action !== 'write') return reply({ error: 'invalid action' }, 400);

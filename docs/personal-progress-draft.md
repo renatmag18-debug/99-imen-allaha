@@ -4,13 +4,13 @@ This branch contains an experimental authenticated endpoint for encrypted ayah a
 
 ## Verified locally
 
-Run: node --test tests/personal-progress.test.mjs
+Run: node --test tests/personal-progress.test.mjs tests/personal-rename.test.mjs tests/worker-rename.integration.test.mjs
 
 The isolated fake-database tests cover authentication failure, malformed records, ciphertext storage, optimistic write conflicts, a wrong encryption key and decryption after a simple username move. They do not establish correct behaviour against production RTDB or Android.
 
 ## Release blockers
 
-- Existing username-change code copies and deletes whole user records without a conditional transaction. A backup write racing with a rename can be lost; a plain sequential rename test is not sufficient. Fix and test rename/delete races against an isolated database before release.
+- The draft protects backup writes and nickname changes with conditional writes and a recoverable rename lock. Mocked tests cover concurrent backup, interrupted moves, registration and account deletion races. This has not been tested against an isolated real RTDB instance or deployed. A divergent destination preserves both copies and freezes sync for manual recovery; build an operational recovery procedure and verify compatibility with old clients before release.
 - The existing server password scheme uses reversible Base64. Encrypting the backup blob does not fix account authentication, brute-force protection or credential handling. Migrate authentication without locking out existing clients before release.
 - Android has no wired account-scoped store, durable offline queue, migration of existing on-device data, conflict-resolution UI, or recovery flow yet. The endpoint alone does not implement sync.
 - No isolated deployed test Worker / RTDB environment has been verified. Test with two real devices and no production user records.

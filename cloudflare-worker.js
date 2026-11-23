@@ -99,6 +99,7 @@
  */
 
 import { createProgressHandler } from './personal-progress.mjs';
+import { createSafeRename } from './personal-rename.mjs';
 
 const RTDB_BASE = 'https://ism-friends-default-rtdb.firebaseio.com';
 
@@ -414,7 +415,11 @@ async function handleRegister(body, env) {
   const key = userKey(username);
 
   // Check if user exists
-  const existing = await rtdbGetJson(`/users/${encodeURIComponent(key)}.json`, env);
+  const existingRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env,
+    { method: 'GET', headers: { 'X-Firebase-ETag': 'true' } });
+  if (!existingRes.ok || !existingRes.headers.get('ETag')) return corsResponse(jsonResponse({ error: 'storage unavailable' }, 503));
+  const existingEtag = existingRes.headers.get('ETag');
+  const existing = await existingRes.json();
 
   if (existing && existing.password) {
     return corsResponse(jsonResponse({ error: 'username already taken' }, 409));
@@ -454,12 +459,12 @@ async function handleRegister(body, env) {
 
   const createRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'if-match': existingEtag },
     body: JSON.stringify(userData)
   });
 
   if (!createRes.ok) {
-    return corsResponse(jsonResponse({ error: 'failed to create user' }, 500));
+    return corsResponse(jsonResponse({ error: createRes.status === 412 ? 'username already taken' : 'failed to create user' }, createRes.status === 412 ? 409 : 500));
   }
 
   await rtdbFetch(`/emailIndex/${emailKey(normalizedEmail)}.json`, env, {
@@ -901,12 +906,13 @@ async function handleChangePassword(body, env) {
 // pending-request relationship, since those are stored on the OTHER
 // party's own record and won't move just because this account's record did.
 async function renameCrossRef(otherKey, subPath, oldKey, newKey, newDisplayName, env) {
-  await Promise.all([
-    rtdbFetch(`/users/${encodeURIComponent(otherKey)}/${subPath}/${encodeURIComponent(oldKey)}.json`, env, { method: 'DELETE' }),
-    rtdbFetch(`/users/${encodeURIComponent(otherKey)}/${subPath}/${encodeURIComponent(newKey)}.json`, env, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newDisplayName)
-    })
-  ]);
+  // Add first, then remove; the operation is safe to repeat after interruption.
+  const added = await rtdbFetch(`/users/${encodeURIComponent(otherKey)}/${subPath}/${encodeURIComponent(newKey)}.json`, env, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newDisplayName)
+  });
+  if (!added.ok) throw new Error('rename reference write failed');
+  const removed = await rtdbFetch(`/users/${encodeURIComponent(otherKey)}/${subPath}/${encodeURIComponent(oldKey)}.json`, env, { method: 'DELETE' });
+  if (!removed.ok) throw new Error('rename reference cleanup failed');
 }
 
 /**
@@ -921,58 +927,22 @@ async function renameCrossRef(otherKey, subPath, oldKey, newKey, newDisplayName,
  * skips all of that and just updates the display field in place.
  */
 async function handleChangeUsername(body, env) {
-  const { username, password, newUsername } = body || {};
-  if (!username || !password || !newUsername) return corsResponse(jsonResponse({ error: 'missing data' }, 400));
-
-  const trimmedNew = newUsername.trim();
-  if (trimmedNew.length < 3) return corsResponse(jsonResponse({ error: 'username must be at least 3 chars' }, 400));
-  if (hasForbiddenKeyChars(trimmedNew)) return corsResponse(jsonResponse({ error: 'username contains invalid characters' }, 400));
-
-  const oldKey = userKey(username);
-  const newKey = userKey(trimmedNew);
-
-  const user = await rtdbGetJson(`/users/${encodeURIComponent(oldKey)}.json`, env);
-  if (!user || user.password !== b64EncodeUtf8(password)) {
-    return corsResponse(jsonResponse({ error: 'invalid auth' }, 401));
-  }
-
-  if (newKey === oldKey) {
-    await rtdbFetch(`/users/${encodeURIComponent(oldKey)}/username.json`, env, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(trimmedNew)
-    });
-    return corsResponse(jsonResponse({ ok: true, username: trimmedNew }));
-  }
-
-  const existing = await rtdbGetJson(`/users/${encodeURIComponent(newKey)}.json`, env);
-  if (existing && existing.password) {
-    return corsResponse(jsonResponse({ error: 'username already taken' }, 409));
-  }
-
-  const movedUser = { ...user, username: trimmedNew };
-  await rtdbFetch(`/users/${encodeURIComponent(newKey)}.json`, env, {
-    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(movedUser)
+  const handler = createSafeRename({
+    userKey, b64EncodeUtf8, hasForbiddenKeyChars, rtdbFetch,
+    reply: (value, status) => corsResponse(jsonResponse(value, status)),
+    finishReferences: async (oldKey, newKey, displayName, user, env) => {
+      if (user.email) {
+        const res = await rtdbFetch(`/emailIndex/${emailKey(user.email)}.json`, env, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newKey)
+        });
+        if (!res.ok) throw new Error('email index update failed');
+      }
+      for (const friendKey of Object.keys(user.friends || {})) await renameCrossRef(friendKey, 'friends', oldKey, newKey, displayName, env);
+      for (const fromKey of Object.keys(user.friendRequestsIn || {})) await renameCrossRef(fromKey, 'friendRequestsOut', oldKey, newKey, displayName, env);
+      for (const toKey of Object.keys(user.friendRequestsOut || {})) await renameCrossRef(toKey, 'friendRequestsIn', oldKey, newKey, displayName, env);
+    },
   });
-
-  const followUps = [];
-  if (user.email) {
-    followUps.push(rtdbFetch(`/emailIndex/${emailKey(user.email)}.json`, env, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newKey)
-    }));
-  }
-  for (const friendKey of Object.keys(user.friends || {})) {
-    followUps.push(renameCrossRef(friendKey, 'friends', oldKey, newKey, trimmedNew, env));
-  }
-  for (const fromKey of Object.keys(user.friendRequestsIn || {})) {
-    followUps.push(renameCrossRef(fromKey, 'friendRequestsOut', oldKey, newKey, trimmedNew, env));
-  }
-  for (const toKey of Object.keys(user.friendRequestsOut || {})) {
-    followUps.push(renameCrossRef(toKey, 'friendRequestsIn', oldKey, newKey, trimmedNew, env));
-  }
-  await Promise.all(followUps);
-
-  await rtdbFetch(`/users/${encodeURIComponent(oldKey)}.json`, env, { method: 'DELETE' });
-
-  return corsResponse(jsonResponse({ ok: true, username: trimmedNew }));
+  return handler(body, env);
 }
 
 /**
@@ -991,6 +961,16 @@ async function handleChangeUsername(body, env) {
 // point back at it (those live on the other party's own record, so they
 // don't disappear on their own).
 async function deleteAccountRecord(key, user, env) {
+  // A deletion must not race a rename or backup and delete a newer record.
+  const current = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env,
+    { method: 'GET', headers: { 'X-Firebase-ETag': 'true' } });
+  if (!current.ok || !current.headers.get('ETag')) throw new Error('storage unavailable');
+  const fresh = await current.json();
+  if (!fresh || fresh.password !== user.password || fresh.personalProgressRenameLock) throw new Error('account changed; retry');
+  const delRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env,
+    { method: 'DELETE', headers: { 'if-match': current.headers.get('ETag') } });
+  if (!delRes.ok) throw new Error('account changed; retry');
+  user = fresh;
   const cleanup = [];
   if (user.email) {
     cleanup.push(rtdbFetch(`/emailIndex/${emailKey(user.email)}.json`, env, { method: 'DELETE' }));
@@ -1006,11 +986,6 @@ async function deleteAccountRecord(key, user, env) {
   }
   await Promise.all(cleanup);
 
-  const delRes = await rtdbFetch(`/users/${encodeURIComponent(key)}.json`, env, { method: 'DELETE' });
-  if (!delRes.ok) {
-    const body = await delRes.text().catch(() => '');
-    throw new Error(`rtdb delete failed (${delRes.status}): ${body.slice(0, 300)}`);
-  }
   // Firebase RTDB's REST DELETE returns 200 with body `null` even when the
   // path never actually changes (e.g. a key containing characters the
   // Realtime Database rejects, like "." from an email typed into the
