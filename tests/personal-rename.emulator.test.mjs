@@ -55,6 +55,7 @@ test('actual RTDB ETags prevent a stale backup from overwriting a renamed accoun
     assert.equal((await inFlight).status, 409);
     const read = await progress({ username: newName, password: 'secret', action: 'read' }, env);
     assert.deepEqual(read.body.progress.snapshot, empty);
+    assert.equal(read.body.accountId, first.body.accountId);
     assert.equal(await readUser(oldName), null);
   } finally {
     await fetchDb(userPath(oldName), env, { method: 'DELETE' });

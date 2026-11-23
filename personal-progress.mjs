@@ -52,9 +52,9 @@ export function createProgressHandler({ userKey, b64EncodeUtf8, rtdbFetch, reply
     const username = userKey(body.username);
     if (!username || /[.#$\[\]\/]/.test(username)) return reply({ error: 'invalid auth' }, 401);
     const path = `/users/${encodeURIComponent(username)}.json`;
-    const response = await rtdbFetch(path, env, { method: 'GET', headers: { 'X-Firebase-ETag': 'true' } });
+    let response = await rtdbFetch(path, env, { method: 'GET', headers: { 'X-Firebase-ETag': 'true' } });
     if (!response.ok) return reply({ error: 'storage unavailable' }, 503);
-    const etag = response.headers.get('ETag');
+    let etag = response.headers.get('ETag');
     if (!etag) return reply({ error: 'storage unavailable' }, 503);
     let user;
     try { user = await response.json(); } catch (_) { return reply({ error: 'storage unavailable' }, 503); }
@@ -66,16 +66,30 @@ export function createProgressHandler({ userKey, b64EncodeUtf8, rtdbFetch, reply
     try { key = await encryptionKey(env); } catch (_) { return reply({ error: 'personal progress unavailable' }, 503); }
     if (body.action !== 'read' && body.action !== 'write') return reply({ error: 'invalid action' }, 400);
     if (body.action === 'write' && (!validSnapshot(body.snapshot) || JSON.stringify(body.snapshot).length > MAX_BODY || !(body.revision === null || typeof body.revision === 'string'))) return reply({ error: 'invalid progress data' }, 400);
+    // A permanent account identifier follows the record across nickname moves.
+    // It is established by compare-and-swap, never derived from the nickname.
+    if (user.personalAccountId == null) {
+      const assignedId = crypto.randomUUID();
+      const assigned = await rtdbFetch(path, env, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'if-match': etag }, body: JSON.stringify({ ...user, personalAccountId: assignedId }) });
+      if (assigned.status === 412) return reply({ error: 'account changed; retry' }, 409);
+      if (!assigned.ok) return reply({ error: 'storage unavailable' }, 503);
+      response = await rtdbFetch(path, env, { method: 'GET', headers: { 'X-Firebase-ETag': 'true' } });
+      if (!response.ok || !response.headers.get('ETag')) return reply({ error: 'storage unavailable' }, 503);
+      etag = response.headers.get('ETag');
+      try { user = await response.json(); } catch (_) { return reply({ error: 'storage unavailable' }, 503); }
+      if (!user || user.password !== b64EncodeUtf8(body.password) || user.personalAccountId !== assignedId || user.personalProgressRenameLock) return reply({ error: 'account changed; retry' }, 409);
+    }
+    if (typeof user.personalAccountId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(user.personalAccountId)) return reply({ error: 'invalid account identity' }, 503);
     const old = user.personalProgressV1 ?? null;
     let current = null;
     try { if (old !== null) current = { revision: old.revision, snapshot: await decrypt(key, old) }; }
     catch (_) { return reply({ error: 'progress cannot be decrypted' }, 503); }
-    if (body.action === 'read') return reply({ progress: current }, 200);
-    if ((current?.revision ?? null) !== body.revision) return reply({ error: 'progress conflict', progress: current }, 409);
+    if (body.action === 'read') return reply({ accountId: user.personalAccountId, progress: current }, 200);
+    if ((current?.revision ?? null) !== body.revision) return reply({ error: 'progress conflict', accountId: user.personalAccountId, progress: current }, 409);
     const record = await encrypt(key, old?.context || crypto.randomUUID(), body.snapshot);
     const put = await rtdbFetch(path, env, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'if-match': etag }, body: JSON.stringify({ ...user, personalProgressV1: record }) });
     if (put.status === 412) return reply({ error: 'progress conflict' }, 409);
     if (!put.ok) return reply({ error: 'storage unavailable' }, 503);
-    return reply({ revision: record.revision }, 200);
+    return reply({ accountId: user.personalAccountId, revision: record.revision }, 200);
   };
 }

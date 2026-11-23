@@ -71,10 +71,19 @@ test('corrupt ciphertext or wrong key never causes existing data to be overwritt
 });
 test('encrypted progress still decrypts after username change', async () => {
   const { handler, records } = mockDb(); const env = { PERSONAL_PROGRESS_KEY: secret };
-  await handler({ ...alice, action: 'write', revision: null, snapshot: sample }, env);
+  const initial = await handler({ ...alice, action: 'write', revision: null, snapshot: sample }, env);
   const previous = records.get('/users/alice.json');
   records.set('/users/renamed.json', { value: { ...previous.value }, etag: '"renamed"' });
   const after = await handler({ username: 'renamed', password: 'secret', action: 'read' }, env);
   assert.equal(after.status, 200);
+  assert.equal(after.body.accountId, initial.body.accountId);
   assert.deepEqual(after.body.progress.snapshot, sample);
+});
+test('recreating a deleted nickname gets a new personal identity', async () => {
+  const { handler, records } = mockDb(); const env = { PERSONAL_PROGRESS_KEY: secret };
+  const old = await handler({ ...alice, action: 'read' }, env);
+  records.set('/users/alice.json', { value: { password: btoa('secret') }, etag: '"recreated"' });
+  const next = await handler({ ...alice, action: 'read' }, env);
+  assert.notEqual(old.body.accountId, next.body.accountId);
+  assert.equal(next.body.progress, null);
 });
