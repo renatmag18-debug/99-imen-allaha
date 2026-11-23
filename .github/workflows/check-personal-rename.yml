@@ -12,5 +12,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --check cloudflare-worker.js
+      - run: node --input-type=module --check < cloudflare-worker.js
       - run: node --test tests/personal-progress.test.mjs tests/personal-rename.test.mjs tests/worker-rename.integration.test.mjs
