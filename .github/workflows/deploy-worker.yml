@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - 'cloudflare-worker.js'
+      - 'personal-progress.mjs'
+      - 'personal-rename.mjs'
       - 'wrangler.toml'
       - '.github/workflows/deploy-worker.yml'
   workflow_dispatch:
@@ -16,11 +18,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check backup encryption key
+        env:
+          PERSONAL_PROGRESS_KEY: ${{ secrets.PERSONAL_PROGRESS_KEY }}
+        run: |
+          python3 -c 'import os,base64,sys; v=os.environ.get("PERSONAL_PROGRESS_KEY",""); sys.exit(0 if len(base64.b64decode(v,validate=True))==32 else 1)' || { echo "Backup encryption key is missing or invalid" >&2; exit 1; }
+
       - name: Deploy
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           secrets: |
             RESEND_API_KEY
+            PERSONAL_PROGRESS_KEY
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          PERSONAL_PROGRESS_KEY: ${{ secrets.PERSONAL_PROGRESS_KEY }}
