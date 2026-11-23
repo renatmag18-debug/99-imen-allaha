@@ -98,6 +98,8 @@
  *                reminderHourUTC matches the current UTC hour.
  */
 
+import { createProgressHandler } from './personal-progress.mjs';
+
 const RTDB_BASE = 'https://ism-friends-default-rtdb.firebaseio.com';
 
 // RTDB write/protected-read rules require `auth != null`. RTDB's REST API only
@@ -209,6 +211,11 @@ async function handleAPI(request, env, url) {
   // POST /api/sync-progress
   if (request.method === 'POST' && path === 'sync-progress') {
     return handleSyncProgress(body, env);
+  }
+
+  if (request.method === 'POST' && path === 'personal-progress') {
+    return createProgressHandler({ userKey, b64EncodeUtf8, rtdbFetch,
+      reply: (value, status) => corsResponse(jsonResponse(value, status)) })(body, env);
   }
 
   // GET /api/profile/:username
@@ -1838,3 +1845,4 @@ function b64urlBuf(buf) {
   for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
+
