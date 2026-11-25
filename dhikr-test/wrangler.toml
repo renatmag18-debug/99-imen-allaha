@@ -1,0 +1,11 @@
+name = "99ism-dhikr-test"
+main = "worker.mjs"
+compatibility_date = "2026-08-01"
+
+[[durable_objects.bindings]]
+name = "COUNTERS"
+class_name = "Counter"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Counter"]

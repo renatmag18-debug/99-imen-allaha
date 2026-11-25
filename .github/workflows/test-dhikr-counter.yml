@@ -1,0 +1,40 @@
+name: Deploy isolated test dhikr counter
+on:
+  push:
+    branches: [test/collective-dhikr]
+    paths: ['dhikr-test/**', '.github/workflows/test-dhikr-counter.yml']
+permissions:
+  contents: read
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: dhikr-test
+          command: deploy
+      - name: Verify total and idempotent guest counts
+        run: |
+          python3 - <<'PY'
+          import urllib.request as u, json, uuid, time
+          base='https://99ism-dhikr-test.99ism-worker.workers.dev'
+          def call(path, body=None):
+              data=json.dumps(body).encode() if body else None
+              return json.load(u.urlopen(u.Request(base+path,data=data,headers={'Content-Type':'application/json'}),timeout=15))['total']
+          for attempt in range(12):
+              try:
+                  assert call('/v1/total') >= 0
+                  break
+              except Exception:
+                  if attempt == 11: raise
+                  time.sleep(5)
+          p='/test/verify'
+          before=call(p)
+          install=str(uuid.uuid4())
+          assert call(p,dict(id=install,count=3))==before+3
+          assert call(p,dict(id=install,count=3))==before+3
+          assert call(p,dict(id=install,count=2))==before+3
+          assert call(p,dict(id=str(uuid.uuid4()),count=1))==before+4
+          PY
