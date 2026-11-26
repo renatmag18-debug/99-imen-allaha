@@ -5,6 +5,8 @@ export class Counter {
     this.sql.exec("CREATE TABLE IF NOT EXISTS receipts (id TEXT PRIMARY KEY, n INTEGER NOT NULL)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS stats (id INTEGER PRIMARY KEY, n INTEGER NOT NULL)");
     this.sql.exec("INSERT OR IGNORE INTO stats VALUES(1,0)");
+    // Freeze the one-time adjustment while retaining each installation’s receipt.
+    this.sql.exec("INSERT OR IGNORE INTO stats(id,n) SELECT 2, 32000-n FROM stats WHERE id=1");
   }
   async fetch(request) {
     if (request.method === "POST") {
@@ -17,7 +19,7 @@ export class Counter {
         this.sql.exec("UPDATE stats SET n=n+? WHERE id=1",count-previous);
       }
     }
-    return json({total:this.sql.exec("SELECT n FROM stats WHERE id=1").one().n});
+    return json({total:this.sql.exec("SELECT SUM(n) AS total FROM stats").one().total});
   }
 }
 
